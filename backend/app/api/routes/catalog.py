@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_telegram_user
+from app.api.locale import resolve_locale
 from app.config import get_settings
 from app.db.session import get_db
 from app.models.telegram_user import TelegramUser
@@ -12,12 +13,6 @@ router = APIRouter(prefix="/catalog", tags=["catalog"])
 settings = get_settings()
 
 
-def _resolve_locale(locale: str | None, user: TelegramUser) -> str:
-    if locale and locale in settings.supported_locales:
-        return locale
-    return user.locale
-
-
 @router.get("/categories", response_model=list[CategoryOut])
 async def list_categories(
     locale: str | None = Query(default=None),
@@ -25,7 +20,7 @@ async def list_categories(
     db: AsyncSession = Depends(get_db),
 ):
     return await catalog_service.list_categories(
-        db, _resolve_locale(locale, user), settings.default_locale
+        db, resolve_locale(locale, user), settings.default_locale
     )
 
 
@@ -38,7 +33,7 @@ async def list_products(
 ):
     return await catalog_service.list_products(
         db,
-        _resolve_locale(locale, user),
+        resolve_locale(locale, user),
         settings.default_locale,
         category_id=category,
     )
@@ -52,7 +47,7 @@ async def get_product(
     db: AsyncSession = Depends(get_db),
 ):
     product = await catalog_service.get_product(
-        db, product_id, _resolve_locale(locale, user), settings.default_locale
+        db, product_id, resolve_locale(locale, user), settings.default_locale
     )
     if product is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")

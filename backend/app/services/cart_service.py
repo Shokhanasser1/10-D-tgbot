@@ -1,0 +1,135 @@
+from decimal import Decimal
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from app.core.exceptions import ConflictError, NotFoundError
+from app.core.i18n import translations_for
+from app.models.cart import Cart, CartItem
+from app.models.enums import CartStatus, ProductStatus
+from app.models.variant import Variant
+from app.schemas.cart import CartItemOut, CartOut
+
+
+async def get_or_create_active_cart(db: AsyncSession, telegram_id: int) -> Cart:
+    stmt = select(Cart).where(Cart.telegram_id == telegram_id, Cart.status == CartStatus.active)
+    cart = (await db.execute(stmt)).scalar_one_or_none()
+    if cart is None:
+        cart = Cart(telegram_id=telegram_id, status=CartStatus.active)
+        db.add(cart)
+        await db.flush()
+    return cart
+
+
+async def _get_active_variant(db: AsyncSession, variant_id: int) -> Variant:
+    stmt = (
+        select(Variant).where(Variant.id == variant_id).options(selectinload(Variant.product))
+    )
+    variant = (await db.execute(stmt)).scalar_one_or_none()
+    if variant is None or variant.product.status != ProductStatus.active:
+        raise NotFoundError("Variant not found")
+    return variant
+
+
+async def add_item(db: AsyncSession, telegram_id: int, variant_id: int, qty: int) -> None:
+    if qty <= 0:
+        raise ConflictError("qty must be positive")
+
+    variant = await _get_active_variant(db, variant_id)
+    cart = await get_or_create_active_cart(db, telegram_id)
+
+    stmt = select(CartItem).where(CartItem.cart_id == cart.id, CartItem.variant_id == variant_id)
+    item = (await db.execute(stmt)).scalar_one_or_none()
+    new_qty = qty + (item.qty if item is not None else 0)
+
+    if variant.stock_qty < new_qty:
+        raise ConflictError("Insufficient stock")
+
+    if item is None:
+        db.add(
+            CartItem(
+                cart_id=cart.id,
+                variant_id=variant_id,
+                qty=qty,
+                unit_price_snapshot=variant.price,
+            )
+        )
+    else:
+        item.qty = new_qty
+
+    await db.commit()
+
+
+async def update_item_qty(db: AsyncSession, telegram_id: int, item_id: int, qty: int) -> None:
+    if qty < 0:
+        raise ConflictError("qty cannot be negative")
+
+    item = await _get_owned_item(db, telegram_id, item_id)
+
+    if qty == 0:
+        await db.delete(item)
+        await db.commit()
+        return
+
+    variant = await _get_active_variant(db, item.variant_id)
+    if variant.stock_qty < qty:
+        raise ConflictError("Insufficient stock")
+
+    item.qty = qty
+    await db.commit()
+
+
+async def remove_item(db: AsyncSession, telegram_id: int, item_id: int) -> None:
+    item = await _get_owned_item(db, telegram_id, item_id)
+    await db.delete(item)
+    await db.commit()
+
+
+async def _get_owned_item(db: AsyncSession, telegram_id: int, item_id: int) -> CartItem:
+    stmt = (
+        select(CartItem)
+        .join(Cart, Cart.id == CartItem.cart_id)
+        .where(
+            CartItem.id == item_id,
+            Cart.telegram_id == telegram_id,
+            Cart.status == CartStatus.active,
+        )
+    )
+    item = (await db.execute(stmt)).scalar_one_or_none()
+    if item is None:
+        raise NotFoundError("Cart item not found")
+    return item
+
+
+async def get_cart(
+    db: AsyncSession, telegram_id: int, locale: str, fallback_locale: str
+) -> CartOut:
+    stmt = (
+        select(CartItem)
+        .join(Cart, Cart.id == CartItem.cart_id)
+        .where(Cart.telegram_id == telegram_id, Cart.status == CartStatus.active)
+        .options(selectinload(CartItem.variant).selectinload(Variant.product))
+    )
+    items = (await db.execute(stmt)).scalars().all()
+
+    product_ids = [item.variant.product_id for item in items]
+    names = await translations_for(db, "product", product_ids, ["name"], locale, fallback_locale)
+
+    out_items = [
+        CartItemOut(
+            id=item.id,
+            variant_id=item.variant_id,
+            sku=item.variant.sku,
+            product_name=names.get(
+                (item.variant.product_id, "name"), item.variant.product.base_sku
+            ),
+            qty=item.qty,
+            unit_price_snapshot=item.unit_price_snapshot,
+            line_total=item.unit_price_snapshot * item.qty,
+        )
+        for item in items
+    ]
+    subtotal = sum((item.line_total for item in out_items), Decimal("0"))
+
+    return CartOut(items=out_items, subtotal=subtotal)
