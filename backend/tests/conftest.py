@@ -8,8 +8,11 @@ from app.config import get_settings
 from app.db.session import get_db
 from app.main import app
 from app.models import Base
+from tests.factories import TEST_BOT_TOKEN
 
 settings = get_settings()
+settings.telegram_bot_token = TEST_BOT_TOKEN
+settings.internal_api_token = "test-internal-token"
 
 
 @pytest.fixture(scope="session")
