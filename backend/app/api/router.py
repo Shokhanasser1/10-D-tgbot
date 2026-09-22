@@ -1,7 +1,10 @@
 from fastapi import APIRouter
 
-api_router = APIRouter()
+from app.api.routes import catalog, internal_products
 
-# Feature routers are mounted here as they're implemented:
-# from app.api.routes import catalog, cart, checkout, orders, webhooks, internal_products
-# api_router.include_router(catalog.router)
+api_router = APIRouter()
+api_router.include_router(catalog.router)
+api_router.include_router(internal_products.router)
+
+# Mounted here as they're implemented:
+# from app.api.routes import cart, checkout, orders, webhooks
