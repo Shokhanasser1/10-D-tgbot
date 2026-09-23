@@ -15,6 +15,10 @@ class ConflictError(Exception):
     """Raised by the service layer for business-rule conflicts (e.g. insufficient stock)."""
 
 
+class BadRequestError(Exception):
+    """Raised by the service layer for invalid requests that aren't a resource conflict."""
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(InvalidInitDataError)
     async def _invalid_init_data_handler(
@@ -30,6 +34,10 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(ConflictError)
     async def _conflict_handler(request: Request, exc: ConflictError) -> JSONResponse:
         return JSONResponse(status_code=409, content={"detail": str(exc) or "Conflict"})
+
+    @app.exception_handler(BadRequestError)
+    async def _bad_request_handler(request: Request, exc: BadRequestError) -> JSONResponse:
+        return JSONResponse(status_code=400, content={"detail": str(exc) or "Bad request"})
 
     @app.exception_handler(IntegrityError)
     async def _integrity_error_handler(request: Request, exc: IntegrityError) -> JSONResponse:
