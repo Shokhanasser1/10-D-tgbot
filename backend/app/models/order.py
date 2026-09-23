@@ -31,7 +31,7 @@ class Order(Base):
     subtotal: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     shipping_cost: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     total: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
-    delivery_address: Mapped[dict[str, str]] = mapped_column(JSONB, nullable=False)
+    delivery_address: Mapped[dict[str, str | None]] = mapped_column(JSONB, nullable=False)
     placed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
