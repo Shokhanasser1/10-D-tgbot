@@ -1,0 +1,15 @@
+{
+  "app": {
+    "name": "Do'kon"
+  },
+  "nav": {
+    "catalog": "Katalog",
+    "cart": "Savat",
+    "orders": "Buyurtmalar"
+  },
+  "common": {
+    "loading": "Yuklanmoqda…",
+    "error": "Nimadir xato ketdi",
+    "retry": "Qayta urinish"
+  }
+}
