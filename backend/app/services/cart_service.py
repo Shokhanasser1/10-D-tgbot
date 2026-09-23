@@ -8,6 +8,7 @@ from app.core.exceptions import ConflictError, NotFoundError
 from app.core.i18n import translations_for
 from app.models.cart import Cart, CartItem
 from app.models.enums import CartStatus, ProductStatus
+from app.models.product_image import ProductImage
 from app.models.variant import Variant
 from app.schemas.cart import CartItemOut, CartOut
 
@@ -102,6 +103,29 @@ async def _get_owned_item(db: AsyncSession, telegram_id: int, item_id: int) -> C
     return item
 
 
+async def _thumbnails_for(
+    db: AsyncSession, product_ids: list[int], variant_ids: list[int]
+) -> tuple[dict[int, str], dict[int, str]]:
+    if not product_ids:
+        return {}, {}
+
+    stmt = (
+        select(ProductImage)
+        .where(ProductImage.product_id.in_(product_ids))
+        .order_by(ProductImage.position)
+    )
+    images = (await db.execute(stmt)).scalars().all()
+
+    variant_thumbnails: dict[int, str] = {}
+    product_thumbnails: dict[int, str] = {}
+    for image in images:
+        if image.variant_id is not None and image.variant_id in variant_ids:
+            variant_thumbnails.setdefault(image.variant_id, image.url)
+        elif image.variant_id is None:
+            product_thumbnails.setdefault(image.product_id, image.url)
+    return variant_thumbnails, product_thumbnails
+
+
 async def get_cart(
     db: AsyncSession, telegram_id: int, locale: str, fallback_locale: str
 ) -> CartOut:
@@ -114,7 +138,9 @@ async def get_cart(
     items = (await db.execute(stmt)).scalars().all()
 
     product_ids = [item.variant.product_id for item in items]
+    variant_ids = [item.variant_id for item in items]
     names = await translations_for(db, "product", product_ids, ["name"], locale, fallback_locale)
+    variant_thumbnails, product_thumbnails = await _thumbnails_for(db, product_ids, variant_ids)
 
     out_items = [
         CartItemOut(
@@ -124,6 +150,8 @@ async def get_cart(
             product_name=names.get(
                 (item.variant.product_id, "name"), item.variant.product.base_sku
             ),
+            thumbnail_url=variant_thumbnails.get(item.variant_id)
+            or product_thumbnails.get(item.variant.product_id),
             qty=item.qty,
             unit_price_snapshot=item.unit_price_snapshot,
             line_total=item.unit_price_snapshot * item.qty,

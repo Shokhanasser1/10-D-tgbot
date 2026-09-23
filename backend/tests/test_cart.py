@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.category import Category
 from app.models.enums import ProductStatus
 from app.models.product import Product
+from app.models.product_image import ProductImage
 from app.models.variant import Variant
 from tests.factories import make_init_data
 
@@ -109,3 +110,27 @@ async def test_nonexistent_variant_returns_404(client: AsyncClient) -> None:
         "/cart/items", json={"variant_id": 999999, "qty": 1}, headers=_auth_headers(2007)
     )
     assert response.status_code == 404
+
+
+async def test_cart_item_prefers_variant_image_over_product_image(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    variant = await _make_variant(db_session, sku="V6", price="9.00", stock=5)
+    db_session.add_all(
+        [
+            ProductImage(
+                product_id=variant.product_id, variant_id=None, url="https://example.com/p.jpg"
+            ),
+            ProductImage(
+                product_id=variant.product_id,
+                variant_id=variant.id,
+                url="https://example.com/v.jpg",
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    response = await client.post(
+        "/cart/items", json={"variant_id": variant.id, "qty": 1}, headers=_auth_headers(2008)
+    )
+    assert response.json()["items"][0]["thumbnail_url"] == "https://example.com/v.jpg"

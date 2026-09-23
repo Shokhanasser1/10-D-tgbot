@@ -17,6 +17,7 @@ class CartItemOut(BaseModel):
     variant_id: int
     sku: str
     product_name: str
+    thumbnail_url: str | None
     qty: int
     unit_price_snapshot: Decimal
     line_total: Decimal
