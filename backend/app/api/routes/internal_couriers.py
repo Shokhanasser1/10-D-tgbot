@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import verify_internal_token
+from app.api.deps import DISPATCH_ROLES, require_admin
 from app.db.session import get_db
 from app.models.enums import ACTIVE_SHIPMENT_STATUSES, ShipmentStatus
 from app.schemas.courier import ShipmentActionOut
@@ -14,7 +14,7 @@ from app.schemas.courier_admin import (
 from app.services import courier_admin_service, dispatch_service
 
 router = APIRouter(
-    prefix="/internal", tags=["internal"], dependencies=[Depends(verify_internal_token)]
+    prefix="/internal", tags=["internal"], dependencies=[Depends(require_admin(*DISPATCH_ROLES))]
 )
 
 

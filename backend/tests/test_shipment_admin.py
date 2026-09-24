@@ -36,7 +36,7 @@ async def hold(
 async def test_shipment_admin_needs_the_internal_token(
     client: AsyncClient, method: str, path: str
 ) -> None:
-    assert (await client.request(method, path)).status_code == 403
+    assert (await client.request(method, path)).status_code == 401
     wrong = await client.request(method, path, headers={"X-Internal-Token": "nope"})
     assert wrong.status_code == 403
 

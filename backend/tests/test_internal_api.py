@@ -5,7 +5,7 @@ INTERNAL_HEADERS = {"X-Internal-Token": "test-internal-token"}
 
 async def test_missing_internal_token_is_rejected(client: AsyncClient) -> None:
     response = await client.post("/internal/categories", json={"slug": "skincare"})
-    assert response.status_code == 403
+    assert response.status_code == 401
 
 
 async def test_wrong_internal_token_is_rejected(client: AsyncClient) -> None:

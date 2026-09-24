@@ -1,4 +1,5 @@
 from app.db.base import Base
+from app.models.admin import Admin
 from app.models.attribute import Attribute
 from app.models.cart import Cart, CartItem
 from app.models.category import Category
@@ -14,6 +15,7 @@ from app.models.variant import Variant
 
 __all__ = [
     "Base",
+    "Admin",
     "Attribute",
     "Cart",
     "CartItem",

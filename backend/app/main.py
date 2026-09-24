@@ -1,9 +1,23 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
 from app.config import get_settings
 from app.core.exceptions import register_exception_handlers
+from app.db.session import async_session_factory
+from app.services import admin_service
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    ids = get_settings().admin_bootstrap_ids
+    if ids:
+        async with async_session_factory() as session:
+            await admin_service.bootstrap_owners(session, ids)
+    yield
 
 
 def create_app() -> FastAPI:
@@ -17,6 +31,7 @@ def create_app() -> FastAPI:
         docs_url=None if is_production else "/docs",
         redoc_url=None if is_production else "/redoc",
         openapi_url=None if is_production else "/openapi.json",
+        lifespan=lifespan,
     )
 
     app.add_middleware(

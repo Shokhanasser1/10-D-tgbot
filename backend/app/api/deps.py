@@ -1,14 +1,19 @@
 import hmac
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
+from app.core.admin_session import verify_session
 from app.core.security import validate_init_data
 from app.db.session import get_db
 from app.models.courier import Courier
+from app.models.enums import AdminRole
 from app.models.telegram_user import TelegramUser
+from app.services import admin_service
 
 settings = get_settings()
 
@@ -58,13 +63,91 @@ async def get_current_telegram_user(
     return telegram_user
 
 
-def verify_internal_token(x_internal_token: str | None = Header(default=None)) -> None:
+def _check_internal_token(value: str) -> None:
     # Compare bytes: hmac.compare_digest raises TypeError for a non-ASCII str, which would
     # surface as a 500 instead of a 403.
-    if not x_internal_token or not hmac.compare_digest(
-        x_internal_token.encode(), settings.internal_api_token.encode()
+    if not settings.internal_api_token or not hmac.compare_digest(
+        value.encode(), settings.internal_api_token.encode()
     ):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid internal token")
+
+
+@dataclass(frozen=True)
+class AdminPrincipal:
+    telegram_id: int | None  # None for the internal token (scripts), which acts as an owner
+    role: AdminRole
+    display_name: str
+
+
+ADMIN_SESSION_COOKIE = "admin_session"
+# Cookies are ambient credentials, so a state-changing request authenticated by one must also
+# carry this header. A cross-site form cannot set it; SameSite=Strict is the first line.
+ADMIN_CSRF_HEADER = "x-requested-with"
+ADMIN_CSRF_VALUE = "admin"
+_SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+
+
+async def get_admin_principal(
+    request: Request,
+    authorization: str | None = Header(default=None),
+    x_internal_token: str | None = Header(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> AdminPrincipal:
+    """Who is calling /internal/*: the internal token, a Mini App user, or a browser session.
+
+    The admins row is re-read on every request, so a deactivation or role change applies at once.
+    """
+    if x_internal_token is not None:
+        _check_internal_token(x_internal_token)
+        return AdminPrincipal(telegram_id=None, role=AdminRole.owner, display_name="Internal")
+
+    if authorization is not None:
+        init_data = validate_init_data(
+            get_init_data_raw(authorization),
+            settings.telegram_bot_token,
+            settings.telegram_init_data_max_age_seconds,
+        )
+        telegram_id = init_data.user.id
+    else:
+        cookie = request.cookies.get(ADMIN_SESSION_COOKIE)
+        session_id = (
+            verify_session(
+                cookie, settings.admin_session_secret, settings.admin_session_max_age_seconds
+            )
+            if cookie
+            else None
+        )
+        if session_id is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not signed in")
+        if (
+            request.method not in _SAFE_METHODS
+            and request.headers.get(ADMIN_CSRF_HEADER) != ADMIN_CSRF_VALUE
+        ):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Missing CSRF header")
+        telegram_id = session_id
+
+    admin = await admin_service.get_active_admin(db, telegram_id)
+    if admin is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not an admin")
+    return AdminPrincipal(
+        telegram_id=admin.telegram_id, role=admin.role, display_name=admin.display_name
+    )
+
+
+def require_admin(*roles: AdminRole) -> Callable[..., Awaitable[AdminPrincipal]]:
+    allowed = frozenset(roles)
+
+    async def _require(principal: AdminPrincipal = Depends(get_admin_principal)) -> AdminPrincipal:
+        if principal.role not in allowed:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed")
+        return principal
+
+    return _require
+
+
+ANY_ADMIN = (AdminRole.owner, AdminRole.catalog_manager, AdminRole.dispatcher)
+CATALOG_ROLES = (AdminRole.owner, AdminRole.catalog_manager)
+DISPATCH_ROLES = (AdminRole.owner, AdminRole.dispatcher)
 
 
 async def get_current_courier(

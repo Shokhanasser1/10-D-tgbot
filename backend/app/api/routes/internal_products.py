@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import verify_internal_token
+from app.api.deps import CATALOG_ROLES, require_admin
 from app.db.session import get_db
 from app.schemas.internal import (
     AttributeAdminOut,
@@ -24,7 +24,7 @@ from app.schemas.internal import (
 from app.services import catalog_admin_service
 
 router = APIRouter(
-    prefix="/internal", tags=["internal"], dependencies=[Depends(verify_internal_token)]
+    prefix="/internal", tags=["internal"], dependencies=[Depends(require_admin(*CATALOG_ROLES))]
 )
 
 

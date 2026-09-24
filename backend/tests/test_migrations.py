@@ -22,6 +22,7 @@ from app.config import get_settings
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 SCRATCH_DB = "storefront_migration_test"
 PREVIOUS_REVISION = "ced74685a439"  # the schema before couriers existed
+COURIER_REVISION = "6293a99b0b9c"  # the schema before the admin panel
 
 
 def _admin_dsn() -> str:
@@ -149,5 +150,38 @@ async def test_courier_migration_preserves_shipments_and_normalises_on_downgrade
         assert await conn.fetchval(order_status, second_order) == "paid"
         assert await conn.fetchval(order_status, first_order) == "paid"
         assert await conn.fetchval("SELECT to_regclass('couriers')") is None
+    finally:
+        await conn.close()
+
+
+async def test_admin_panel_downgrade_drops_cancelled_shipments(scratch_database: str) -> None:
+    """The courier schema has no 'cancelled' shipment status, so going back must not leave one."""
+    up = await asyncio.to_thread(_alembic, scratch_database, "upgrade", "head")
+    assert up.returncode == 0, up.stderr
+
+    conn = await _connect_scratch()
+    try:
+        cancelled = await _insert_order(conn, 1, "cancelled")
+        await conn.execute(
+            "INSERT INTO shipments (order_id, status) VALUES ($1, 'cancelled')", cancelled
+        )
+        live = await _insert_order(conn, 2, "paid")
+        await conn.execute(
+            "INSERT INTO shipments (order_id, status) VALUES ($1, 'processing')", live
+        )
+    finally:
+        await conn.close()
+
+    down = await asyncio.to_thread(_alembic, scratch_database, "downgrade", COURIER_REVISION)
+    assert down.returncode == 0, down.stderr
+
+    conn = await _connect_scratch()
+    try:
+        statuses = await conn.fetch("SELECT order_id, status FROM shipments ORDER BY order_id")
+        assert [(r["order_id"], r["status"]) for r in statuses] == [(live, "processing")]
+        assert await conn.fetchval("SELECT status FROM orders WHERE id = $1", cancelled) == (
+            "cancelled"
+        )
+        assert await conn.fetchval("SELECT to_regclass('admins')") is None
     finally:
         await conn.close()

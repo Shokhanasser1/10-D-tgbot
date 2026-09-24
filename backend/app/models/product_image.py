@@ -22,6 +22,8 @@ class ProductImage(Base):
     )
     url: Mapped[str] = mapped_column(String(2048), nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Path under MEDIA_ROOT for an uploaded file; null for an image referenced by URL only.
+    storage_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     product: Mapped["Product"] = relationship("Product", back_populates="images")
     variant: Mapped["Variant | None"] = relationship("Variant", back_populates="images")

@@ -5,7 +5,7 @@ from sqlalchemy import Enum, ForeignKey, Integer, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from app.models.enums import PaymentStatus
+from app.models.enums import PaymentStatus, RefundStatus
 from app.models.mixins import TimestampMixin
 
 if TYPE_CHECKING:
@@ -27,5 +27,10 @@ class Payment(TimestampMixin, Base):
     )
     amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="EUR")
+    # Null until an admin cancels the order; refunds are always for the full amount.
+    refund_status: Mapped[RefundStatus | None] = mapped_column(
+        Enum(RefundStatus, native_enum=False, length=20), nullable=True
+    )
+    stripe_refund_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     order: Mapped["Order"] = relationship("Order", back_populates="payment")

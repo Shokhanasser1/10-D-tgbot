@@ -42,6 +42,19 @@ class ShipmentStatus(enum.StrEnum):
     assigned = "assigned"  # claimed by a courier, not yet picked up
     shipped = "shipped"  # picked up, out for delivery
     delivered = "delivered"
+    cancelled = "cancelled"  # the order was cancelled before pickup
+
+
+class AdminRole(enum.StrEnum):
+    owner = "owner"
+    catalog_manager = "catalog_manager"
+    dispatcher = "dispatcher"
+
+
+class RefundStatus(enum.StrEnum):
+    pending = "pending"
+    succeeded = "succeeded"
+    failed = "failed"
 
 
 # A courier is "working" while they hold a shipment in one of these states.

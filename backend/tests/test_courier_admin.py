@@ -15,15 +15,17 @@ from tests.courier_factories import INTERNAL_HEADERS, add_courier, tma_headers
         ("PATCH", "/internal/couriers/1"),
     ],
 )
-@pytest.mark.parametrize("headers", [{}, {"X-Internal-Token": "wrong"}])
+@pytest.mark.parametrize(
+    ("headers", "expected"), [({}, 401), ({"X-Internal-Token": "wrong"}, 403)]
+)
 async def test_courier_management_needs_the_internal_token(
-    client: AsyncClient, method: str, path: str, headers: dict[str, str]
+    client: AsyncClient, method: str, path: str, headers: dict[str, str], expected: int
 ) -> None:
     response = await client.request(
         method, path, json={"telegram_id": 1, "name": "x"}, headers=headers
     )
 
-    assert response.status_code == 403
+    assert response.status_code == expected
 
 
 async def test_create_courier(client: AsyncClient) -> None:

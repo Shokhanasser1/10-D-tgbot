@@ -13,6 +13,7 @@ from tests.factories import TEST_BOT_TOKEN
 settings = get_settings()
 settings.telegram_bot_token = TEST_BOT_TOKEN
 settings.internal_api_token = "test-internal-token"
+settings.admin_session_secret = "test-admin-session-secret"
 
 
 @pytest.fixture(scope="session")
