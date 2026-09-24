@@ -38,6 +38,12 @@ interface TelegramWebApp {
   MainButton: TelegramWebAppMainButton
   BackButton: TelegramWebAppBackButton
   HapticFeedback: TelegramWebAppHaptic
+  // Newer than the Bot API version some clients report, so treated as optional throughout.
+  openLink?: (url: string) => void
+  openTelegramLink?: (url: string) => void
+  isVersionAtLeast?: (version: string) => boolean
+  disableVerticalSwipes?: () => void
+  enableVerticalSwipes?: () => void
 }
 
 declare global {
@@ -80,4 +86,22 @@ export function getInitDataRaw(): string {
 
 export function getTelegramUser(): TelegramUser | undefined {
   return getWebApp()?.initDataUnsafe.user
+}
+
+const WEB_URL = /^https?:\/\//i
+
+/** Opens a web page outside the Mini App, so following a link never navigates the app away. */
+export function openExternalLink(url: string): void {
+  if (!WEB_URL.test(url)) return
+  const webApp = getWebApp()
+  if (webApp?.openLink) webApp.openLink(url)
+  else window.open(url, '_blank', 'noopener')
+}
+
+/** Opens a t.me link inside Telegram (e.g. a chat with the bot). */
+export function openTelegramLink(url: string): void {
+  if (!WEB_URL.test(url)) return
+  const webApp = getWebApp()
+  if (webApp?.openTelegramLink) webApp.openTelegramLink(url)
+  else window.open(url, '_blank', 'noopener')
 }

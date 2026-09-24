@@ -40,7 +40,17 @@
     "continue": "Continue to payment",
     "submit": "Pay now",
     "processing": "Processing payment…",
-    "confirming": "Confirming your order…"
+    "confirming": "Confirming your order…",
+    "map": {
+      "title": "Delivery pin (optional)",
+      "hint": "Tap the map to show the courier exactly where to come.",
+      "label": "Map for choosing the delivery point",
+      "useMyLocation": "Use my location",
+      "locating": "Finding you…",
+      "locationFailed": "Couldn't get your location. Tap the map instead.",
+      "removePin": "Remove pin",
+      "pinPlaced": "Pin placed on the map."
+    }
   },
   "orders": {
     "title": "My orders",

@@ -1,0 +1,39 @@
+/* Class names are hashed, so markerIcons.ts reads them from here instead of hard-coding them. */
+.marker {
+  background: none;
+  border: none;
+}
+
+.courier,
+.courierStale {
+  display: block;
+  width: 22px;
+  height: 22px;
+  margin: 5px;
+  border-radius: 50%;
+  border: 3px solid var(--color-bg, #fff);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+  box-sizing: border-box;
+}
+
+.courier {
+  background: var(--color-text, #262626);
+}
+
+.courierStale {
+  background: var(--color-text-muted, #8a8a8a);
+  opacity: 0.7;
+}
+
+.destination {
+  display: block;
+  width: 26px;
+  height: 26px;
+  margin: 3px 3px 0;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: var(--color-danger, #d92d20);
+  border: 3px solid var(--color-bg, #fff);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+  box-sizing: border-box;
+}

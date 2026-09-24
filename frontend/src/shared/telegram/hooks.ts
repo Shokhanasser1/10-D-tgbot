@@ -48,3 +48,17 @@ export function useBackButton(onClick: () => void, visible = true): void {
     }
   }, [onClick, visible])
 }
+
+/**
+ * Stops a downward swipe from collapsing the Mini App while it is mounted. Without this,
+ * dragging a map (or anything else pan-based) down would minimise the whole app.
+ */
+export function useDisableVerticalSwipes(): void {
+  useEffect(() => {
+    const webApp = getWebApp()
+    if (!webApp?.disableVerticalSwipes || !webApp.isVersionAtLeast?.('7.7')) return
+
+    webApp.disableVerticalSwipes()
+    return () => webApp.enableVerticalSwipes?.()
+  }, [])
+}

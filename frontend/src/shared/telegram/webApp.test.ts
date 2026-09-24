@@ -1,6 +1,6 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { getInitDataRaw, isTelegramEnv } from './webApp'
+import { getInitDataRaw, isTelegramEnv, openExternalLink, openTelegramLink } from './webApp'
 
 function stubTelegram(initData: string) {
   window.Telegram = { WebApp: { initData } } as unknown as Window['Telegram']
@@ -42,4 +42,54 @@ describe('getInitDataRaw', () => {
 
     expect(getInitDataRaw()).toBe('mock-init-data')
   })
+})
+
+describe('opening links', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it.each([
+    ['openExternalLink', openExternalLink, 'openLink'],
+    ['openTelegramLink', openTelegramLink, 'openTelegramLink'],
+  ] as const)('%s hands the URL to Telegram when it is available', (_name, open, method) => {
+    const handler = vi.fn()
+    const windowOpen = vi.spyOn(window, 'open').mockReturnValue(null)
+    window.Telegram = {
+      WebApp: { initData: 'x', [method]: handler },
+    } as unknown as Window['Telegram']
+
+    open('https://t.me/some_bot')
+
+    expect(handler).toHaveBeenCalledWith('https://t.me/some_bot')
+    expect(windowOpen).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['openExternalLink', openExternalLink],
+    ['openTelegramLink', openTelegramLink],
+  ] as const)('%s opens a new tab without an opener outside Telegram', (_name, open) => {
+    const windowOpen = vi.spyOn(window, 'open').mockReturnValue(null)
+
+    open('https://example.com/page')
+
+    expect(windowOpen).toHaveBeenCalledWith('https://example.com/page', '_blank', 'noopener')
+  })
+
+  it.each(['javascript:alert(1)', 'data:text/html,hi', 'tg://resolve?domain=x', '/relative', ''])(
+    'refuses to open %j',
+    (url) => {
+      const handler = vi.fn()
+      const windowOpen = vi.spyOn(window, 'open').mockReturnValue(null)
+      window.Telegram = {
+        WebApp: { initData: 'x', openLink: handler, openTelegramLink: handler },
+      } as unknown as Window['Telegram']
+
+      openExternalLink(url)
+      openTelegramLink(url)
+
+      expect(handler).not.toHaveBeenCalled()
+      expect(windowOpen).not.toHaveBeenCalled()
+    },
+  )
 })

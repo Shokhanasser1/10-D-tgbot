@@ -5,4 +5,12 @@ export interface DeliveryAddress {
   country: string
   phone: string
   notes?: string | null
+  /** Optional pin the customer dropped on the map; always given together. */
+  latitude?: number | null
+  longitude?: number | null
+}
+
+export interface Coordinates {
+  latitude: number
+  longitude: number
 }

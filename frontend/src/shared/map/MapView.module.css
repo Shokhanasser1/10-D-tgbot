@@ -1,0 +1,30 @@
+.wrapper {
+  position: relative;
+  height: 240px;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  background: var(--color-surface);
+  /* Leaflet's panes use z-index 400+; a new stacking context keeps them below the sticky
+     header and the action bar instead of painting over them. */
+  isolation: isolate;
+}
+
+.map {
+  height: 100%;
+  width: 100%;
+}
+
+.attribution {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  border: none;
+  padding: 2px 6px;
+  border-top-left-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}

@@ -40,7 +40,17 @@
     "continue": "To'lovga o'tish",
     "submit": "To'lash",
     "processing": "To'lov amalga oshirilmoqda…",
-    "confirming": "Buyurtmangiz tasdiqlanmoqda…"
+    "confirming": "Buyurtmangiz tasdiqlanmoqda…",
+    "map": {
+      "title": "Yetkazib berish nuqtasi (ixtiyoriy)",
+      "hint": "Kuryerga qayerga kelishni ko'rsatish uchun xaritaga bosing.",
+      "label": "Yetkazib berish nuqtasini tanlash xaritasi",
+      "useMyLocation": "Mening joylashuvim",
+      "locating": "Aniqlanmoqda…",
+      "locationFailed": "Joylashuvni aniqlab bo'lmadi. Xaritaga bosing.",
+      "removePin": "Nuqtani olib tashlash",
+      "pinPlaced": "Nuqta xaritada belgilandi."
+    }
   },
   "orders": {
     "title": "Mening buyurtmalarim",

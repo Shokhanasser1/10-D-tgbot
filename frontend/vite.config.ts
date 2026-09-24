@@ -21,6 +21,9 @@ export default defineConfig({
       VITE_API_BASE_URL: 'http://api.test',
       VITE_STRIPE_PUBLISHABLE_KEY: 'pk_test_unit',
       VITE_DEV_MOCK_INIT_DATA: 'mock-init-data',
+      VITE_MAP_TILE_URL: 'https://tiles.test/{z}/{x}/{y}.png',
+      VITE_MAP_DEFAULT_CENTER: '41.3,69.2',
+      VITE_MAP_ATTRIBUTION: 'Test map data',
     },
   },
 })

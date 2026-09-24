@@ -2,9 +2,10 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { API } from '../../../test/mocks/handlers'
+import { fireMapClick } from '../../../test/mocks/reactLeaflet'
 import { server } from '../../../test/mocks/server'
 import { renderScreen } from '../../../test/test-utils'
 import { CheckoutScreen } from './CheckoutScreen'
@@ -50,6 +51,10 @@ function stubCheckout(onRequest?: (body: unknown) => void) {
 describe('CheckoutScreen', () => {
   beforeEach(() => {
     confirmPayment.mockReset()
+  })
+
+  afterEach(() => {
+    Reflect.deleteProperty(navigator, 'geolocation')
   })
 
   it('does not submit until the required address fields are filled', async () => {
@@ -122,5 +127,80 @@ describe('CheckoutScreen', () => {
 
     expect(await screen.findByText('Something went wrong')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Street address')).toHaveValue('Alexanderplatz 1')
+  })
+
+  describe('delivery pin', () => {
+    type Body = { delivery_address: Record<string, unknown> }
+
+    function captureBody() {
+      const captured: { body: Body | null } = { body: null }
+      stubCheckout((received) => {
+        captured.body = received as Body
+      })
+      return captured
+    }
+
+    it('is sent with the address when one is placed', async () => {
+      const user = userEvent.setup()
+      const captured = captureBody()
+      renderScreen(<CheckoutScreen />, routeOptions)
+
+      await fillAddress(user)
+      await screen.findByTestId('map')
+      fireMapClick(52.520008, 13.404954)
+      await user.click(screen.getByRole('button', { name: 'Continue to payment' }))
+
+      expect(await screen.findByTestId('payment-element')).toBeInTheDocument()
+      expect(captured.body?.delivery_address).toMatchObject({
+        latitude: 52.520008,
+        longitude: 13.404954,
+      })
+    })
+
+    it('leaves the coordinate keys out altogether when none is placed', async () => {
+      const user = userEvent.setup()
+      const captured = captureBody()
+      renderScreen(<CheckoutScreen />, routeOptions)
+
+      await fillAddress(user)
+      await screen.findByTestId('map')
+      await user.click(screen.getByRole('button', { name: 'Continue to payment' }))
+
+      expect(await screen.findByTestId('payment-element')).toBeInTheDocument()
+      expect(captured.body?.delivery_address).not.toHaveProperty('latitude')
+      expect(captured.body?.delivery_address).not.toHaveProperty('longitude')
+    })
+
+    it('is not sent once it has been removed again', async () => {
+      const user = userEvent.setup()
+      const captured = captureBody()
+      renderScreen(<CheckoutScreen />, routeOptions)
+
+      await fillAddress(user)
+      await screen.findByTestId('map')
+      fireMapClick(52.5, 13.4)
+      await user.click(screen.getByRole('button', { name: 'Remove pin' }))
+      await user.click(screen.getByRole('button', { name: 'Continue to payment' }))
+
+      expect(await screen.findByTestId('payment-element')).toBeInTheDocument()
+      expect(captured.body?.delivery_address).not.toHaveProperty('latitude')
+    })
+
+    it('never blocks payment when the device refuses to share its location', async () => {
+      const user = userEvent.setup()
+      Object.defineProperty(navigator, 'geolocation', {
+        configurable: true,
+        value: { getCurrentPosition: (_ok: unknown, onError: () => void) => onError() },
+      })
+      stubCheckout()
+      renderScreen(<CheckoutScreen />, routeOptions)
+
+      await fillAddress(user)
+      await user.click(await screen.findByRole('button', { name: 'Use my location' }))
+      expect(screen.getByText(/Couldn't get your location/)).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Continue to payment' }))
+
+      expect(await screen.findByTestId('payment-element')).toBeInTheDocument()
+    })
   })
 })
