@@ -21,7 +21,25 @@ where the build refined each design; read them before trusting the rest of those
 ("Admin panel": first owner, roles, browser sign-in, refunds, photos).
 
 The product owner writes transliterated Russian; the working language with them is Russian, while code,
-docs and commit messages are English.
+docs and commit messages are English. Exception: two teaching docs are in Russian on purpose —
+`docs/LAUNCH_GUIDE_RU.md` (full launch: bot, `.env`, tunnel, admin sign-in, Stripe, troubleshooting) and
+`INSTRUKTSII_ZAPUSKA_SERVEROV.md` in the root (running locally: dev mode vs Docker, checks, tests).
+The owner teaches students with this project, so explanations should say *why*, not only *what*.
+
+## 1a. Local machine state (as of this snapshot)
+
+- Root `.env` exists (gitignored): real bot token for **@ecosmetics10bot**, generated `INTERNAL_API_TOKEN`,
+  `ADMIN_SESSION_SECRET`, `TELEGRAM_WEBHOOK_SECRET`; owner `ADMIN_BOOTSTRAP_TELEGRAM_IDS=665823713`;
+  `SHOP_TIMEZONE=Asia/Tashkent`; map centred on Tashkent. `POSTGRES_PASSWORD` left at the default on purpose:
+  the `pgdata` volume was created with it (changing it needs `ALTER USER`, see the launch guide §4.3).
+- `backend/.env` (dev, fake bot token) gained admin settings: owner 665823713, `ADMIN_COOKIE_SECURE=false`,
+  `MEDIA_ROOT=./media`, `SHOP_TIMEZONE=Asia/Tashkent`.
+- Docker stack (`db`, `api`, `web`) was left **running** in production mode on :8080 (api on 127.0.0.1:8000).
+  Dev mode needs `docker compose stop api web` first (same port 8000).
+- The owner pasted the real bot token into chat; they were advised to `/revoke` it in @BotFather and update
+  root `.env`. Not yet confirmed done.
+- **Still manual (owner's accounts needed):** https tunnel + BotFather Menu Button, `/setdomain` for browser
+  admin sign-in, Stripe test keys + webhook with `payment_intent.*` and `refund.created|updated|failed`.
 
 ## 2. Stack
 
