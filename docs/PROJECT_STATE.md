@@ -1,6 +1,6 @@
 # Project state (handoff)
 
-Snapshot: 2026-09-24 (updated after Spec 3), branch `main`, **no git remote, nothing pushed**.
+Snapshot: 2026-09-24 (updated after Spec 4 design), branch `main`, **no git remote, nothing pushed**.
 Working tree was clean at the time of writing. Written for another engineer or AI picking this up cold.
 
 ## 1. What this is
@@ -14,6 +14,7 @@ niches through data (categories, attributes, translations), not code changes. Th
 | 1 Storefront | catalog, cart, Stripe checkout, orders, en/ru/uz, light minimalist UI | **done**, committed |
 | 2 Own courier delivery + live GPS | courier pool/claim, Telegram Live Location tracking, delivery pin, customer map | **done**, committed (10 commits `9a386c6`..`8f9c581`) |
 | 3 Admin panel | roles, catalog, orders with cancel + refund, couriers + map, summary, admins | **done**, committed |
+| 4 Stock reservation | reserve `stock_qty` at checkout, 15-min hold, expiry sweeper, cart restore, refund of late payments | **designed, not implemented** |
 
 Designs are in `docs/superpowers/specs/`. Spec 2's §16 and Spec 3's §14 "Implementation notes" list
 where the build refined each design; read them before trusting the rest of those documents.
@@ -215,7 +216,14 @@ then open `http://127.0.0.1:5173/admin` (the mock initData signs you in; the wid
 
 ## 10. Open items and suggested next steps
 
-All three specs are built. What remains:
+**Next session starts here:** Spec 4 (stock reservation) is designed in
+`docs/superpowers/specs/2026-09-24-stock-reservation-design.md`. The owner confirmed §2 (15-min hold;
+on expiry cancel + return items to the cart; payment after expiry is always refunded) and approach A
+(subtract `stock_qty` at checkout). §4–§9 are drafted but not yet reviewed with the owner. Next:
+walk the owner through §4–§9, then write the implementation plan, then implement test-first.
+The owner explicitly said not to implement yet.
+
+Specs 1–3 are built. What remains besides Spec 4:
 
 1. Try the real thing once: HTTPS tunnel (`ngrok`/`cloudflared`) → `python -m scripts.set_telegram_webhook https://<origin>`
    → a real courier account sharing Live Location from a phone. `--info` shows Telegram's `last_error_message`.
@@ -224,8 +232,7 @@ All three specs are built. What remains:
 3. Before real traffic: set `MAP_TILE_URL`/`MAP_ATTRIBUTION` for a proper tile provider; strong `INTERNAL_API_TOKEN`,
    `ADMIN_SESSION_SECRET` and `POSTGRES_PASSWORD`; serve over HTTPS; back up the `media` volume with the database.
 4. Push: there is no remote yet. Decide where the repository lives before CI can run.
-5. Not asked for, but likely next: stock reservation at checkout (overselling is flagged today, not prevented),
-   deleting variants, an audit log beyond "who cancelled", charts in the summary.
+5. Not asked for, but likely next: deleting variants, an audit log beyond "who cancelled", charts in the summary.
 
 ## 11. Assumptions the product owner has not explicitly confirmed
 
