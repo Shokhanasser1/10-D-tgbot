@@ -116,5 +116,23 @@
     "secondsAgo": "{{n}} s ago",
     "minutesAgo": "{{n}} min ago",
     "hoursAgo": "{{n}} h ago"
+  },
+  "tracking": {
+    "title": "Delivery",
+    "loadFailed": "Couldn't load delivery tracking.",
+    "steps": {
+      "paid": "Payment received",
+      "assigned": "Courier assigned",
+      "shipped": "Out for delivery",
+      "delivered": "Order delivered"
+    },
+    "waitingForCourier": "Looking for a courier…",
+    "courierAssigned": "{{name}} will pick up your order.",
+    "onTheWay": "{{name}} is on the way.",
+    "waitingForLocation": "{{name}} is on the way. Waiting for their location…",
+    "staleBanner": "Courier location updated {{ago}}",
+    "deliveredAt": "Delivered {{ago}}",
+    "delivered": "Your order has been delivered.",
+    "mapLabel": "Map showing the courier and your delivery point"
   }
 }

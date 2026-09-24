@@ -118,5 +118,23 @@
     "secondsAgo": "{{n}} с назад",
     "minutesAgo": "{{n}} мин назад",
     "hoursAgo": "{{n}} ч назад"
+  },
+  "tracking": {
+    "title": "Доставка",
+    "loadFailed": "Не удалось загрузить данные о доставке.",
+    "steps": {
+      "paid": "Оплата получена",
+      "assigned": "Курьер назначен",
+      "shipped": "Курьер в пути",
+      "delivered": "Заказ доставлен"
+    },
+    "waitingForCourier": "Ищем курьера…",
+    "courierAssigned": "{{name}} заберёт ваш заказ.",
+    "onTheWay": "{{name}} в пути.",
+    "waitingForLocation": "{{name}} в пути. Ждём геопозицию курьера…",
+    "staleBanner": "Геопозиция курьера обновлена {{ago}}",
+    "deliveredAt": "Доставлено {{ago}}",
+    "delivered": "Ваш заказ доставлен.",
+    "mapLabel": "Карта с курьером и точкой доставки"
   }
 }

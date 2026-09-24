@@ -1,7 +1,7 @@
 import type { Cart } from '../features/cart/types'
 import type { Category, ProductDetail, ProductListItem } from '../features/catalog/types'
 import type { CourierDelivery, CourierProfile, PoolItem } from '../features/courier/types'
-import type { OrderDetail, OrderListItem } from '../features/orders/types'
+import type { OrderDetail, OrderListItem, Tracking } from '../features/orders/types'
 
 export const categories: Category[] = [
   { id: 1, slug: 'lipstick', parent_id: null, sort_order: 0, name: 'Lipstick' },
@@ -165,4 +165,45 @@ export const shippedDelivery: CourierDelivery = {
   address: { ...assignedDelivery.address, street: 'Kastanienallee 5', notes: null },
   destination: null,
   picked_up_at: '2026-09-24T10:20:00Z',
+}
+
+export const trackingProcessing: Tracking = {
+  status: 'processing',
+  courier: null,
+  courier_location: null,
+  destination: null,
+  picked_up_at: null,
+  delivered_at: null,
+}
+
+export const trackingAssigned: Tracking = {
+  ...trackingProcessing,
+  status: 'assigned',
+  courier: { name: 'Ali' },
+}
+
+export const trackingShipped: Tracking = {
+  ...trackingAssigned,
+  status: 'shipped',
+  courier_location: {
+    latitude: 52.5,
+    longitude: 13.4,
+    updated_at: '2026-09-24T10:30:00Z',
+    is_stale: false,
+  },
+  destination: { latitude: 52.52, longitude: 13.405 },
+  picked_up_at: '2026-09-24T10:20:00Z',
+}
+
+export const trackingStale: Tracking = {
+  ...trackingShipped,
+  courier_location: { ...trackingShipped.courier_location!, is_stale: true },
+}
+
+export const trackingDelivered: Tracking = {
+  ...trackingProcessing,
+  status: 'delivered',
+  destination: { latitude: 52.52, longitude: 13.405 },
+  picked_up_at: '2026-09-24T10:20:00Z',
+  delivered_at: '2026-09-24T10:50:00Z',
 }

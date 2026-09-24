@@ -116,5 +116,23 @@
     "secondsAgo": "{{n}} soniya oldin",
     "minutesAgo": "{{n}} daqiqa oldin",
     "hoursAgo": "{{n}} soat oldin"
+  },
+  "tracking": {
+    "title": "Yetkazib berish",
+    "loadFailed": "Yetkazib berish ma'lumotlarini yuklab bo'lmadi.",
+    "steps": {
+      "paid": "To'lov qabul qilindi",
+      "assigned": "Kuryer tayinlandi",
+      "shipped": "Kuryer yo'lda",
+      "delivered": "Buyurtma yetkazildi"
+    },
+    "waitingForCourier": "Kuryer qidirilmoqda…",
+    "courierAssigned": "{{name}} buyurtmangizni olib ketadi.",
+    "onTheWay": "{{name}} yo'lda.",
+    "waitingForLocation": "{{name}} yo'lda. Kuryer joylashuvi kutilmoqda…",
+    "staleBanner": "Kuryer joylashuvi yangilandi: {{ago}}",
+    "deliveredAt": "Yetkazildi: {{ago}}",
+    "delivered": "Buyurtmangiz yetkazildi.",
+    "mapLabel": "Kuryer va yetkazib berish nuqtasi xaritasi"
   }
 }

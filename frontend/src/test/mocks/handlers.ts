@@ -8,6 +8,7 @@ import {
   poolItems,
   productDetail,
   products,
+  trackingProcessing,
 } from '../fixtures'
 
 export const API = 'http://api.test'
@@ -26,6 +27,7 @@ export const handlers = [
   http.get(`${API}/cart/items`, () => HttpResponse.json(cart)),
   http.get(`${API}/orders`, () => HttpResponse.json(orders)),
   http.get(`${API}/orders/:id`, () => HttpResponse.json(orderDetail)),
+  http.get(`${API}/orders/:id/tracking`, () => HttpResponse.json(trackingProcessing)),
 
   // Couriers. Most users are customers, for whom /courier/me is a plain 403.
   http.get(`${API}/courier/me`, () =>
