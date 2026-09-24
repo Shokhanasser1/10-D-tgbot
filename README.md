@@ -25,6 +25,9 @@ This is built in three specs, designs in [`docs/superpowers/specs/`](docs/superp
 
 ## Run everything with Docker
 
+A step-by-step launch guide in Russian, written for teaching (bot, `.env`, HTTPS tunnel, admin
+sign-in, Stripe payments and refunds, troubleshooting): [`docs/LAUNCH_GUIDE_RU.md`](docs/LAUNCH_GUIDE_RU.md).
+
 Requires Docker with Compose.
 
 ```bash
