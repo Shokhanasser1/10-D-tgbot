@@ -1,10 +1,15 @@
+from datetime import UTC, datetime, timedelta
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.courier import CourierLocation
-from tests.courier_factories import INTERNAL_HEADERS, add_courier, tma_headers
+from app.models.enums import AdminRole, OrderStatus, ShipmentStatus
+from app.services import courier_state
+from tests.admin_factories import add_admin, admin_tma
+from tests.courier_factories import INTERNAL_HEADERS, add_courier, add_paid_order, tma_headers
 
 
 @pytest.mark.parametrize(
@@ -15,9 +20,7 @@ from tests.courier_factories import INTERNAL_HEADERS, add_courier, tma_headers
         ("PATCH", "/internal/couriers/1"),
     ],
 )
-@pytest.mark.parametrize(
-    ("headers", "expected"), [({}, 401), ({"X-Internal-Token": "wrong"}, 403)]
-)
+@pytest.mark.parametrize(("headers", "expected"), [({}, 401), ({"X-Internal-Token": "wrong"}, 403)])
 async def test_courier_management_needs_the_internal_token(
     client: AsyncClient, method: str, path: str, headers: dict[str, str], expected: int
 ) -> None:
@@ -184,3 +187,83 @@ async def test_list_returns_couriers_in_registration_order(
     ids = [courier["id"] for courier in listed]
     assert ids.index(first.id) < ids.index(second.id)
     assert next(c for c in listed if c["id"] == second.id)["is_active"] is False
+
+
+async def test_courier_list_counts_active_deliveries(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    busy = await add_courier(db_session, 880_101)
+    idle = await add_courier(db_session, 880_102)
+    for _ in range(2):
+        order, shipment = await add_paid_order(db_session, customer_id=880_103)
+        shipment.status = ShipmentStatus.assigned
+        shipment.courier_id = busy.id
+        order.status = OrderStatus.processing
+    await db_session.commit()
+
+    response = await client.get("/internal/couriers", headers=INTERNAL_HEADERS)
+
+    counts = {c["id"]: c["active_deliveries"] for c in response.json()}
+    assert (counts[busy.id], counts[idle.id]) == (2, 0)
+
+
+async def test_courier_locations_show_only_working_couriers(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    working = await add_courier(db_session, 880_201, name="Aziz")
+    leftover = await add_courier(db_session, 880_202)
+    order, shipment = await add_paid_order(db_session, customer_id=880_203)
+    shipment.status = ShipmentStatus.shipped
+    shipment.courier_id = working.id
+    order.status = OrderStatus.shipped
+    await db_session.commit()
+    await courier_state.record_location(db_session, working.id, 41.31, 69.24)
+    # A stray row for an idle courier must still not be shown.
+    await courier_state.record_location(db_session, leftover.id, 41.0, 69.0)
+    await db_session.commit()
+
+    response = await client.get("/internal/couriers/locations", headers=INTERNAL_HEADERS)
+
+    assert response.status_code == 200
+    rows = [r for r in response.json() if r["courier_id"] in (working.id, leftover.id)]
+    assert len(rows) == 1
+    row = rows[0]
+    assert (row["courier_id"], row["name"], row["latitude"], row["longitude"]) == (
+        working.id,
+        "Aziz",
+        41.31,
+        69.24,
+    )
+    assert (row["is_stale"], row["active_deliveries"]) == (False, 1)
+
+
+async def test_old_positions_are_marked_stale(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    courier = await add_courier(db_session, 880_301)
+    order, shipment = await add_paid_order(db_session, customer_id=880_302)
+    shipment.status = ShipmentStatus.shipped
+    shipment.courier_id = courier.id
+    order.status = OrderStatus.shipped
+    db_session.add(
+        CourierLocation(
+            courier_id=courier.id,
+            latitude=1.0,
+            longitude=2.0,
+            updated_at=datetime.now(UTC) - timedelta(hours=1),
+        )
+    )
+    await db_session.commit()
+
+    response = await client.get("/internal/couriers/locations", headers=INTERNAL_HEADERS)
+
+    row = next(r for r in response.json() if r["courier_id"] == courier.id)
+    assert row["is_stale"] is True
+
+
+async def test_catalog_managers_cannot_see_courier_positions(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    await add_admin(db_session, 880_401, AdminRole.catalog_manager)
+    response = await client.get("/internal/couriers/locations", headers=admin_tma(880_401))
+    assert response.status_code == 403

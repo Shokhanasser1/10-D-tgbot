@@ -47,3 +47,17 @@ class ShipmentAdminOut(BaseModel):
     courier_name: str | None
     assigned_at: datetime | None
     picked_up_at: datetime | None
+
+
+class CourierAdminListItem(CourierAdminOut):
+    active_deliveries: int
+
+
+class CourierLocationAdminOut(BaseModel):
+    courier_id: int
+    name: str
+    latitude: float
+    longitude: float
+    updated_at: datetime
+    is_stale: bool
+    active_deliveries: int

@@ -6,8 +6,10 @@ from app.db.session import get_db
 from app.models.enums import ACTIVE_SHIPMENT_STATUSES, ShipmentStatus
 from app.schemas.courier import ShipmentActionOut
 from app.schemas.courier_admin import (
+    CourierAdminListItem,
     CourierAdminOut,
     CourierCreate,
+    CourierLocationAdminOut,
     CourierUpdate,
     ShipmentAdminOut,
 )
@@ -28,7 +30,12 @@ async def update_courier(courier_id: int, data: CourierUpdate, db: AsyncSession 
     return await courier_admin_service.update_courier(db, courier_id, data)
 
 
-@router.get("/couriers", response_model=list[CourierAdminOut])
+@router.get("/couriers/locations", response_model=list[CourierLocationAdminOut])
+async def list_courier_locations(db: AsyncSession = Depends(get_db)):
+    return await courier_admin_service.list_locations(db)
+
+
+@router.get("/couriers", response_model=list[CourierAdminListItem])
 async def list_couriers(db: AsyncSession = Depends(get_db)):
     return await courier_admin_service.list_couriers(db)
 
