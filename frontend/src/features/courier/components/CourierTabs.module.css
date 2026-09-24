@@ -1,0 +1,40 @@
+.tabs {
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+}
+
+.tab {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 10px 12px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.active {
+  background: var(--color-bg);
+  color: var(--color-text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.count {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--color-text);
+  color: var(--color-bg);
+  font-size: 11px;
+  line-height: 18px;
+}

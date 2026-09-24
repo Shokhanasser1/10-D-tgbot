@@ -1,0 +1,32 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.orderId {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.address {
+  margin: 0;
+  font-size: 15px;
+}
+
+.meta {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.action {
+  width: 100%;
+  margin-top: var(--space-2);
+}

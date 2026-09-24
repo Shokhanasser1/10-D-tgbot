@@ -1,5 +1,6 @@
 import type { Cart } from '../features/cart/types'
 import type { Category, ProductDetail, ProductListItem } from '../features/catalog/types'
+import type { CourierDelivery, CourierProfile, PoolItem } from '../features/courier/types'
 import type { OrderDetail, OrderListItem } from '../features/orders/types'
 
 export const categories: Category[] = [
@@ -110,4 +111,58 @@ export const orderDetail: OrderDetail = {
   ],
   payment_status: 'succeeded',
   shipment_status: 'processing',
+}
+
+export const courierProfile: CourierProfile = {
+  id: 1,
+  name: 'Ali',
+  bot_username: 'shop_courier_bot',
+  max_active_deliveries: 3,
+}
+
+export const poolItems: PoolItem[] = [
+  {
+    shipment_id: 501,
+    order_id: 41,
+    city: 'Berlin',
+    street: 'Alexanderplatz 1',
+    item_count: 2,
+    placed_at: '2026-09-24T10:00:00Z',
+  },
+  {
+    shipment_id: 502,
+    order_id: 42,
+    city: 'Berlin',
+    street: 'Kastanienallee 5',
+    item_count: 1,
+    placed_at: '2026-09-24T10:05:00Z',
+  },
+]
+
+export const assignedDelivery: CourierDelivery = {
+  shipment_id: 501,
+  order_id: 41,
+  status: 'assigned',
+  address: {
+    street: 'Alexanderplatz 1',
+    city: 'Berlin',
+    postal_code: '10178',
+    country: 'DE',
+    phone: '+49 123 4567',
+    notes: 'Ring twice',
+  },
+  destination: { latitude: 52.52, longitude: 13.405 },
+  items: [{ name: 'Velvet Matte Lipstick', qty: 2 }],
+  assigned_at: '2026-09-24T10:10:00Z',
+  picked_up_at: null,
+}
+
+export const shippedDelivery: CourierDelivery = {
+  ...assignedDelivery,
+  shipment_id: 502,
+  order_id: 42,
+  status: 'shipped',
+  address: { ...assignedDelivery.address, street: 'Kastanienallee 5', notes: null },
+  destination: null,
+  picked_up_at: '2026-09-24T10:20:00Z',
 }

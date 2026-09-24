@@ -66,5 +66,55 @@
       "delivered": "Yetkazildi",
       "cancelled": "Bekor qilindi"
     }
+  },
+  "courier": {
+    "nav": "Kuryer",
+    "title": "Kuryer",
+    "tabs": {
+      "pool": "Mavjud",
+      "mine": "Mening yetkazmalarim"
+    },
+    "capacity": "{{current}} / {{max}} faol yetkazib berish",
+    "pool": {
+      "empty": "Kutayotgan buyurtmalar yo'q",
+      "emptyDescription": "Yangi to'langan buyurtmalar shu yerda paydo bo'ladi.",
+      "items_one": "{{count}} ta mahsulot",
+      "items_other": "{{count}} ta mahsulot",
+      "claim": "Buyurtmani olish",
+      "placed": "Buyurtma berilgan: {{ago}}"
+    },
+    "mine": {
+      "empty": "Faol yetkazib berishlar yo'q",
+      "emptyDescription": "\"Mavjud\" bo'limidan buyurtma oling."
+    },
+    "status": {
+      "assigned": "Do'kondan oling",
+      "shipped": "Yo'lda"
+    },
+    "actions": {
+      "pickup": "Oldim",
+      "deliver": "Yetkazildi",
+      "release": "Qaytarish",
+      "openMaps": "Xaritada ochish"
+    },
+    "notes": "Izoh",
+    "gps": {
+      "title": "Joylashuvingizni ulashing",
+      "instructions": "Bot chatida: skrepka, Geolokatsiya, so'ng \"Jonli geolokatsiyani ulashish\" va eng uzun muddatni tanlang. Mijoz sizni buyurtma yo'lda bo'lgandagina xaritada ko'radi.",
+      "openBot": "Bot chatini ochish",
+      "updated": "GPS yangilandi: {{ago}}",
+      "none": "GPS yangilanishlari hali yo'q"
+    },
+    "errors": {
+      "shipmentTaken": "Bu buyurtmani hozirgina boshqa kuryer oldi.",
+      "limitReached": "Faol yetkazib berishlar chegarasiga yetdingiz. Avval birini yakunlang.",
+      "invalidState": "Yetkazib berish o'zgardi. Ro'yxat yangilandi.",
+      "gone": "Bu yetkazib berish endi mavjud emas."
+    }
+  },
+  "time": {
+    "secondsAgo": "{{n}} soniya oldin",
+    "minutesAgo": "{{n}} daqiqa oldin",
+    "hoursAgo": "{{n}} soat oldin"
   }
 }

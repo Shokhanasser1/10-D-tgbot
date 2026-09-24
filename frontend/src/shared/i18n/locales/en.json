@@ -66,5 +66,55 @@
       "delivered": "Delivered",
       "cancelled": "Cancelled"
     }
+  },
+  "courier": {
+    "nav": "Courier",
+    "title": "Courier",
+    "tabs": {
+      "pool": "Available",
+      "mine": "My deliveries"
+    },
+    "capacity": "{{current}} of {{max}} active deliveries",
+    "pool": {
+      "empty": "No orders waiting",
+      "emptyDescription": "New paid orders will show up here.",
+      "items_one": "{{count}} item",
+      "items_other": "{{count}} items",
+      "claim": "Take this order",
+      "placed": "Placed {{ago}}"
+    },
+    "mine": {
+      "empty": "No active deliveries",
+      "emptyDescription": "Take an order from the Available tab."
+    },
+    "status": {
+      "assigned": "Pick up at the shop",
+      "shipped": "On the way"
+    },
+    "actions": {
+      "pickup": "Picked up",
+      "deliver": "Delivered",
+      "release": "Give back",
+      "openMaps": "Open in maps"
+    },
+    "notes": "Notes",
+    "gps": {
+      "title": "Share your live location",
+      "instructions": "In the bot chat: tap the paperclip, choose Location, then Share Live Location and pick the longest duration. Customers only see you on the map while their order is on the way.",
+      "openBot": "Open bot chat",
+      "updated": "GPS updated {{ago}}",
+      "none": "No GPS updates yet"
+    },
+    "errors": {
+      "shipmentTaken": "Another courier just took this order.",
+      "limitReached": "You are at your limit of active deliveries. Finish one first.",
+      "invalidState": "This delivery has changed. The list was refreshed.",
+      "gone": "This delivery is no longer available."
+    }
+  },
+  "time": {
+    "secondsAgo": "{{n}} s ago",
+    "minutesAgo": "{{n}} min ago",
+    "hoursAgo": "{{n}} h ago"
   }
 }

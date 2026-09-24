@@ -4,6 +4,7 @@ import { CartScreen } from '../features/cart/screens/CartScreen'
 import { CatalogHomeScreen } from '../features/catalog/screens/CatalogHomeScreen'
 import { ProductDetailScreen } from '../features/catalog/screens/ProductDetailScreen'
 import { CheckoutScreen } from '../features/checkout/screens/CheckoutScreen'
+import { CourierScreen } from '../features/courier/screens/CourierScreen'
 import { OrderDetailScreen } from '../features/orders/screens/OrderDetailScreen'
 import { OrdersListScreen } from '../features/orders/screens/OrdersListScreen'
 import { AppShell } from './AppShell'
@@ -25,6 +26,7 @@ export const router = createBrowserRouter([
       { path: 'checkout', element: <CheckoutScreen /> },
       { path: 'orders', element: <OrdersListScreen /> },
       { path: 'orders/:orderId', element: <OrderDetailScreen /> },
+      { path: 'courier', element: <CourierScreen /> },
     ],
   },
 ])

@@ -1,6 +1,14 @@
 import { http, HttpResponse } from 'msw'
 
-import { cart, categories, orderDetail, orders, productDetail, products } from '../fixtures'
+import {
+  cart,
+  categories,
+  orderDetail,
+  orders,
+  poolItems,
+  productDetail,
+  products,
+} from '../fixtures'
 
 export const API = 'http://api.test'
 
@@ -18,4 +26,16 @@ export const handlers = [
   http.get(`${API}/cart/items`, () => HttpResponse.json(cart)),
   http.get(`${API}/orders`, () => HttpResponse.json(orders)),
   http.get(`${API}/orders/:id`, () => HttpResponse.json(orderDetail)),
+
+  // Couriers. Most users are customers, for whom /courier/me is a plain 403.
+  http.get(`${API}/courier/me`, () =>
+    HttpResponse.json({ detail: 'Not a courier' }, { status: 403 }),
+  ),
+  http.get(`${API}/courier/pool`, () => HttpResponse.json(poolItems)),
+  http.get(`${API}/courier/deliveries`, () =>
+    HttpResponse.json({ location_updated_at: null, deliveries: [] }),
+  ),
+  http.post(`${API}/courier/deliveries/:id/:step`, ({ params }) =>
+    HttpResponse.json({ shipment_id: Number(params.id), order_id: 0, status: 'assigned' }),
+  ),
 ]
