@@ -17,6 +17,12 @@ function ProductDetailRoute() {
 
 export const router = createBrowserRouter([
   {
+    // Its own shell, and its own chunk: shoppers never download the admin panel.
+    path: '/admin/*',
+    lazy: () =>
+      import('../features/admin/AdminApp').then((module) => ({ Component: module.AdminApp })),
+  },
+  {
     path: '/',
     element: <AppShell />,
     children: [

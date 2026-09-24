@@ -13,11 +13,22 @@ export class ApiError extends Error {
   }
 }
 
-interface ApiFetchOptions {
+type ParamValue = string | number | boolean | undefined | readonly (string | number)[]
+
+export interface ApiFetchOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'
+  /** JSON-serialised, except FormData, which is sent as multipart as is. */
   body?: unknown
-  params?: Record<string, string | number | undefined>
+  /** Arrays repeat the parameter: `{ status: ['a', 'b'] }` -> `?status=a&status=b`. */
+  params?: Record<string, ParamValue>
+  /**
+   * Admin requests. Outside Telegram there is no initData, so the admin session cookie is the
+   * credential; state-changing requests then carry the header the API requires against CSRF.
+   */
+  admin?: boolean
 }
+
+const SAFE_METHODS = new Set(['GET', 'HEAD'])
 
 /**
  * Joins base and path by string concatenation, not `new URL(path, base)`: the latter drops
@@ -32,23 +43,38 @@ export function buildUrl(
 ): URL {
   const url = new URL(`${base.replace(/\/$/, '')}${path}`, origin)
   for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined) url.searchParams.set(key, String(value))
+    if (value === undefined) continue
+    if (Array.isArray(value)) {
+      for (const item of value) url.searchParams.append(key, String(item))
+    } else {
+      url.searchParams.set(key, String(value))
+    }
   }
   return url
 }
 
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const { method = 'GET', body, params } = options
+  const { method = 'GET', body, params, admin = false } = options
 
   const url = buildUrl(API_BASE_URL, path, params)
+  const initData = getInitDataRaw()
+  const isForm = body instanceof FormData
+
+  const headers: Record<string, string> = {}
+  // The browser sets a multipart Content-Type with its boundary itself.
+  if (!isForm) headers['Content-Type'] = 'application/json'
+  // Customers always send initData (empty outside Telegram: the API then answers 401). For
+  // admins an empty value would shadow the session cookie, so it is left out instead.
+  if (!admin || initData) headers.Authorization = `tma ${initData}`
+  if (admin && !initData && !SAFE_METHODS.has(method)) headers['X-Requested-With'] = 'admin'
 
   const response = await fetch(url.toString(), {
     method,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `tma ${getInitDataRaw()}`,
-    },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    headers,
+    body: isForm ? body : body !== undefined ? JSON.stringify(body) : undefined,
+    // Cookies only matter for admins; in development the API is on another port of the same
+    // site, where the SameSite=Strict session cookie is still sent with "include".
+    credentials: admin ? 'include' : 'same-origin',
   })
 
   if (!response.ok) {

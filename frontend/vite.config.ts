@@ -2,11 +2,23 @@
 import { fileURLToPath, URL } from 'node:url'
 
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
+
+/** Uploaded product photos are served under /media/ on the API's origin (nginx in production). */
+function mediaProxy(apiBaseUrl: string | undefined) {
+  try {
+    return { '/media': new URL(apiBaseUrl ?? '').origin }
+  } catch {
+    return undefined // a relative base ("/api") is already same-origin
+  }
+}
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react()],
+  server: {
+    proxy: mediaProxy(loadEnv(mode, process.cwd(), 'VITE_').VITE_API_BASE_URL),
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -26,4 +38,4 @@ export default defineConfig({
       VITE_MAP_ATTRIBUTION: 'Test map data',
     },
   },
-})
+}))

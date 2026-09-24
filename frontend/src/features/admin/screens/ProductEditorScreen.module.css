@@ -1,0 +1,12 @@
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 900px;
+}
+
+.back {
+  align-self: flex-start;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}

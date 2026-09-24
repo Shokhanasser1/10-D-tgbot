@@ -56,17 +56,28 @@ export function TileLayer({ url }: { url: string }) {
 export function Marker({
   position,
   icon,
+  title,
+  children,
 }: {
   position: [number, number]
   icon?: { options: { html?: string | HTMLElement | false } }
+  title?: string
+  children?: ReactNode
 }) {
   return (
     <div
       data-testid="marker"
       data-position={position.join(',')}
       data-icon={typeof icon?.options.html === 'string' ? icon.options.html : ''}
-    />
+      title={title}
+    >
+      {children}
+    </div>
   )
+}
+
+export function Tooltip({ children }: { children?: ReactNode }) {
+  return <span>{children}</span>
 }
 
 export function useMap() {
