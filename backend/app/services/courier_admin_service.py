@@ -1,10 +1,14 @@
+from collections.abc import Sequence
+
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, NotFoundError
 from app.models.courier import Courier, CourierLocation
-from app.schemas.courier_admin import CourierCreate, CourierUpdate
+from app.models.enums import ShipmentStatus
+from app.models.shipment import Shipment
+from app.schemas.courier_admin import CourierCreate, CourierUpdate, ShipmentAdminOut
 
 _DUPLICATE = "A courier with this Telegram ID already exists"
 
@@ -44,3 +48,28 @@ async def update_courier(db: AsyncSession, courier_id: int, data: CourierUpdate)
 
 async def list_couriers(db: AsyncSession) -> list[Courier]:
     return list((await db.execute(select(Courier).order_by(Courier.id))).scalars().all())
+
+
+async def list_shipments(
+    db: AsyncSession, statuses: Sequence[ShipmentStatus]
+) -> list[ShipmentAdminOut]:
+    rows = (
+        await db.execute(
+            select(Shipment, Courier.name)
+            .outerjoin(Courier, Courier.id == Shipment.courier_id)
+            .where(Shipment.status.in_(statuses))
+            .order_by(Shipment.id)
+        )
+    ).all()
+    return [
+        ShipmentAdminOut(
+            id=shipment.id,
+            order_id=shipment.order_id,
+            status=shipment.status,
+            courier_id=shipment.courier_id,
+            courier_name=courier_name,
+            assigned_at=shipment.assigned_at,
+            picked_up_at=shipment.picked_up_at,
+        )
+        for shipment, courier_name in rows
+    ]

@@ -8,6 +8,12 @@ from app.models.order import Order
 from app.models.shipment import Shipment
 from app.schemas.orders import OrderDetailOut, OrderItemOut, OrderListItemOut
 
+# Stripe redelivers events. Once an order is past payment (a courier may already hold it), a
+# replayed payment_intent.succeeded must not drag it back to "paid".
+_PAST_PAYMENT = frozenset(
+    {OrderStatus.paid, OrderStatus.processing, OrderStatus.shipped, OrderStatus.delivered}
+)
+
 
 async def _get_order_with_payment(db: AsyncSession, order_id: int) -> Order:
     stmt = (
@@ -24,7 +30,7 @@ async def _get_order_with_payment(db: AsyncSession, order_id: int) -> Order:
 async def mark_order_paid(db: AsyncSession, order_id: int) -> None:
     order = await _get_order_with_payment(db, order_id)
 
-    if order.status == OrderStatus.paid:
+    if order.status in _PAST_PAYMENT:
         return
 
     order.status = OrderStatus.paid

@@ -1,4 +1,8 @@
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from app.models.enums import ShipmentStatus
 
 
 class CourierCreate(BaseModel):
@@ -33,3 +37,13 @@ class CourierAdminOut(BaseModel):
     name: str
     phone: str | None
     is_active: bool
+
+
+class ShipmentAdminOut(BaseModel):
+    id: int
+    order_id: int
+    status: ShipmentStatus
+    courier_id: int | None
+    courier_name: str | None
+    assigned_at: datetime | None
+    picked_up_at: datetime | None

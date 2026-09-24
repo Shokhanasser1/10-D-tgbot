@@ -7,12 +7,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.category import Category
-from app.models.enums import OrderStatus, PaymentStatus
+from app.models.enums import OrderStatus, PaymentStatus, ShipmentStatus
 from app.models.order import Order
 from app.models.payment import Payment
 from app.models.product import Product
 from app.models.shipment import Shipment
 from app.services import stripe_service
+from tests.courier_factories import add_courier, add_paid_order
 
 
 def _make_event(event_type: str, order_id: int, payment_intent_id: str = "pi_test_wh") -> dict:
@@ -137,3 +138,30 @@ async def test_invalid_signature_returns_400(
         "/webhooks/stripe", content=b"{}", headers={"stripe-signature": "bad"}
     )
     assert response.status_code == 400
+
+
+async def test_replayed_payment_event_does_not_reset_an_order_a_courier_holds(
+    client: AsyncClient, db_session: AsyncSession, patch_construct_event
+) -> None:
+    # Stripe redelivers events. Once a courier has the order it is past "paid"; a replay must
+    # not drag it back (which would also let the pool hand it to someone else).
+    courier = await add_courier(db_session, 840_001)
+    order, shipment = await add_paid_order(db_session, customer_id=840_002)
+    shipment.status = ShipmentStatus.shipped
+    shipment.courier_id = courier.id
+    order.status = OrderStatus.shipped
+    await db_session.commit()
+    patch_construct_event(_make_event("payment_intent.succeeded", order.id))
+
+    response = await client.post(
+        "/webhooks/stripe", content=b"{}", headers={"stripe-signature": "t"}
+    )
+
+    assert response.status_code == 200
+    await db_session.refresh(order)
+    await db_session.refresh(shipment)
+    assert (order.status, shipment.status, shipment.courier_id) == (
+        OrderStatus.shipped,
+        ShipmentStatus.shipped,
+        courier.id,
+    )

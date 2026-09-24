@@ -12,7 +12,19 @@ class NotFoundError(Exception):
 
 
 class ConflictError(Exception):
-    """Raised by the service layer for business-rule conflicts (e.g. insufficient stock)."""
+    """Raised by the service layer for business-rule conflicts (e.g. insufficient stock).
+
+    `code` is a stable machine-readable reason. `detail` text is English, but the UI is
+    localised, so clients map `code` to their own message instead of showing `detail`.
+    """
+
+    def __init__(self, message: str = "", *, code: str | None = None) -> None:
+        super().__init__(message)
+        self.code = code
+
+
+class ForbiddenError(Exception):
+    """Raised by the service layer when the caller is authenticated but not allowed."""
 
 
 class BadRequestError(Exception):
@@ -33,7 +45,14 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(ConflictError)
     async def _conflict_handler(request: Request, exc: ConflictError) -> JSONResponse:
-        return JSONResponse(status_code=409, content={"detail": str(exc) or "Conflict"})
+        content = {"detail": str(exc) or "Conflict"}
+        if exc.code is not None:
+            content["code"] = exc.code
+        return JSONResponse(status_code=409, content=content)
+
+    @app.exception_handler(ForbiddenError)
+    async def _forbidden_handler(request: Request, exc: ForbiddenError) -> JSONResponse:
+        return JSONResponse(status_code=403, content={"detail": str(exc) or "Forbidden"})
 
     @app.exception_handler(BadRequestError)
     async def _bad_request_handler(request: Request, exc: BadRequestError) -> JSONResponse:

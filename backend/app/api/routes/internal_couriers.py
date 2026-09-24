@@ -1,10 +1,17 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import verify_internal_token
 from app.db.session import get_db
-from app.schemas.courier_admin import CourierAdminOut, CourierCreate, CourierUpdate
-from app.services import courier_admin_service
+from app.models.enums import ACTIVE_SHIPMENT_STATUSES, ShipmentStatus
+from app.schemas.courier import ShipmentActionOut
+from app.schemas.courier_admin import (
+    CourierAdminOut,
+    CourierCreate,
+    CourierUpdate,
+    ShipmentAdminOut,
+)
+from app.services import courier_admin_service, dispatch_service
 
 router = APIRouter(
     prefix="/internal", tags=["internal"], dependencies=[Depends(verify_internal_token)]
@@ -24,3 +31,20 @@ async def update_courier(courier_id: int, data: CourierUpdate, db: AsyncSession 
 @router.get("/couriers", response_model=list[CourierAdminOut])
 async def list_couriers(db: AsyncSession = Depends(get_db)):
     return await courier_admin_service.list_couriers(db)
+
+
+@router.get("/shipments", response_model=list[ShipmentAdminOut])
+async def list_shipments(
+    # Repeat the parameter to select several: ?status=assigned&status=shipped. The default is
+    # the deliveries a courier is currently holding, which is what you look for when stuck.
+    shipment_status: list[ShipmentStatus] | None = Query(default=None, alias="status"),
+    db: AsyncSession = Depends(get_db),
+):
+    return await courier_admin_service.list_shipments(
+        db, shipment_status or ACTIVE_SHIPMENT_STATUSES
+    )
+
+
+@router.post("/shipments/{shipment_id}/release", response_model=ShipmentActionOut)
+async def release_shipment(shipment_id: int, db: AsyncSession = Depends(get_db)):
+    return await dispatch_service.force_release(db, shipment_id)
