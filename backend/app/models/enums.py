@@ -38,6 +38,11 @@ class PaymentStatus(enum.StrEnum):
 
 
 class ShipmentStatus(enum.StrEnum):
-    processing = "processing"
-    shipped = "shipped"
+    processing = "processing"  # paid, waiting in the courier pool
+    assigned = "assigned"  # claimed by a courier, not yet picked up
+    shipped = "shipped"  # picked up, out for delivery
     delivered = "delivered"
+
+
+# A courier is "working" while they hold a shipment in one of these states.
+ACTIVE_SHIPMENT_STATUSES = (ShipmentStatus.assigned, ShipmentStatus.shipped)
