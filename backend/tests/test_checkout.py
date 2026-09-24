@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.money import to_minor_units
 from app.models.category import Category
 from app.models.enums import ProductStatus
+from app.models.order import Order
 from app.models.product import Product
 from app.models.variant import Variant
 from app.services import stripe_service
@@ -136,3 +137,111 @@ async def test_checkout_stock_conflict_returns_409(
         "/checkout", json={"delivery_address": VALID_ADDRESS}, headers=headers
     )
     assert response.status_code == 409
+
+
+async def _checkout_with(
+    client: AsyncClient, db_session: AsyncSession, *, telegram_id: int, sku: str, address: dict
+):
+    variant = await _make_variant(db_session, sku=sku, price="10.00", stock=5)
+    headers = _auth_headers(telegram_id)
+    await client.post("/cart/items", json={"variant_id": variant.id, "qty": 1}, headers=headers)
+    return await client.post("/checkout", json={"delivery_address": address}, headers=headers)
+
+
+async def test_checkout_stores_the_delivery_pin(
+    client: AsyncClient, db_session: AsyncSession, fake_stripe: list[FakePaymentIntent]
+) -> None:
+    pin = {"latitude": 52.520008, "longitude": 13.404954}
+
+    response = await _checkout_with(
+        client, db_session, telegram_id=3010, sku="PIN-1", address={**VALID_ADDRESS, **pin}
+    )
+
+    assert response.status_code == 200
+    order = await db_session.get(Order, response.json()["order_id"])
+    assert order is not None
+    assert order.delivery_address["latitude"] == pin["latitude"]
+    assert order.delivery_address["longitude"] == pin["longitude"]
+
+
+async def test_checkout_without_a_pin_still_works_and_stores_none(
+    client: AsyncClient, db_session: AsyncSession, fake_stripe: list[FakePaymentIntent]
+) -> None:
+    response = await _checkout_with(
+        client, db_session, telegram_id=3011, sku="PIN-2", address=VALID_ADDRESS
+    )
+
+    assert response.status_code == 200
+    order = await db_session.get(Order, response.json()["order_id"])
+    assert order is not None
+    assert order.delivery_address["latitude"] is None
+    assert order.delivery_address["longitude"] is None
+
+
+@pytest.mark.parametrize(
+    "pin",
+    [
+        {"latitude": 52.5},
+        {"longitude": 13.4},
+        {"latitude": 52.5, "longitude": None},
+        {"latitude": None, "longitude": 13.4},
+        {"latitude": 91, "longitude": 13.4},
+        {"latitude": -91, "longitude": 13.4},
+        {"latitude": 52.5, "longitude": 181},
+        {"latitude": 52.5, "longitude": -181},
+        {"latitude": "52.5", "longitude": "13.4"},  # coordinates are numbers, not text
+        {"latitude": True, "longitude": True},  # a bool must not become the point (1, 1)
+        {"latitude": [52.5], "longitude": 13.4},
+    ],
+)
+async def test_checkout_rejects_an_invalid_pin(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    fake_stripe: list[FakePaymentIntent],
+    pin: dict,
+) -> None:
+    response = await _checkout_with(
+        client, db_session, telegram_id=3012, sku="PIN-3", address={**VALID_ADDRESS, **pin}
+    )
+
+    assert response.status_code == 422
+    assert fake_stripe == []  # nothing was charged for a request we refused
+
+
+@pytest.mark.parametrize("literal", ["NaN", "Infinity", "-Infinity"])
+async def test_checkout_rejects_non_finite_coordinates_instead_of_failing_in_the_database(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    fake_stripe: list[FakePaymentIntent],
+    literal: str,
+) -> None:
+    variant = await _make_variant(db_session, sku="PIN-4", price="10.00", stock=5)
+    headers = _auth_headers(3013)
+    await client.post("/cart/items", json={"variant_id": variant.id, "qty": 1}, headers=headers)
+    # Python's json (and so a hand-rolled client) may emit these; JSON proper cannot.
+    body = (
+        '{"delivery_address": {"street": "s", "city": "c", "postal_code": "1", "country": "DE",'
+        f' "phone": "1", "latitude": {literal}, "longitude": 13.4}}}}'
+    )
+
+    response = await client.post(
+        "/checkout", content=body, headers={**headers, "content-type": "application/json"}
+    )
+
+    assert response.status_code == 422
+    assert fake_stripe == []
+
+
+async def test_a_rejected_request_reports_where_and_why_but_never_echoes_the_input(
+    client: AsyncClient, db_session: AsyncSession, fake_stripe: list[FakePaymentIntent]
+) -> None:
+    address = {**VALID_ADDRESS, "latitude": 91.5, "longitude": 13.4}
+
+    response = await _checkout_with(
+        client, db_session, telegram_id=3014, sku="PIN-5", address=address
+    )
+
+    assert response.status_code == 422
+    (error,) = response.json()["detail"]
+    assert set(error) == {"type", "loc", "msg"}
+    assert error["loc"][-1] == "latitude"

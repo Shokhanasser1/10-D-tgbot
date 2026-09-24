@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 
@@ -63,3 +64,14 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=400, content={"detail": "Request conflicts with existing data"}
         )
+
+    @app.exception_handler(RequestValidationError)
+    async def _validation_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+        # FastAPI's default handler echoes each error's `input`. That is user-controlled and, for
+        # a float field given `NaN`, cannot even be serialised (a 500 instead of a 422), so only
+        # where and why the request was rejected is reported.
+        detail = [
+            {"type": error["type"], "loc": list(error["loc"]), "msg": error["msg"]}
+            for error in exc.errors()
+        ]
+        return JSONResponse(status_code=422, content={"detail": detail})

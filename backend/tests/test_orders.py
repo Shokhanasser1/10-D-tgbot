@@ -11,6 +11,7 @@ from app.models.enums import ProductStatus
 from app.models.product import Product
 from app.models.variant import Variant
 from app.services import stripe_service
+from tests.courier_factories import add_paid_order
 from tests.factories import make_init_data
 
 VALID_ADDRESS = {
@@ -131,3 +132,44 @@ async def test_get_order_detail_404s_for_other_users_order(
 
     response = await client.get(f"/orders/{order_id}", headers=_auth_headers(5005))
     assert response.status_code == 404
+
+
+async def test_order_detail_returns_the_delivery_pin_to_its_owner(
+    client: AsyncClient, db_session: AsyncSession, fake_stripe: list[FakePaymentIntent]
+) -> None:
+    variant = await _make_variant(db_session, sku="ORD-PIN", price="10.00", stock=5)
+    headers = _auth_headers(5010)
+    await client.post("/cart/items", json={"variant_id": variant.id, "qty": 1}, headers=headers)
+    placed = await client.post(
+        "/checkout",
+        json={"delivery_address": {**VALID_ADDRESS, "latitude": 52.52, "longitude": 13.405}},
+        headers=headers,
+    )
+
+    response = await client.get(f"/orders/{placed.json()['order_id']}", headers=headers)
+
+    address = response.json()["delivery_address"]
+    assert (address["latitude"], address["longitude"]) == (52.52, 13.405)
+
+
+async def test_an_order_placed_without_a_pin_has_null_coordinates(
+    client: AsyncClient, db_session: AsyncSession, fake_stripe: list[FakePaymentIntent]
+) -> None:
+    order_id = await _place_order(client, db_session, telegram_id=5011, sku_suffix="NOPIN")
+
+    response = await client.get(f"/orders/{order_id}", headers=_auth_headers(5011))
+
+    address = response.json()["delivery_address"]
+    assert address["latitude"] is None and address["longitude"] is None
+
+
+async def test_an_order_stored_before_pins_existed_still_loads(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    order, _ = await add_paid_order(db_session, customer_id=5012, pin=None)
+    assert "latitude" not in order.delivery_address  # the shape Spec 1 wrote
+
+    response = await client.get(f"/orders/{order.id}", headers=_auth_headers(5012))
+
+    assert response.status_code == 200
+    assert response.json()["delivery_address"]["latitude"] is None
