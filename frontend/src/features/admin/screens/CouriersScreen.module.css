@@ -91,7 +91,8 @@ a.name {
   font-size: 13px;
 }
 
-.map {
+/* div. outranks MapView's own height, whose stylesheet loads later with the map chunk. */
+div.map {
   height: 420px;
 }
 
