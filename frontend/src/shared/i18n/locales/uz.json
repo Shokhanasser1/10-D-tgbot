@@ -11,5 +11,50 @@
     "loading": "Yuklanmoqda…",
     "error": "Nimadir xato ketdi",
     "retry": "Qayta urinish"
+  },
+  "catalog": {
+    "all": "Barchasi",
+    "searchPlaceholder": "Mahsulot qidirish",
+    "empty": "Mahsulot topilmadi"
+  },
+  "product": {
+    "addToCart": "Savatga qo'shish",
+    "outOfStock": "Sotuvda yo'q",
+    "addedToCart": "Savatga qo'shildi"
+  },
+  "cart": {
+    "title": "Savat",
+    "empty": "Savat bo'sh",
+    "emptyDescription": "Bu yerda ko'rish uchun katalogdan mahsulot qo'shing.",
+    "subtotal": "Oraliq summa",
+    "checkout": "Buyurtma berish"
+  },
+  "checkout": {
+    "title": "Buyurtmani rasmiylashtirish",
+    "street": "Ko'cha, uy",
+    "city": "Shahar",
+    "postalCode": "Pochta indeksi",
+    "country": "Davlat",
+    "phone": "Telefon",
+    "notes": "Yetkazib berish uchun izoh (ixtiyoriy)",
+    "continue": "To'lovga o'tish",
+    "submit": "To'lash",
+    "processing": "To'lov amalga oshirilmoqda…",
+    "confirming": "Buyurtmangiz tasdiqlanmoqda…"
+  },
+  "orders": {
+    "title": "Mening buyurtmalarim",
+    "empty": "Hali buyurtmalar yo'q",
+    "emptyDescription": "Bu yerda joylashtirilgan buyurtmalaringiz ko'rinadi.",
+    "itemsTitle": "Mahsulotlar",
+    "deliveryAddress": "Yetkazib berish manzili",
+    "status": {
+      "pending_payment": "To'lov kutilmoqda",
+      "paid": "To'landi",
+      "processing": "Qayta ishlanmoqda",
+      "shipped": "Jo'natildi",
+      "delivered": "Yetkazildi",
+      "cancelled": "Bekor qilindi"
+    }
   }
 }

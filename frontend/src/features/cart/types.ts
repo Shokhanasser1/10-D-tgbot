@@ -1,0 +1,15 @@
+export interface CartItem {
+  id: number
+  variant_id: number
+  sku: string
+  product_name: string
+  thumbnail_url: string | null
+  qty: number
+  unit_price_snapshot: string
+  line_total: string
+}
+
+export interface Cart {
+  items: CartItem[]
+  subtotal: string
+}

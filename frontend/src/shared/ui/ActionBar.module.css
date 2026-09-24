@@ -1,0 +1,10 @@
+.bar {
+  position: sticky;
+  bottom: 0;
+  padding: var(--space-3) 0 calc(var(--space-4) + var(--safe-bottom));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, var(--color-bg) 40%);
+}
+
+.button {
+  width: 100%;
+}

@@ -20,6 +20,27 @@
   flex: 1;
 }
 
+.cartButtonWrap {
+  position: relative;
+}
+
+.badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--radius-pill);
+  background: var(--color-text);
+  color: var(--color-bg);
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .content {
   flex: 1;
   padding: 0 var(--space-4) calc(var(--space-6) + var(--safe-bottom));

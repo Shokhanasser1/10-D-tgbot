@@ -1,0 +1,23 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-3);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.neutral {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.positive {
+  background: #e6f4ea;
+  color: #1e7a34;
+}
+
+.negative {
+  background: #fbe7e5;
+  color: var(--color-danger);
+}

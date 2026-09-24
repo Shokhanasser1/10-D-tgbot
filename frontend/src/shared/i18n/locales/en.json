@@ -11,5 +11,50 @@
     "loading": "Loading…",
     "error": "Something went wrong",
     "retry": "Try again"
+  },
+  "catalog": {
+    "all": "All",
+    "searchPlaceholder": "Search products",
+    "empty": "No products found"
+  },
+  "product": {
+    "addToCart": "Add to cart",
+    "outOfStock": "Out of stock",
+    "addedToCart": "Added to cart"
+  },
+  "cart": {
+    "title": "Cart",
+    "empty": "Your cart is empty",
+    "emptyDescription": "Add products from the catalog to see them here.",
+    "subtotal": "Subtotal",
+    "checkout": "Checkout"
+  },
+  "checkout": {
+    "title": "Checkout",
+    "street": "Street address",
+    "city": "City",
+    "postalCode": "Postal code",
+    "country": "Country",
+    "phone": "Phone",
+    "notes": "Delivery notes (optional)",
+    "continue": "Continue to payment",
+    "submit": "Pay now",
+    "processing": "Processing payment…",
+    "confirming": "Confirming your order…"
+  },
+  "orders": {
+    "title": "My orders",
+    "empty": "No orders yet",
+    "emptyDescription": "Your placed orders will show up here.",
+    "itemsTitle": "Items",
+    "deliveryAddress": "Delivery address",
+    "status": {
+      "pending_payment": "Awaiting payment",
+      "paid": "Paid",
+      "processing": "Processing",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled"
+    }
   }
 }

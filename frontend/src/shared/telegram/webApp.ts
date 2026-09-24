@@ -52,6 +52,16 @@ export function getWebApp(): TelegramWebApp | undefined {
   return window.Telegram?.WebApp
 }
 
+/**
+ * False in a plain browser (local dev/preview) — screens fall back to an in-page action
+ * button. Telegram's own script defines `window.Telegram.WebApp` even when loaded standalone
+ * outside a real Telegram client, but leaves `initData` empty in that case, so checking for
+ * non-empty initData (real launch params) is the reliable signal rather than object presence.
+ */
+export function isTelegramEnv(): boolean {
+  return !!window.Telegram?.WebApp.initData
+}
+
 export function initWebApp(): void {
   const webApp = getWebApp()
   webApp?.ready()
