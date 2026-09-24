@@ -11,8 +11,9 @@ This is built in three specs, designs in [`docs/superpowers/specs/`](docs/superp
 2. **Own courier delivery with live tracking** (done) — couriers claim paid orders from a pool,
    share a Telegram Live Location, and the customer follows them on a map.
    [Design](docs/superpowers/specs/2026-09-24-courier-delivery-design.md)
-3. **Admin panel UI** (not built yet). Until then, the catalog and couriers are managed through
-   the internal API below.
+3. **Admin panel** (done) — catalog, orders with cancel and refund, couriers, a summary and
+   admin accounts with roles, inside the Mini App and in a desktop browser.
+   [Design](docs/superpowers/specs/2026-09-24-admin-panel-design.md)
 
 | | |
 |---|---|
@@ -20,7 +21,7 @@ This is built in three specs, designs in [`docs/superpowers/specs/`](docs/superp
 | Frontend | React 19 + TypeScript + Vite, react-query, react-i18next (en / ru / uz) |
 | Payments | Stripe Payment Element inside the Mini App, confirmed by webhook |
 | Delivery | Own couriers, GPS from Telegram Live Location, Leaflet + OpenStreetMap maps |
-| Auth | Telegram `initData`, verified server-side (no passwords, no sessions) |
+| Auth | Telegram `initData`, verified server-side; admins in a browser sign in with the Telegram Login Widget |
 
 ## Run everything with Docker
 
@@ -28,7 +29,8 @@ Requires Docker with Compose.
 
 ```bash
 cp .env.example .env
-# Fill in TELEGRAM_BOT_TOKEN (from @BotFather) and INTERNAL_API_TOKEN (a long random string).
+# Fill in TELEGRAM_BOT_TOKEN (from @BotFather), INTERNAL_API_TOKEN and ADMIN_SESSION_SECRET
+# (long random strings), and your own Telegram ID in ADMIN_BOOTSTRAP_TELEGRAM_IDS.
 docker compose up --build
 ```
 
@@ -43,13 +45,13 @@ origin (nginx proxies it), so there is no CORS to configure. Migrations run on s
 
 ### Add products
 
-There is no admin UI yet. Either load a small demo catalog:
+Use the admin panel (see [Admin panel](#admin-panel)), load a small demo catalog:
 
 ```bash
 docker compose exec api python -m scripts.seed_demo_data
 ```
 
-or manage the catalog through the token-protected internal API (send your `INTERNAL_API_TOKEN`
+or script it against the token-protected internal API (send your `INTERNAL_API_TOKEN`
 as `X-Internal-Token`). The interactive API docs are only served in local development
 (`/docs` when `ENV=development`), never in the production-mode Docker stack:
 
@@ -93,8 +95,8 @@ appears in the header. They take paid orders from a shared pool, mark them picke
 delivered, and share a **Live Location** in the bot chat. Customers see the courier's name on
 their order and, while it is out for delivery, the courier on a map.
 
-**1. Register a courier** (the owner does this; there is no admin UI yet). `name` is shown to
-customers, so enter a first name only:
+**1. Register a courier** (in the admin panel under Couriers, or with the internal API). `name` is
+shown to customers, so enter a first name only:
 
 ```bash
 curl "${H[@]}" -d '{"telegram_id":123456789,"name":"Ali","phone":"+998901112233"}' $API/internal/couriers
@@ -134,7 +136,8 @@ assigned → out for delivery → delivered) and polls every 5 s while the couri
 A position older than `LOCATION_STALE_SECONDS` is drawn faded with "updated N min ago" — Telegram
 only sends an update when the courier moves, so a courier standing still looks stale.
 
-**Stuck orders.** If a courier disappears with an order, use the internal API:
+**Stuck orders.** If a courier disappears with an order, take it off them in the admin panel
+(Couriers → Deliveries), or with the internal API:
 
 ```bash
 curl "${H[@]}" "$API/internal/shipments?status=assigned&status=shipped"   # who holds what
@@ -163,6 +166,51 @@ Telegram ID. A customer with an order out for delivery can see where the courier
 order is delivered, including while the courier serves other customers, so keep `name` to a
 first name and tell couriers their live location is shared this way.
 
+## Admin panel
+
+The panel lives at `/admin` of the same app. Admins who open the Mini App see a gear icon in the
+top bar; in a desktop browser, go to `https://<your domain>/admin` and sign in with Telegram.
+
+**First owner.** Put your Telegram ID (ask @userinfobot) in `ADMIN_BOOTSTRAP_TELEGRAM_IDS` and
+restart the API: it creates an owner account for every listed ID that has none. It never changes
+existing accounts, so removing an ID later demotes nobody. Everyone else is added from the panel.
+
+**Roles.**
+
+| | Owner | Catalog manager | Dispatcher |
+|---|:-:|:-:|:-:|
+| Summary (revenue, low stock, top products) | ✓ | | |
+| Catalog: products, variants, photos, translations, categories, attributes | ✓ | ✓ | |
+| Orders: list, detail, cancel with refund | ✓ | | ✓ |
+| Couriers, active deliveries, live map | ✓ | | ✓ |
+| Admins | ✓ | | |
+
+The API enforces this on every request, and re-reads the admin's role each time, so a
+deactivation or role change applies at once. There is always at least one active owner.
+
+**Browser sign-in** uses the [Telegram Login Widget](https://core.telegram.org/widgets/login):
+
+1. In @BotFather, `/setdomain` for your bot to the panel's domain (HTTPS).
+2. Set `TELEGRAM_BOT_USERNAME` (the widget is built from it) and `ADMIN_SESSION_SECRET`.
+3. Sign-in sets a 12-hour `HttpOnly`, `SameSite=Strict` cookie. Local development over plain
+   http also needs `ADMIN_COOKIE_SECURE=false` in `backend/.env`.
+
+**Cancelling an order** is possible until the courier has picked it up. The order and its
+delivery become *cancelled*, the stock goes back, and the customer is refunded in full through
+Stripe. Add the `refund.created`, `refund.updated` and `refund.failed` events to your Stripe
+webhook endpoint so the panel shows the refund's final state; a refund Stripe refused can be
+retried from the order.
+
+**Stock** is taken off each variant when a payment succeeds. Checkout checks stock but does not
+reserve it, so two customers can pay for the last unit: the order is then flagged *out of stock*
+in the panel for the owner to resolve (typically cancel and refund).
+
+**Photos** uploaded in the panel (JPEG, PNG or WebP, up to 10 MB) are stripped of metadata,
+including the GPS position phones embed, shrunk to 1600 px and stored as WebP in the `media`
+volume, which nginx serves under `/media/`. Back that volume up with the database.
+
+**Summary** days are counted in `SHOP_TIMEZONE` (default UTC; e.g. `Asia/Tashkent`).
+
 ## Develop without Docker
 
 Start only the database (or point `DATABASE_URL` at any Postgres 16):
@@ -182,6 +230,11 @@ cp .env.example .env                                   # set TELEGRAM_BOT_TOKEN
 alembic upgrade head
 uvicorn app.main:app --reload                          # http://localhost:8000/docs
 ```
+
+For the admin panel locally, also set `ADMIN_BOOTSTRAP_TELEGRAM_IDS`, `ADMIN_COOKIE_SECURE=false`
+and `MEDIA_ROOT=./media` in `backend/.env`. A mock `initData` (below) for a bootstrapped ID opens
+the panel at <http://localhost:5173/admin> without the widget; the dev server proxies `/media/`
+to the API.
 
 **Frontend** (Node 22+):
 
@@ -221,15 +274,15 @@ backend/app/
   models/          SQLAlchemy models        alembic/   migrations
   core/            initData verification, i18n, money, shipping pricing, errors
 frontend/src/
-  features/        catalog, cart, checkout, orders, courier — each with api / hooks / components / screens
+  features/        catalog, cart, checkout, orders, courier, admin — each with api / hooks / components / screens
   shared/          Telegram SDK wrapper, API client, i18n, maps (Leaflet), UI kit, design tokens
 ```
 
 ## Production notes
 
 - Serve over HTTPS (Telegram requires it) and keep `.env` out of version control.
-- Set a strong `INTERNAL_API_TOKEN` and `POSTGRES_PASSWORD`; the compose file refuses to start
-  without the former. The database and API are published on `127.0.0.1` only.
+- Set a strong `INTERNAL_API_TOKEN`, `ADMIN_SESSION_SECRET` and `POSTGRES_PASSWORD`; the compose
+  file refuses to start without the first two. The database and API are published on `127.0.0.1` only.
 - Prices and stock are read from the server at checkout — the browser is never trusted for amounts.
 - Single currency (EUR) and flat-rate shipping with a free-over threshold
   (`SHIPPING_FLAT_RATE`, `FREE_SHIPPING_THRESHOLD`) for now.

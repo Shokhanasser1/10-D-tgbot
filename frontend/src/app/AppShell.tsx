@@ -1,7 +1,8 @@
-import { CircleUserRound, ShoppingBag, Truck } from 'lucide-react'
+import { CircleUserRound, Settings, ShoppingBag, Truck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Outlet, useNavigate } from 'react-router-dom'
 
+import { useIsAdmin } from '../features/admin/entry'
 import { useCart } from '../features/cart/hooks'
 import { useCourierProfile } from '../features/courier/hooks'
 import { IconButton } from '../shared/ui/IconButton'
@@ -12,6 +13,7 @@ export function AppShell() {
   const navigate = useNavigate()
   const cartQuery = useCart()
   const courierQuery = useCourierProfile()
+  const adminQuery = useIsAdmin()
   const itemCount = cartQuery.data?.items.reduce((sum, item) => sum + item.qty, 0) ?? 0
 
   return (
@@ -24,6 +26,12 @@ export function AppShell() {
         {courierQuery.data && (
           <IconButton aria-label={t('courier.nav')} onClick={() => navigate('/courier')}>
             <Truck size={18} />
+          </IconButton>
+        )}
+        {/* Inside Telegram there is no address bar, so admins need a way in. */}
+        {adminQuery.data && (
+          <IconButton aria-label={t('admin.open')} onClick={() => navigate('/admin')}>
+            <Settings size={18} />
           </IconButton>
         )}
         <div className={styles.spacer} />

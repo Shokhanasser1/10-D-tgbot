@@ -1,6 +1,6 @@
 # Project state (handoff)
 
-Snapshot: 2026-09-24, branch `main`, HEAD `8f9c581`, 26 commits, **no git remote, nothing pushed**.
+Snapshot: 2026-09-24 (updated after Spec 3), branch `main`, **no git remote, nothing pushed**.
 Working tree was clean at the time of writing. Written for another engineer or AI picking this up cold.
 
 ## 1. What this is
@@ -13,11 +13,12 @@ niches through data (categories, attributes, translations), not code changes. Th
 |---|---|---|
 | 1 Storefront | catalog, cart, Stripe checkout, orders, en/ru/uz, light minimalist UI | **done**, committed |
 | 2 Own courier delivery + live GPS | courier pool/claim, Telegram Live Location tracking, delivery pin, customer map | **done**, committed (10 commits `9a386c6`..`8f9c581`) |
-| 3 Admin panel | UI for catalog, couriers, orders | **not started** |
+| 3 Admin panel | roles, catalog, orders with cancel + refund, couriers + map, summary, admins | **done**, committed |
 
-Designs are in `docs/superpowers/specs/`. Spec 2's §16 "Implementation notes" lists where the build
-refined the design; read it before trusting the rest of that document. `README.md` covers running,
-Stripe, and the whole courier setup (section "Couriers & tracking").
+Designs are in `docs/superpowers/specs/`. Spec 2's §16 and Spec 3's §14 "Implementation notes" list
+where the build refined each design; read them before trusting the rest of those documents.
+`README.md` covers running, Stripe, the courier setup ("Couriers & tracking") and the admin panel
+("Admin panel": first owner, roles, browser sign-in, refunds, photos).
 
 The product owner writes transliterated Russian; the working language with them is Russian, while code,
 docs and commit messages are English.
@@ -32,38 +33,48 @@ docs and commit messages are English.
 - **Runtime** `docker-compose.yml`: `db` (Postgres), `api`, `web` (nginx serving the SPA and proxying
   `/api/` to the API, so the browser is same-origin and needs no CORS).
 - **Auth**: Telegram `initData`, verified server-side with HMAC (`Authorization: tma <initData>`).
-  No passwords or sessions. `/internal/*` uses a static `X-Internal-Token`.
+  No passwords. `/internal/*` (the admin API) accepts `X-Internal-Token` (scripts; acts as owner),
+  initData of an active admin, or a signed `admin_session` cookie from the Telegram Login Widget.
 - **CI** `.github/workflows/ci.yml`: backend `ruff check app tests scripts` + `pytest --cov`;
   frontend `npm run lint`, `npm run build` (runs `tsc -b`, which also type-checks tests), `npm test`.
 
 ## 3. Verified state
 
-- Backend: **253 tests pass**, 97% coverage, ruff clean. Alembic head **`6293a99b0b9c`**.
-- Frontend: **233 tests pass**, lint/prettier/`tsc`/build clean.
+- Backend: **403 tests pass**, 97% coverage, ruff clean. Alembic head **`bbb147ebf681`**.
+- Frontend: **306 tests pass**, lint/prettier/`tsc`/build clean (one pre-existing oxlint warning in
+  `router.tsx`).
 - Manually verified against a real API + database over HTTP (whole courier flow), and in a real
   browser (map tiles, markers, pin tap, courier claim flow, live marker update).
-- **Not verified**: a real Telegram client with a real bot webhook over HTTPS; `docker compose build`
-  of the updated images (only `docker compose config` was run).
+- Admin panel verified in a browser against the real API + DB (summary, cancel, photo upload, phone
+  layout, courier map); production images built and run (upload through nginx, `/media/` served).
+- **Not verified**: a real Telegram client with a real bot webhook over HTTPS; the Login Widget on a
+  real domain; real Stripe refunds.
 
 ## 4. Repository map
 
 ```
 backend/app/
   api/routes/     catalog, cart, checkout, orders, webhooks (stripe + telegram), courier,
-                  internal (catalog admin), internal_couriers ; api/deps.py = auth dependencies
+                  internal_products, internal_couriers, internal_orders, internal_stats,
+                  internal_admins, internal_auth ; api/deps.py = auth, AdminPrincipal, require_admin
   services/       business logic. dispatch_service (claim/release/pickup/deliver/force_release),
                   courier_state (locks, location upsert/purge), courier_service (pool/deliveries reads),
                   courier_admin_service, location_service (webhook ingestion), tracking_service,
-                  order_service, checkout_service, stripe_service, catalog(_admin)_service, cart_service
-  models/         SQLAlchemy models; enums.py has ShipmentStatus / ACTIVE_SHIPMENT_STATUSES
+                  order_service, checkout_service, stripe_service, catalog(_admin)_service, cart_service,
+                  admin_service, catalog_admin_query_service, image_service, stock_service,
+                  order_admin_service (list/detail/cancel/refund), stats_service
+  models/         SQLAlchemy models; enums.py has ShipmentStatus / ACTIVE_SHIPMENT_STATUSES / AdminRole
   schemas/        pydantic I/O models
-  core/           initData verification, exceptions + global handlers, geo, money, shipping pricing
+  core/           initData + Login Widget verification, admin_session, images (Pillow), rate_limit,
+                  exceptions + global handlers, geo, money, shipping pricing
 backend/scripts/  make_dev_init_data, seed_demo_data, seed_courier_demo, set_telegram_webhook
-backend/tests/    courier_factories.py = shared fixtures/factories for courier tests
+backend/tests/    courier_factories.py / admin_factories.py = shared fixtures and factories
 frontend/src/
-  features/       catalog, cart, checkout, orders, courier  (api / hooks / components / screens)
+  features/       catalog, cart, checkout, orders, courier, admin  (api / hooks / components / screens)
+                  admin is lazy-loaded at /admin/*; only admin/entry.ts is in the main chunk
   shared/         api client, telegram wrapper, i18n, map (Leaflet, lazy-loaded), time, ui kit, styles
-  test/           MSW handlers, fixtures, mocks (reactLeaflet, courierBackend), setup
+  test/           MSW handlers, fixtures, adminFixtures, mocks (reactLeaflet, courierBackend,
+                  adminBackend), setup
 ```
 
 ## 5. HTTP API (as of HEAD)
@@ -78,11 +89,19 @@ Courier (initData + active courier row, else 403): `GET /courier/me|pool|deliver
 Webhooks: `POST /webhooks/stripe` (signature), `POST /webhooks/telegram`
 (`X-Telegram-Bot-Api-Secret-Token`; empty `TELEGRAM_WEBHOOK_SECRET` means 404).
 
-Owner (`X-Internal-Token`): catalog writes `POST /internal/categories|products|variants|attributes|translations`,
-`POST /internal/products/{id}/images`, `PATCH` for categories/products/variants/attributes;
-couriers `POST/GET /internal/couriers`, `PATCH /internal/couriers/{id}`;
-shipments `GET /internal/shipments?status=` (repeatable, default active) and
-`POST /internal/shipments/{id}/release`.
+Admin, `/internal/*` (roles O=owner, C=catalog_manager, D=dispatcher; the internal token counts as O).
+No credentials is 401; wrong token, non-admin or wrong role is 403.
+- identity: `POST /internal/auth/telegram` (widget payload → cookie), `POST /internal/auth/logout`,
+  `GET /internal/me` (any role); `GET/POST /internal/admins`, `PATCH /internal/admins/{id}` (O).
+- catalog (O, C): `GET /internal/categories|attributes`, `GET /internal/products?status=&category_id=&q=&limit=&offset=`,
+  `GET /internal/products/{id}`; writes `POST /internal/categories|products|variants|attributes|translations`,
+  `PATCH` for categories/products/variants/attributes, `POST /internal/products/{id}/images` (JSON url **or**
+  multipart upload), `PATCH/DELETE /internal/images/{id}`.
+- orders (O, D): `GET /internal/orders?status=&q=&from=&to=&shortfall=`, `GET /internal/orders/{id}`,
+  `POST /internal/orders/{id}/cancel {reason}`, `POST /internal/orders/{id}/refund` (retry a failed refund).
+- couriers (O, D): `POST/GET /internal/couriers` (list has `active_deliveries`), `PATCH /internal/couriers/{id}`,
+  `GET /internal/couriers/locations`, `GET /internal/shipments?status=`, `POST /internal/shipments/{id}/release`.
+- `GET /internal/stats/summary?period=today|7d|30d` (O).
 
 Swagger (`/docs`) is served only when `ENV=development`.
 
@@ -91,11 +110,13 @@ Swagger (`/docs`) is served only when `ENV=development`.
 **Lifecycle.** `Shipment` and `Order` move together:
 `processing/paid` -claim-> `assigned/processing` -pickup-> `shipped/shipped` -deliver-> `delivered/delivered`;
 release (only before pickup) goes back to `processing/paid`. The Stripe webhook creates the shipment.
-`mark_order_paid` ignores orders already past payment (a redelivered Stripe event must not regress a
-`shipped` order).
+`mark_order_paid` is one guarded `pending_payment -> paid` UPDATE that also takes stock (a variant going
+negative sets `orders.stock_shortfall`); replays and late events, including for cancelled orders, change
+nothing. **Cancel** (admin, only before pickup): order + shipment → `cancelled`, stock returned, commit,
+then a full Stripe refund (`payments.refund_status` pending/succeeded/failed; `refund.*` webhooks finish it).
 
 **Concurrency.** Every transition is a guarded `UPDATE … WHERE status=… [AND courier_id=…] RETURNING`.
-Lock order everywhere: **courier row (`SELECT … FOR UPDATE`) → shipment → order → location**. The owner's
+Lock order everywhere: **courier row (`SELECT … FOR UPDATE`) → shipment → order → variants (by id) → location**. The owner's
 `force_release` reads the courier unlocked, then locks it first. Guarded UPDATEs bypass the SQLAlchemy
 identity map, so services return schemas built from column selects, never stale ORM entities; after a
 partial write that fails, `await db.rollback()` before raising.
@@ -131,7 +152,11 @@ Stripe keys (optional), `POSTGRES_*`, `SHIPPING_FLAT_RATE` (4.99), `FREE_SHIPPIN
 ports, and for Spec 2: `TELEGRAM_WEBHOOK_SECRET` (charset `A-Za-z0-9_-`, 1–256; empty = webhook off),
 `TELEGRAM_BOT_USERNAME`, `MAX_ACTIVE_DELIVERIES_PER_COURIER` (3), `LOCATION_STALE_SECONDS` (120),
 and `MAP_TILE_URL` / `MAP_DEFAULT_CENTER` / `MAP_ATTRIBUTION` (baked into the web image as `VITE_MAP_*`;
-empty = public OpenStreetMap, which is for light use only).
+empty = public OpenStreetMap, which is for light use only). Spec 3: `ADMIN_SESSION_SECRET` (required by
+compose and outside `ENV=development`), `ADMIN_BOOTSTRAP_TELEGRAM_IDS` (owners created on startup),
+`SHOP_TIMEZONE` (UTC), `LOW_STOCK_THRESHOLD` (5); backend-only `ADMIN_COOKIE_SECURE` (false for local
+http), `MEDIA_ROOT` (`/data/media` in Docker, the `media` volume shared with nginx); frontend
+`VITE_TELEGRAM_BOT_USERNAME` (baked from `TELEGRAM_BOT_USERNAME`).
 `backend/.env` and `frontend/.env` exist locally with fake dev values and are gitignored.
 
 ## 8. How to run and test
@@ -153,6 +178,10 @@ two Vite servers (customer 5173, courier 5174) each with `VITE_DEV_MOCK_INIT_DAT
 register the courier via `POST /internal/couriers`, seed an order, then POST a location update to
 `/webhooks/telegram` with the secret header (payload example in README).
 
+Admin panel by hand: uvicorn with `ADMIN_BOOTSTRAP_TELEGRAM_IDS=500 ADMIN_SESSION_SECRET=x ADMIN_COOKIE_SECURE=false
+MEDIA_ROOT=./media`, Vite with `VITE_DEV_MOCK_INIT_DATA` for ID 500 and `VITE_API_BASE_URL=http://127.0.0.1:8000`,
+then open `http://127.0.0.1:5173/admin` (the mock initData signs you in; the widget is only for real domains).
+
 ## 9. Environment gotchas (Windows dev machine)
 
 - Docker Desktop is not running after a session resume; start it, wait for `docker info`, then `docker compose up -d db`.
@@ -168,24 +197,24 @@ register the courier via `POST /internal/couriers`, seed an order, then POST a l
 
 ## 10. Open items and suggested next steps
 
-1. **Spec 3 — admin panel.** New feature: run the `brainstorming` skill and get the design approved before code.
-   Important finding for its design: the catalog admin API is **write-only** (`POST/PATCH` under `/internal`,
-   no `GET` lists for categories/products/variants/attributes/translations, and no order listing). Only couriers
-   and shipments have `GET`. An admin UI will need read endpoints (and probably an order list/detail view for the
-   owner) before it can show anything. It should call the same `/internal/*` endpoints, not a parallel API.
-2. Try the real thing once: HTTPS tunnel (`ngrok`/`cloudflared`) → `python -m scripts.set_telegram_webhook https://<origin>`
+All three specs are built. What remains:
+
+1. Try the real thing once: HTTPS tunnel (`ngrok`/`cloudflared`) → `python -m scripts.set_telegram_webhook https://<origin>`
    → a real courier account sharing Live Location from a phone. `--info` shows Telegram's `last_error_message`.
-3. `docker compose build && up` with the updated Dockerfile/compose, then `curl -X POST localhost:8080/api/webhooks/telegram`
-   (expect 404 with an empty secret, 403 with a wrong one).
-4. Before real traffic: set `MAP_TILE_URL`/`MAP_ATTRIBUTION` for a proper tile provider; use strong `INTERNAL_API_TOKEN`
-   and `POSTGRES_PASSWORD`; serve over HTTPS.
-5. Push: there is no remote yet. Decide where the repository lives before CI can run.
+   For the admin panel in a browser: BotFather `/setdomain` to the tunnel's domain, then sign in at `/admin`.
+2. Stripe: subscribe the webhook endpoint to `refund.created|updated|failed` and run a test-mode refund.
+3. Before real traffic: set `MAP_TILE_URL`/`MAP_ATTRIBUTION` for a proper tile provider; strong `INTERNAL_API_TOKEN`,
+   `ADMIN_SESSION_SECRET` and `POSTGRES_PASSWORD`; serve over HTTPS; back up the `media` volume with the database.
+4. Push: there is no remote yet. Decide where the repository lives before CI can run.
+5. Not asked for, but likely next: stock reservation at checkout (overselling is flagged today, not prevented),
+   deleting variants, an audit log beyond "who cancelled", charts in the summary.
 
 ## 11. Assumptions the product owner has not explicitly confirmed
 
 Single currency (EUR), flat-rate shipping (€4.99, free over €50), price taken at checkout time; the owner
 registers couriers manually; at most 3 active deliveries per courier; "Delivered" is a plain button (no PIN or
-proof of delivery); OpenStreetMap tiles via Leaflet.
+proof of delivery); OpenStreetMap tiles via Leaflet. Spec 3: summary in UTC until `SHOP_TIMEZONE` is set,
+low-stock threshold 5, refunds always in full, browser sessions last 12 h.
 
 **Out of scope by design (Spec 2 §14):** dispatcher UI, Telegram notifications to customers, proof of delivery,
 failed deliveries/returns, routes/ETA/geocoding, courier shifts, earnings, location history, multiple warehouses.

@@ -136,6 +136,7 @@
     "mapLabel": "Map showing the courier and your delivery point"
   },
   "admin": {
+    "open": "Admin panel",
     "title": "Shop admin",
     "language": "Language",
     "nav": {

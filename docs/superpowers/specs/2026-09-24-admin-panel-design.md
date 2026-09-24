@@ -1,6 +1,6 @@
 # Admin Panel (Spec 3 of 3)
 
-Status: Approved design — not yet implemented
+Status: Approved — implemented (see §14 for where the build refined the design)
 Date: 2026-09-24
 Builds on: [Spec 1 — Storefront](2026-09-22-telegram-miniapp-storefront-design.md),
 [Spec 2 — Courier delivery](2026-09-24-courier-delivery-design.md) (both complete)
@@ -320,3 +320,42 @@ Each step is one commit with tests green.
 9. Frontend: orders, couriers, map.
 10. Frontend: summary, admins.
 11. README, `.env.example`, implementation notes in this spec.
+
+## 14. Implementation notes
+
+Where the build refined the design above:
+
+- **Sessions** are signed with a small HMAC helper (`core/admin_session.py`) instead of
+  itsdangerous: one dependency fewer for three lines of code. The cookie's `Path` is `/`, not
+  `/api/internal`: in development the API is on another origin without the `/api` prefix.
+  `ADMIN_COOKIE_SECURE` (default true) exists so local http development can sign in.
+- `ADMIN_SESSION_SECRET` is enforced by `Settings` (startup fails outside `ENV=development`) and by
+  compose (`:?`). Browser sign-in answers 503 if the secret is empty in development.
+- **401 vs 403** on `/internal/*`: no credentials is now 401 (it was 403); a wrong token or a
+  non-admin stays 403. Existing tests were updated accordingly.
+- **Admin management** endpoints shipped in phase 1 with the identity work, not phase 6.
+- **Payment confirmation** only moves `pending_payment -> paid`; a late event for a cancelled
+  order is ignored. Stock moves in `stock_service`, variant rows in ascending id order.
+- **Cancellation** retries its read-lock-update sequence up to three times when a courier claims
+  or releases the order in between, so the owner does not get a spurious 409 for an order that is
+  still cancellable. Shipment `courier_id` is cleared on cancel.
+- **Refund retries** use a new idempotency key (`refund-order-<id>-retry-<uuid>`): Stripe replays a
+  stored error for a reused key for 24 h, which would make "retry" useless. A double refund is still
+  impossible because Stripe caps refunds at the charged amount. The refund carries
+  `metadata.order_id`; `refund.*` webhooks match on `payment_intent` and never downgrade a
+  `succeeded` refund.
+- **Couriers**: `GET /internal/couriers` gained `active_deliveries`. The deliveries tab offers the
+  existing force release for picked-up orders too (the escape hatch for a vanished courier), with a
+  stronger warning.
+- **Photos** are reordered with earlier/later buttons rather than drag and drop: they work the same
+  with touch, mouse and keyboard. nginx needed `client_max_body_size 11m` on `/api/` (its default
+  of 1 MB would have rejected most phone photos). Dev: Vite proxies `/media` to the API and the API
+  serves `MEDIA_ROOT` itself when `ENV=development`.
+- **Entry point**: inside Telegram there is no address bar, so the storefront's top bar shows a
+  gear icon to admins (`features/admin/entry.ts`, outside the lazily loaded admin chunk).
+- The four frontend phases landed as one commit.
+- **Verified** against a real database and API in a browser (summary, cancel with a failing Stripe
+  key, photo upload, phone layout, courier map) and with the production Docker images (upload
+  through nginx, `/media/` served as `image/webp`). **Not verified:** the Telegram Login Widget
+  on a real domain, and real Stripe refunds.
+

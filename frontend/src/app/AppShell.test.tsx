@@ -56,3 +56,29 @@ describe('AppShell courier entry', () => {
     expect(await screen.findByText('orders page')).toBeInTheDocument()
   })
 })
+
+describe('AppShell admin entry', () => {
+  it('is hidden from shoppers', async () => {
+    renderScreen(<AppShell />, options)
+
+    await screen.findByRole('button', { name: 'My orders' })
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(screen.queryByRole('button', { name: 'Admin panel' })).not.toBeInTheDocument()
+  })
+
+  it('opens the admin panel for an admin', async () => {
+    const user = userEvent.setup()
+    server.use(
+      http.get(`${API}/internal/me`, () =>
+        HttpResponse.json({ telegram_id: 1, display_name: 'A', role: 'dispatcher' }),
+      ),
+    )
+    renderScreen(<AppShell />, {
+      extraRoutes: [...options.extraRoutes, { path: '/admin', element: <div>admin page</div> }],
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Admin panel' }))
+
+    expect(await screen.findByText('admin page')).toBeInTheDocument()
+  })
+})

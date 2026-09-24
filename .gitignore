@@ -27,3 +27,9 @@ Thumbs.db
 
 # Claude Flow local state
 .claude-flow/
+
+# Uploaded product photos in local development (MEDIA_ROOT=./media)
+backend/media/
+
+# Playwright MCP screenshots
+.playwright-mcp/

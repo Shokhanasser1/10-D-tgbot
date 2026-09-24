@@ -37,6 +37,10 @@ export const handlers = [
   http.get(`${API}/courier/deliveries`, () =>
     HttpResponse.json({ location_updated_at: null, deliveries: [] }),
   ),
+  // Admins. For everyone else the admin identity endpoint is a plain 403.
+  http.get(`${API}/internal/me`, () =>
+    HttpResponse.json({ detail: 'Not an admin' }, { status: 403 }),
+  ),
   http.post(`${API}/courier/deliveries/:id/:step`, ({ params }) =>
     HttpResponse.json({ shipment_id: Number(params.id), order_id: 0, status: 'assigned' }),
   ),
