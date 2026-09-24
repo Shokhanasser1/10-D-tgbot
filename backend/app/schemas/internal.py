@@ -129,3 +129,41 @@ class TranslationOut(BaseModel):
     locale: str
     field: str
     value: str
+
+
+# locale -> field -> value, e.g. {"ru": {"name": "..."}}
+Translations = dict[str, dict[str, str]]
+
+
+class CategoryAdminListItem(CategoryAdminOut):
+    name: str
+    translations: Translations
+
+
+class AttributeAdminListItem(AttributeAdminOut):
+    translations: Translations
+
+
+class ProductAdminListItem(BaseModel):
+    id: int
+    category_id: int
+    base_sku: str
+    base_price: Decimal
+    status: ProductStatus
+    name: str
+    thumbnail_url: str | None
+    variant_count: int
+    min_price: Decimal | None
+    total_stock: int
+
+
+class ProductAdminPage(BaseModel):
+    items: list[ProductAdminListItem]
+    total: int
+
+
+class ProductAdminDetailOut(ProductAdminOut):
+    name: str
+    translations: Translations
+    variants: list[VariantAdminOut]
+    images: list[ProductImageOut]

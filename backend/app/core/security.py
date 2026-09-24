@@ -28,9 +28,7 @@ def validate_init_data(init_data: str, bot_token: str, max_age_seconds: int) -> 
     data_check_string = "\n".join(f"{key}={value}" for key, value in sorted(data.items()))
 
     secret_key = hmac.new(_WEB_APP_DATA_KEY, bot_token.encode(), hashlib.sha256).digest()
-    computed_hash = hmac.new(
-        secret_key, data_check_string.encode(), hashlib.sha256
-    ).hexdigest()
+    computed_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
 
     if not hmac.compare_digest(computed_hash, received_hash):
         raise InvalidInitDataError("Invalid hash")
@@ -53,9 +51,7 @@ def validate_init_data(init_data: str, bot_token: str, max_age_seconds: int) -> 
     return TelegramInitData(auth_date=auth_date, query_id=data.get("query_id"), user=user_dict)
 
 
-def validate_login_widget(
-    fields: dict[str, str], bot_token: str, max_age_seconds: int
-) -> int:
+def validate_login_widget(fields: dict[str, str], bot_token: str, max_age_seconds: int) -> int:
     """Validate a Telegram Login Widget payload and return the user's telegram_id.
 
     Differs from initData on purpose: the key is SHA256(bot_token), not an HMAC with
