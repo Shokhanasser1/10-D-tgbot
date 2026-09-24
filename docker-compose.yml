@@ -33,6 +33,11 @@ services:
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       SHIPPING_FLAT_RATE: ${SHIPPING_FLAT_RATE:-4.99}
       FREE_SHIPPING_THRESHOLD: ${FREE_SHIPPING_THRESHOLD:-50.00}
+      # Courier delivery. An empty webhook secret keeps POST /webhooks/telegram switched off (404).
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+      MAX_ACTIVE_DELIVERIES_PER_COURIER: ${MAX_ACTIVE_DELIVERIES_PER_COURIER:-3}
+      LOCATION_STALE_SECONDS: ${LOCATION_STALE_SECONDS:-120}
     ports:
       - "127.0.0.1:${API_PORT:-8000}:8000"
     healthcheck:
@@ -49,6 +54,9 @@ services:
         # VITE_* values are baked into the bundle at build time (they are public by design).
         VITE_API_BASE_URL: /api
         VITE_STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
+        VITE_MAP_TILE_URL: ${MAP_TILE_URL:-}
+        VITE_MAP_DEFAULT_CENTER: ${MAP_DEFAULT_CENTER:-}
+        VITE_MAP_ATTRIBUTION: ${MAP_ATTRIBUTION:-}
     restart: unless-stopped
     depends_on:
       api:

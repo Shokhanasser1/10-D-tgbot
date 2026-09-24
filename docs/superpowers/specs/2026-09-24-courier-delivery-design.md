@@ -1,6 +1,6 @@
 # Own Courier Delivery & Live Tracking (Spec 2 of 3)
 
-Status: Draft — awaiting review
+Status: Approved — implemented (see §16 for where the build refined the design)
 Date: 2026-09-24
 Builds on: [Spec 1 — Storefront](2026-09-22-telegram-miniapp-storefront-design.md) (complete)
 
@@ -249,3 +249,57 @@ mocked because jsdom has no layout.
 
 Manual end to end: simulate the webhook with `curl` using a signed secret header, then confirm the
 marker moves on a customer's order in a browser.
+
+## 16. Implementation notes
+
+Built in ten phases, one commit each. Where the build differs from, or adds to, the text above:
+
+**API**
+
+- `409` responses carry an optional machine-readable `code` next to the English `detail`:
+  `shipment_taken`, `delivery_limit_reached`, `invalid_state`. The UI is localised (en / ru / uz),
+  so it maps the code to its own message instead of showing `detail`.
+- `GET /internal/shipments?status=` (read-only, repeat `status` for several; default: active) was
+  added so the owner can find the `shipment_id` to pass to the release endpoint (§5).
+- `GET /courier/deliveries` returns `{ location_updated_at, deliveries: [...] }`: GPS freshness
+  belongs to the courier, not to each delivery.
+- `GET /courier/me` also returns `max_active_deliveries`, so the UI can show "N of M".
+- Deactivating a courier deletes their stored position at once (§5 only said it blocks access).
+- `GET /orders/{id}` (§8 "unchanged") now also returns `latitude` / `longitude` inside
+  `delivery_address` to the order's owner, because it shares `DeliveryAddressIn` with checkout.
+- Pin coordinates are strict numbers: `"52.5"` and `true` are rejected, as are `NaN` / `Infinity`
+  (which Python's `json` accepts but PostgreSQL's JSONB cannot store).
+- 422 responses list `type`, `loc` and `msg` only. FastAPI's default echoes the rejected `input`,
+  and a `NaN` coordinate made that response unserialisable, turning a 422 into a 500.
+
+**Concurrency**
+
+- Lock order everywhere is courier → shipment → order → location. The owner's release reads the
+  courier unlocked, then locks the courier before touching the shipment, so it cannot deadlock
+  against a courier's own action. Guarded `UPDATE … RETURNING` statements bypass the SQLAlchemy
+  identity map, so services return schemas built from column selects rather than ORM entities.
+
+**Fixes to existing behaviour**
+
+- `mark_order_paid` now ignores orders already past payment. Before, a redelivered
+  `payment_intent.succeeded` would have moved a `shipped` order back to `paid` once shipments could
+  actually progress.
+- `X-Internal-Token` (and the webhook secret) are compared as bytes, so a non-ASCII header is a
+  403, not a 500.
+
+**Frontend**
+
+- Polling: an order is re-read every 2 s while `pending_payment` and every 10 s while `paid` /
+  `processing` / `shipped`. Tracking polls every 5 s while `shipped` (§10), every 10 s while
+  waiting for a courier or pick-up, and stops once delivered. A courier's pool refreshes every
+  10 s and their deliveries every 5 s.
+- The timeline reads *Payment received / Courier assigned / Out for delivery / Order delivered*,
+  deliberately different from the order status badge so the two never show identical text.
+- Leaflet's attribution control is replaced by a button that opens the copyright page through
+  Telegram's `openLink`, since a plain link would navigate the Mini App's WebView away. The
+  swipe-down-to-minimise gesture is disabled (Telegram ≥ 7.7) while a map is on screen, otherwise
+  panning a map downwards collapses the app.
+- Extra build setting `VITE_MAP_ATTRIBUTION`. In the root `.env` the three map settings are
+  `MAP_TILE_URL`, `MAP_DEFAULT_CENTER` and `MAP_ATTRIBUTION` (compose maps them to `VITE_MAP_*`).
+- A stale position is shown as "updated N min ago" rather than "no connection": Telegram sends a
+  Live Location update only when the courier moves, so a courier standing still looks stale.
