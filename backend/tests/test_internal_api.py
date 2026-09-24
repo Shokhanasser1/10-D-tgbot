@@ -93,3 +93,91 @@ async def test_update_nonexistent_product_returns_404(client: AsyncClient) -> No
         "/internal/products/999999", json={"base_price": "9.99"}, headers=INTERNAL_HEADERS
     )
     assert response.status_code == 404
+
+
+async def test_patch_endpoints_update_existing_entities(client: AsyncClient) -> None:
+    category = (
+        await client.post(
+            "/internal/categories", json={"slug": "old-slug"}, headers=INTERNAL_HEADERS
+        )
+    ).json()
+    attribute = (
+        await client.post(
+            "/internal/attributes",
+            json={"key": "shade", "category_id": category["id"], "value_type": "text"},
+            headers=INTERNAL_HEADERS,
+        )
+    ).json()
+    product = (
+        await client.post(
+            "/internal/products",
+            json={"category_id": category["id"], "base_sku": "P-1", "base_price": "5.00"},
+            headers=INTERNAL_HEADERS,
+        )
+    ).json()
+    variant = (
+        await client.post(
+            "/internal/variants",
+            json={"product_id": product["id"], "sku": "P-1-A", "price": "5.00", "stock_qty": 1},
+            headers=INTERNAL_HEADERS,
+        )
+    ).json()
+
+    patched_category = await client.patch(
+        f"/internal/categories/{category['id']}",
+        json={"slug": "new-slug"},
+        headers=INTERNAL_HEADERS,
+    )
+    patched_attribute = await client.patch(
+        f"/internal/attributes/{attribute['id']}",
+        json={"value_type": "color"},
+        headers=INTERNAL_HEADERS,
+    )
+    patched_product = await client.patch(
+        f"/internal/products/{product['id']}",
+        json={"status": "active"},
+        headers=INTERNAL_HEADERS,
+    )
+    patched_variant = await client.patch(
+        f"/internal/variants/{variant['id']}",
+        json={"stock_qty": 42},
+        headers=INTERNAL_HEADERS,
+    )
+
+    assert patched_category.json()["slug"] == "new-slug"
+    assert patched_attribute.json()["value_type"] == "color"
+    assert patched_product.json()["status"] == "active"
+    assert patched_variant.json()["stock_qty"] == 42
+
+
+async def test_patch_nonexistent_entities_return_404(client: AsyncClient) -> None:
+    for path, body in [
+        ("/internal/categories/999999", {"slug": "x"}),
+        ("/internal/attributes/999999", {"key": "x"}),
+        ("/internal/variants/999999", {"stock_qty": 1}),
+    ]:
+        response = await client.patch(path, json=body, headers=INTERNAL_HEADERS)
+        assert response.status_code == 404, path
+
+
+async def test_translation_upsert_updates_existing_value(client: AsyncClient) -> None:
+    payload = {"entity_type": "product", "entity_id": 1, "locale": "en", "field": "name"}
+
+    first = await client.post(
+        "/internal/translations", json={**payload, "value": "Old"}, headers=INTERNAL_HEADERS
+    )
+    second = await client.post(
+        "/internal/translations", json={**payload, "value": "New"}, headers=INTERNAL_HEADERS
+    )
+
+    assert first.json()["id"] == second.json()["id"]
+    assert second.json()["value"] == "New"
+
+
+async def test_add_image_to_nonexistent_product_returns_404(client: AsyncClient) -> None:
+    response = await client.post(
+        "/internal/products/999999/images",
+        json={"url": "https://example.com/x.jpg"},
+        headers=INTERNAL_HEADERS,
+    )
+    assert response.status_code == 404
