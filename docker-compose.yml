@@ -38,6 +38,14 @@ services:
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
       MAX_ACTIVE_DELIVERIES_PER_COURIER: ${MAX_ACTIVE_DELIVERIES_PER_COURIER:-3}
       LOCATION_STALE_SECONDS: ${LOCATION_STALE_SECONDS:-120}
+      # Admin panel
+      ADMIN_BOOTSTRAP_TELEGRAM_IDS: ${ADMIN_BOOTSTRAP_TELEGRAM_IDS:-}
+      ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET:?set ADMIN_SESSION_SECRET in .env to a long random string}
+      SHOP_TIMEZONE: ${SHOP_TIMEZONE:-UTC}
+      LOW_STOCK_THRESHOLD: ${LOW_STOCK_THRESHOLD:-5}
+      MEDIA_ROOT: /data/media
+    volumes:
+      - media:/data/media
     ports:
       - "127.0.0.1:${API_PORT:-8000}:8000"
     healthcheck:
@@ -57,12 +65,16 @@ services:
         VITE_MAP_TILE_URL: ${MAP_TILE_URL:-}
         VITE_MAP_DEFAULT_CENTER: ${MAP_DEFAULT_CENTER:-}
         VITE_MAP_ATTRIBUTION: ${MAP_ATTRIBUTION:-}
+        VITE_TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
     restart: unless-stopped
     depends_on:
       api:
         condition: service_healthy
+    volumes:
+      - media:/usr/share/nginx/media:ro
     ports:
       - "${WEB_PORT:-8080}:80"
 
 volumes:
   pgdata:
+  media:

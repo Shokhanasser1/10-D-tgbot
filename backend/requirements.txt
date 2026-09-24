@@ -9,3 +9,4 @@ stripe>=11.0,<12.0
 python-multipart>=0.0.12
 # Summary days are counted in SHOP_TIMEZONE; slim images ship no system zone database.
 tzdata>=2024.1
+Pillow>=11.0,<13.0

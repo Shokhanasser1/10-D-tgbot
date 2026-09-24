@@ -1,8 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi.exceptions import RequestValidationError
+from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.datastructures import UploadFile as StarletteUploadFile
 
 from app.api.deps import CATALOG_ROLES, require_admin
 from app.config import get_settings
+from app.core.exceptions import BadRequestError
+from app.core.images import MAX_UPLOAD_BYTES
 from app.db.session import get_db
 from app.models.enums import ProductStatus
 from app.schemas.internal import (
@@ -20,6 +25,7 @@ from app.schemas.internal import (
     ProductCreate,
     ProductImageCreate,
     ProductImageOut,
+    ProductImageUpdate,
     ProductUpdate,
     TranslationOut,
     TranslationUpsert,
@@ -27,9 +33,18 @@ from app.schemas.internal import (
     VariantCreate,
     VariantUpdate,
 )
-from app.services import catalog_admin_query_service, catalog_admin_service
+from app.services import catalog_admin_query_service, catalog_admin_service, image_service
 
 settings = get_settings()
+
+# Multipart boundaries and the small text fields around the file.
+_FORM_OVERHEAD = 64 * 1024
+
+
+class _UploadFields(BaseModel):
+    variant_id: int | None = None
+    position: int = Field(default=0, ge=0)
+
 
 router = APIRouter(
     prefix="/internal", tags=["internal"], dependencies=[Depends(require_admin(*CATALOG_ROLES))]
@@ -146,12 +161,50 @@ async def update_variant(variant_id: int, data: VariantUpdate, db: AsyncSession 
     status_code=status.HTTP_201_CREATED,
 )
 async def create_product_image(
-    product_id: int, data: ProductImageCreate, db: AsyncSession = Depends(get_db)
+    product_id: int, request: Request, db: AsyncSession = Depends(get_db)
 ):
-    image = await catalog_admin_service.create_product_image(db, product_id, data)
-    if image is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
-    return image
+    """JSON `{url, variant_id?, position?}` links an image hosted elsewhere; multipart form data
+    with a `file` (plus optional `variant_id`, `position`) uploads one."""
+    content_type = request.headers.get("content-type", "")
+    if not content_type.startswith("multipart/form-data"):
+        try:
+            data = ProductImageCreate.model_validate_json(await request.body())
+        except ValidationError as exc:
+            raise RequestValidationError(exc.errors()) from exc
+        return await image_service.add_image_by_url(db, product_id, data)
+
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > MAX_UPLOAD_BYTES + _FORM_OVERHEAD:
+        raise HTTPException(status_code=413, detail="Too large")
+
+    async with request.form(max_files=1, max_fields=5) as form:
+        upload = form.get("file")
+        if not isinstance(upload, StarletteUploadFile):
+            raise BadRequestError("A file is required")
+        raw = await upload.read(MAX_UPLOAD_BYTES + 1)
+        if len(raw) > MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="Too large")
+        try:
+            fields = _UploadFields.model_validate(
+                {k: v for k, v in form.items() if k != "file" and isinstance(v, str) and v != ""}
+            )
+        except ValidationError as exc:
+            raise RequestValidationError(exc.errors()) from exc
+
+    return await image_service.add_uploaded_image(
+        db, product_id, raw, fields.variant_id, fields.position
+    )
+
+
+@router.patch("/images/{image_id}", response_model=ProductImageOut)
+async def update_image(image_id: int, data: ProductImageUpdate, db: AsyncSession = Depends(get_db)):
+    return await image_service.update_image(db, image_id, data)
+
+
+@router.delete("/images/{image_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_image(image_id: int, db: AsyncSession = Depends(get_db)) -> Response:
+    await image_service.delete_image(db, image_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/translations", response_model=TranslationOut, status_code=status.HTTP_201_CREATED)

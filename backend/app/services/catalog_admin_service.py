@@ -4,7 +4,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.attribute import Attribute
 from app.models.category import Category
 from app.models.product import Product
-from app.models.product_image import ProductImage
 from app.models.translation import Translation
 from app.models.variant import Variant
 from app.schemas.internal import (
@@ -13,7 +12,6 @@ from app.schemas.internal import (
     CategoryCreate,
     CategoryUpdate,
     ProductCreate,
-    ProductImageCreate,
     ProductUpdate,
     TranslationUpsert,
     VariantCreate,
@@ -99,19 +97,6 @@ async def update_variant(db: AsyncSession, variant_id: int, data: VariantUpdate)
     await db.commit()
     await db.refresh(variant)
     return variant
-
-
-async def create_product_image(
-    db: AsyncSession, product_id: int, data: ProductImageCreate
-) -> ProductImage | None:
-    product = await db.get(Product, product_id)
-    if product is None:
-        return None
-    image = ProductImage(product_id=product_id, **data.model_dump())
-    db.add(image)
-    await db.commit()
-    await db.refresh(image)
-    return image
 
 
 async def upsert_translation(db: AsyncSession, data: TranslationUpsert) -> Translation:

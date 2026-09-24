@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models.enums import AttributeValueType, ProductStatus
 
@@ -100,6 +100,19 @@ class ProductImageCreate(BaseModel):
     variant_id: int | None = None
     url: str
     position: int = 0
+
+
+class ProductImageUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    variant_id: int | None = None  # null moves the image back to the product itself
+    position: int | None = Field(default=None, ge=0)
+
+    @model_validator(mode="after")
+    def _position_cannot_be_nulled(self) -> "ProductImageUpdate":
+        if "position" in self.model_fields_set and self.position is None:
+            raise ValueError("position cannot be null")
+        return self
 
 
 class ProductImageOut(BaseModel):
