@@ -90,7 +90,9 @@ async def test_payment_succeeded_marks_order_paid_and_creates_shipment(
     assert response.status_code == 200
 
     refreshed = (
-        await db_session.execute(select(Order).where(Order.id == order.id))
+        await db_session.execute(
+            select(Order).where(Order.id == order.id).execution_options(populate_existing=True)
+        )
     ).scalar_one()
     assert refreshed.status == OrderStatus.paid
 
@@ -109,7 +111,7 @@ async def test_duplicate_webhook_does_not_create_second_shipment(
     await client.post("/webhooks/stripe", content=b"{}", headers={"stripe-signature": "t"})
     await client.post("/webhooks/stripe", content=b"{}", headers={"stripe-signature": "t"})
 
-    stmt = select(Order).where(Order.id == order.id)
+    stmt = select(Order).where(Order.id == order.id).execution_options(populate_existing=True)
     refreshed = (await db_session.execute(stmt)).scalar_one()
     assert refreshed.status == OrderStatus.paid
 

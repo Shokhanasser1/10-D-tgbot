@@ -1,18 +1,15 @@
-from sqlalchemy import select
+from sqlalchemy import select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import NotFoundError
 from app.models.enums import OrderStatus, PaymentStatus, ShipmentStatus
 from app.models.order import Order
+from app.models.payment import Payment
 from app.models.shipment import Shipment
 from app.schemas.orders import OrderDetailOut, OrderItemOut, OrderListItemOut
-
-# Stripe redelivers events. Once an order is past payment (a courier may already hold it), a
-# replayed payment_intent.succeeded must not drag it back to "paid".
-_PAST_PAYMENT = frozenset(
-    {OrderStatus.paid, OrderStatus.processing, OrderStatus.shipped, OrderStatus.delivered}
-)
+from app.services import stock_service
 
 
 async def _get_order_with_payment(db: AsyncSession, order_id: int) -> Order:
@@ -28,16 +25,45 @@ async def _get_order_with_payment(db: AsyncSession, order_id: int) -> Order:
 
 
 async def mark_order_paid(db: AsyncSession, order_id: int) -> None:
-    order = await _get_order_with_payment(db, order_id)
+    """Confirm payment: order -> paid, shipment into the courier pool, stock taken off the shelf.
 
-    if order.status in _PAST_PAYMENT:
+    A single guarded transition from pending_payment. Stripe redelivers events, so a replay, or
+    a late event for an order that has since moved on (a courier holds it, or it was cancelled),
+    matches nothing and changes nothing; in particular stock is never taken twice.
+    """
+    moved = await db.scalar(
+        update(Order)
+        .where(Order.id == order_id, Order.status == OrderStatus.pending_payment)
+        .values(status=OrderStatus.paid)
+        .returning(Order.id)
+        .execution_options(synchronize_session=False)
+    )
+    if moved is None:
+        if await db.scalar(select(Order.id).where(Order.id == order_id)) is None:
+            raise NotFoundError("Order not found")
         return
 
-    order.status = OrderStatus.paid
-    if order.payment is not None:
-        order.payment.status = PaymentStatus.succeeded
-    if order.shipment is None:
-        db.add(Shipment(order_id=order.id, status=ShipmentStatus.processing))
+    await db.execute(
+        update(Payment)
+        .where(Payment.order_id == order_id)
+        .values(status=PaymentStatus.succeeded)
+        .execution_options(synchronize_session=False)
+    )
+    await db.execute(
+        pg_insert(Shipment)
+        .values(order_id=order_id, status=ShipmentStatus.processing)
+        .on_conflict_do_nothing(index_elements=[Shipment.order_id])
+    )
+
+    # The customer has paid, so the sale stands even if the shelf ran out meanwhile (checkout
+    # only checked stock, it did not reserve it). Flag it and let the owner decide.
+    if await stock_service.take(db, order_id):
+        await db.execute(
+            update(Order)
+            .where(Order.id == order_id)
+            .values(stock_shortfall=True)
+            .execution_options(synchronize_session=False)
+        )
 
     await db.commit()
 
@@ -52,11 +78,7 @@ async def mark_order_payment_failed(db: AsyncSession, order_id: int) -> None:
 
 
 async def list_orders_for_user(db: AsyncSession, telegram_id: int) -> list[OrderListItemOut]:
-    stmt = (
-        select(Order)
-        .where(Order.telegram_id == telegram_id)
-        .order_by(Order.placed_at.desc())
-    )
+    stmt = select(Order).where(Order.telegram_id == telegram_id).order_by(Order.placed_at.desc())
     orders = (await db.execute(stmt)).scalars().all()
     return [
         OrderListItemOut(
