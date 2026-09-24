@@ -16,5 +16,11 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
+    // Pinned so tests never depend on a developer's local .env.
+    env: {
+      VITE_API_BASE_URL: 'http://api.test',
+      VITE_STRIPE_PUBLISHABLE_KEY: 'pk_test_unit',
+      VITE_DEV_MOCK_INIT_DATA: 'mock-init-data',
+    },
   },
 })
