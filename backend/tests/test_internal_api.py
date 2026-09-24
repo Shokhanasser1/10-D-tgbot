@@ -181,3 +181,16 @@ async def test_add_image_to_nonexistent_product_returns_404(client: AsyncClient)
         headers=INTERNAL_HEADERS,
     )
     assert response.status_code == 404
+
+
+async def test_non_ascii_internal_token_is_forbidden_not_a_server_error(
+    client: AsyncClient,
+) -> None:
+    # hmac.compare_digest raises TypeError on a non-ASCII str, which used to become a 500.
+    response = await client.post(
+        "/internal/categories",
+        json={"slug": "x"},
+        headers={"X-Internal-Token": "t\u00f6k\u00e9n".encode("latin-1")},
+    )
+
+    assert response.status_code == 403

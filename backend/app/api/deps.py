@@ -1,11 +1,13 @@
 import hmac
 
 from fastapi import Depends, Header, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.core.security import validate_init_data
 from app.db.session import get_db
+from app.models.courier import Courier
 from app.models.telegram_user import TelegramUser
 
 settings = get_settings()
@@ -57,7 +59,23 @@ async def get_current_telegram_user(
 
 
 def verify_internal_token(x_internal_token: str | None = Header(default=None)) -> None:
+    # Compare bytes: hmac.compare_digest raises TypeError for a non-ASCII str, which would
+    # surface as a 500 instead of a 403.
     if not x_internal_token or not hmac.compare_digest(
-        x_internal_token, settings.internal_api_token
+        x_internal_token.encode(), settings.internal_api_token.encode()
     ):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid internal token")
+
+
+async def get_current_courier(
+    user: TelegramUser = Depends(get_current_telegram_user),
+    db: AsyncSession = Depends(get_db),
+) -> Courier:
+    courier = (
+        await db.execute(
+            select(Courier).where(Courier.telegram_id == user.telegram_id, Courier.is_active)
+        )
+    ).scalar_one_or_none()
+    if courier is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a courier")
+    return courier
