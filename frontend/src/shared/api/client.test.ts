@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 
 import { API } from '../../test/mocks/handlers'
 import { server } from '../../test/mocks/server'
-import { ApiError, apiFetch } from './client'
+import { ApiError, apiFetch, buildUrl } from './client'
 
 describe('apiFetch', () => {
   it('sends the Telegram initData as a tma Authorization header', async () => {
@@ -54,5 +54,32 @@ describe('apiFetch', () => {
     server.use(http.delete(`${API}/gone`, () => new HttpResponse(null, { status: 204 })))
 
     await expect(apiFetch('/gone', { method: 'DELETE' })).resolves.toBeUndefined()
+  })
+})
+
+describe('buildUrl', () => {
+  it('keeps the path of an absolute base', () => {
+    expect(buildUrl('http://host/api', '/cart/items', {}, 'http://ignored').toString()).toBe(
+      'http://host/api/cart/items',
+    )
+  })
+
+  // Regression: `new URL('/cart/items', '/api')` would drop "/api". A same-origin base is how
+  // the Docker/nginx deployment reaches the backend.
+  it('resolves a relative same-origin base against the page origin', () => {
+    expect(buildUrl('/api', '/cart/items', {}, 'https://shop.example').toString()).toBe(
+      'https://shop.example/api/cart/items',
+    )
+  })
+
+  it('tolerates a trailing slash on the base and appends params', () => {
+    expect(
+      buildUrl(
+        '/api/',
+        '/catalog/products',
+        { category: 2, skip: undefined },
+        'https://x.io',
+      ).toString(),
+    ).toBe('https://x.io/api/catalog/products?category=2')
   })
 })

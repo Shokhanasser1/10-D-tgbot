@@ -1,0 +1,6 @@
+node_modules/
+dist/
+# Local env files must never be baked into the image (Vite reads .env at build time).
+.env
+.env.*
+!.env.example

@@ -46,7 +46,11 @@ declare global {
   }
 }
 
-const DEV_MOCK_INIT_DATA = import.meta.env.VITE_DEV_MOCK_INIT_DATA as string | undefined
+// Gated on DEV so a production build never contains (or honours) a mock identity, even if
+// VITE_DEV_MOCK_INIT_DATA is present in the build environment.
+const DEV_MOCK_INIT_DATA = import.meta.env.DEV
+  ? (import.meta.env.VITE_DEV_MOCK_INIT_DATA as string | undefined)
+  : undefined
 
 export function getWebApp(): TelegramWebApp | undefined {
   return window.Telegram?.WebApp

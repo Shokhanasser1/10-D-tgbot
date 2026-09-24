@@ -19,15 +19,28 @@ interface ApiFetchOptions {
   params?: Record<string, string | number | undefined>
 }
 
+/**
+ * Joins base and path by string concatenation, not `new URL(path, base)`: the latter drops
+ * the base's own path, so a same-origin base like "/api" would silently be lost.
+ * `origin` resolves a relative base such as "/api" to an absolute URL.
+ */
+export function buildUrl(
+  base: string,
+  path: string,
+  params: ApiFetchOptions['params'] = {},
+  origin: string = window.location.origin,
+): URL {
+  const url = new URL(`${base.replace(/\/$/, '')}${path}`, origin)
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined) url.searchParams.set(key, String(value))
+  }
+  return url
+}
+
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
   const { method = 'GET', body, params } = options
 
-  const url = new URL(path, API_BASE_URL)
-  if (params) {
-    for (const [key, value] of Object.entries(params)) {
-      if (value !== undefined) url.searchParams.set(key, String(value))
-    }
-  }
+  const url = buildUrl(API_BASE_URL, path, params)
 
   const response = await fetch(url.toString(), {
     method,

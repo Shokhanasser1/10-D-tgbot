@@ -1,0 +1,4 @@
+# Shell scripts run inside Linux containers; a CRLF checkout on Windows breaks the shebang.
+*.sh text eol=lf
+Dockerfile text eol=lf
+nginx.conf text eol=lf
