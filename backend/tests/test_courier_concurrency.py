@@ -8,6 +8,7 @@ import asyncio
 from collections.abc import AsyncGenerator, Callable
 
 import pytest
+import stripe
 from httpx import ASGITransport, AsyncClient, Response
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
@@ -20,7 +21,7 @@ from app.models.courier import Courier
 from app.models.enums import OrderStatus, ShipmentStatus
 from app.models.order import Order
 from app.models.shipment import Shipment
-from app.services import courier_state
+from app.services import courier_state, stripe_service
 from tests.courier_factories import (
     INTERNAL_HEADERS,
     add_courier,
@@ -166,4 +167,91 @@ async def test_owner_release_racing_a_pickup_never_errors_and_ends_consistent(
             ShipmentStatus.processing,
             None,
             OrderStatus.paid,
+        )
+
+
+async def _no_refund(payment_intent_id: str, idempotency_key: str, metadata: dict) -> object:
+    raise stripe.APIConnectionError("not under test")
+
+
+async def test_cancel_racing_a_pickup_ends_in_exactly_one_of_them(
+    sessions: SessionFactory, http: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(stripe_service, "create_refund", _no_refund)
+    telegram_id = 850_601
+    courier = await make_courier(sessions, telegram_id)
+
+    for _ in range(15):
+        async with sessions() as session:
+            order, shipment = await add_paid_order(session, customer_id=850_700)
+            shipment.status = ShipmentStatus.assigned
+            shipment.courier_id = courier.id
+            order.status = OrderStatus.processing
+            await session.commit()
+
+        pickup, cancel = await asyncio.gather(
+            http.post(
+                f"/courier/deliveries/{shipment.id}/pickup", headers=tma_headers(telegram_id)
+            ),
+            http.post(
+                f"/internal/orders/{order.id}/cancel",
+                json={"reason": "race"},
+                headers=INTERNAL_HEADERS,
+            ),
+        )
+
+        async with sessions() as session:
+            final = (
+                await session.execute(
+                    select(Shipment.status, Shipment.courier_id).where(Shipment.id == shipment.id)
+                )
+            ).one()
+            order_status = await session.scalar(select(Order.status).where(Order.id == order.id))
+        if cancel.status_code == 200:
+            assert pickup.status_code in (404, 409)
+            assert (final.status, final.courier_id, order_status) == (
+                ShipmentStatus.cancelled,
+                None,
+                OrderStatus.cancelled,
+            )
+        else:
+            assert (cancel.status_code, pickup.status_code) == (409, 200)
+            assert (final.status, order_status) == (ShipmentStatus.shipped, OrderStatus.shipped)
+
+
+async def test_cancel_racing_a_claim_ends_in_exactly_one_of_them(
+    sessions: SessionFactory, http: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(stripe_service, "create_refund", _no_refund)
+    telegram_id = 850_801
+    await make_courier(sessions, telegram_id)
+
+    for _ in range(15):
+        async with sessions() as session:
+            order, shipment = await add_paid_order(session, customer_id=850_900)
+
+        claim_response, cancel = await asyncio.gather(
+            claim(http, shipment.id, telegram_id),
+            http.post(
+                f"/internal/orders/{order.id}/cancel",
+                json={"reason": "race"},
+                headers=INTERNAL_HEADERS,
+            ),
+        )
+
+        async with sessions() as session:
+            final = (
+                await session.execute(
+                    select(Shipment.status, Shipment.courier_id).where(Shipment.id == shipment.id)
+                )
+            ).one()
+            order_status = await session.scalar(select(Order.status).where(Order.id == order.id))
+        # A claim that lands first is simply cancelled on top (still before pickup); a cancel
+        # that lands first leaves the claim nothing to take.
+        assert cancel.status_code == 200
+        assert claim_response.status_code in (200, 409)
+        assert (final.status, final.courier_id, order_status) == (
+            ShipmentStatus.cancelled,
+            None,
+            OrderStatus.cancelled,
         )

@@ -6,9 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import verify_telegram_webhook_secret
 from app.db.session import get_db
 from app.schemas.telegram_update import TelegramUpdate
-from app.services import location_service, order_service, stripe_service
+from app.services import location_service, order_admin_service, order_service, stripe_service
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
+
+# Refunds started from the admin panel report their outcome through these.
+_REFUND_EVENTS = frozenset({"refund.created", "refund.updated", "refund.failed"})
 
 
 @router.post("/stripe")
@@ -24,6 +27,16 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
         ) from exc
 
     event_object = event["data"]["object"]
+
+    if event["type"] in _REFUND_EVENTS:
+        await order_admin_service.apply_refund_event(
+            db,
+            event_object.get("payment_intent"),
+            event_object.get("id"),
+            event_object.get("status"),
+        )
+        return {"status": "ok"}
+
     order_id_raw = event_object.get("metadata", {}).get("order_id")
 
     if order_id_raw is not None:

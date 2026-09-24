@@ -8,6 +8,7 @@ from app.api.routes import (
     internal_admins,
     internal_auth,
     internal_couriers,
+    internal_orders,
     internal_products,
     orders,
     webhooks,
@@ -24,3 +25,4 @@ api_router.include_router(internal_auth.router)
 api_router.include_router(internal_admins.router)
 api_router.include_router(internal_products.router)
 api_router.include_router(internal_couriers.router)
+api_router.include_router(internal_orders.router)
