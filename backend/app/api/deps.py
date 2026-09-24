@@ -79,3 +79,15 @@ async def get_current_courier(
     if courier is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a courier")
     return courier
+
+
+def verify_telegram_webhook_secret(
+    x_telegram_bot_api_secret_token: str | None = Header(default=None),
+) -> None:
+    if not settings.telegram_webhook_secret:
+        # Feature switched off: behave as if the route does not exist.
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    if not x_telegram_bot_api_secret_token or not hmac.compare_digest(
+        x_telegram_bot_api_secret_token.encode(), settings.telegram_webhook_secret.encode()
+    ):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid webhook secret")

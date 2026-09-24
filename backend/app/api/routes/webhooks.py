@@ -1,9 +1,12 @@
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import verify_telegram_webhook_secret
 from app.db.session import get_db
-from app.services import order_service, stripe_service
+from app.schemas.telegram_update import TelegramUpdate
+from app.services import location_service, order_service, stripe_service
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
@@ -30,4 +33,17 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
         elif event["type"] == "payment_intent.payment_failed":
             await order_service.mark_order_payment_failed(db, order_id)
 
+    return {"status": "ok"}
+
+
+@router.post("/telegram", dependencies=[Depends(verify_telegram_webhook_secret)])
+async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db)):
+    try:
+        update = TelegramUpdate.model_validate(await request.json())
+    except (ValueError, ValidationError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Malformed update"
+        ) from exc
+
+    await location_service.handle_update(db, update)
     return {"status": "ok"}

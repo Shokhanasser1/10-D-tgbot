@@ -6,7 +6,10 @@ courier row first serialises a courier's own actions (the concurrent-delivery li
 deadlocking against a courier's own actions.
 """
 
+from datetime import UTC, datetime
+
 from sqlalchemy import delete, exists, func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ForbiddenError
@@ -45,4 +48,30 @@ async def purge_location_if_idle(db: AsyncSession, courier_id: int) -> None:
     )
     await db.execute(
         delete(CourierLocation).where(CourierLocation.courier_id == courier_id, ~still_working)
+    )
+
+
+async def record_location(
+    db: AsyncSession, courier_id: int, latitude: float, longitude: float
+) -> None:
+    """Store the courier's latest position, replacing any previous one (last write wins).
+
+    The timestamp comes from the application clock, not SQL now(): now() is fixed for a whole
+    transaction, and `is_stale` is computed against the same clock.
+    """
+    insert = pg_insert(CourierLocation).values(
+        courier_id=courier_id,
+        latitude=latitude,
+        longitude=longitude,
+        updated_at=datetime.now(UTC),
+    )
+    await db.execute(
+        insert.on_conflict_do_update(
+            index_elements=[CourierLocation.courier_id],
+            set_={
+                "latitude": insert.excluded.latitude,
+                "longitude": insert.excluded.longitude,
+                "updated_at": insert.excluded.updated_at,
+            },
+        )
     )
