@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import { DEFAULT_CURRENCY } from '../../../shared/constants'
 import { EmptyState } from '../../../shared/ui/EmptyState'
 import { PillButton } from '../../../shared/ui/PillButton'
+import { useCan } from '../meContext'
 import { QueryError } from '../../../shared/ui/QueryError'
 import { Skeleton } from '../../../shared/ui/Skeleton'
 import { PRODUCTS_PAGE_SIZE } from '../api'
@@ -27,6 +28,7 @@ export function ProductsScreen() {
   const deferredQ = useDeferredValue(q)
 
   const categories = useAdminCategories()
+  const canEdit = useCan('catalog.edit')
   const query = useAdminProducts({
     q: deferredQ.trim() || undefined,
     status: status || undefined,
@@ -52,9 +54,11 @@ export function ProductsScreen() {
             <Link to="/admin/catalog/categories" className={styles.secondaryLink}>
               {t('admin.catalog.categoriesAndAttributes')}
             </Link>
-            <Link to="/admin/catalog/new" className={styles.primaryLink}>
-              {t('admin.catalog.addProduct')}
-            </Link>
+            {canEdit && (
+              <Link to="/admin/catalog/new" className={styles.primaryLink}>
+                {t('admin.catalog.addProduct')}
+              </Link>
+            )}
           </>
         }
       />

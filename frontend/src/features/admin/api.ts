@@ -1,4 +1,5 @@
 import { type ApiFetchOptions, apiFetch } from '../../shared/api/client'
+import { withConfirmation } from './confirmation'
 import type {
   Admin,
   AdminAttribute,
@@ -17,6 +18,7 @@ import type {
   CourierLocation,
   OrderFilters,
   Page,
+  PasswordReset,
   ProductInput,
   ProductStatus,
   StatsPeriod,
@@ -27,7 +29,7 @@ import type {
 } from './types'
 
 function admin<T>(path: string, options: Omit<ApiFetchOptions, 'admin'> = {}): Promise<T> {
-  return apiFetch<T>(`/internal${path}`, { ...options, admin: true })
+  return withConfirmation(() => apiFetch<T>(`/internal${path}`, { ...options, admin: true }))
 }
 
 // --- identity --------------------------------------------------------------------------------
@@ -36,6 +38,24 @@ export const fetchMe = () => admin<AdminMe>('/me')
 export const loginWithTelegram = (data: TelegramLoginData) =>
   admin<AdminMe>('/auth/telegram', { method: 'POST', body: data })
 export const logout = () => admin<void>('/auth/logout', { method: 'POST' })
+export const loginWithPassword = (body: { login: string; password: string }) =>
+  admin<AdminMe>('/auth/password', { method: 'POST', body })
+/** Unlocks money and admin management for a few minutes. Not retried through the dialog. */
+export const confirmPassword = (password: string) =>
+  apiFetch<void>('/internal/auth/confirm', {
+    method: 'POST',
+    body: { password },
+    admin: true,
+    // Required even inside Telegram: the confirmation cookie also authorises later writes.
+    headers: { 'X-Requested-With': 'admin' },
+  })
+export const changeMyPassword = (body: {
+  login?: string
+  current_password?: string
+  new_password: string
+}) => admin<AdminMe>('/me/password', { method: 'POST', body })
+export const resetAdminPassword = (id: number) =>
+  admin<PasswordReset>(`/admins/${id}/password-reset`, { method: 'POST' })
 
 export const fetchAdmins = () => admin<Admin[]>('/admins')
 export const createAdmin = (body: { telegram_id: number; role: AdminRole; display_name: string }) =>

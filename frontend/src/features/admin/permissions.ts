@@ -1,23 +1,34 @@
-import type { AdminRole } from './types'
+import type { AdminMe, Permission } from './types'
 
-export type AdminSection = 'summary' | 'catalog' | 'orders' | 'couriers' | 'admins'
+export type AdminSection = 'summary' | 'catalog' | 'orders' | 'couriers' | 'admins' | 'profile'
 
-/** Mirrors the API's role checks, only to decide what to show; the API enforces them. */
-const SECTIONS: Record<AdminRole, readonly AdminSection[]> = {
-  owner: ['summary', 'catalog', 'orders', 'couriers', 'admins'],
-  catalog_manager: ['catalog'],
-  dispatcher: ['orders', 'couriers'],
+/** The permission that opens each section. Every admin has a profile. */
+const SECTION_PERMISSION: Record<Exclude<AdminSection, 'profile'>, Permission> = {
+  summary: 'summary.view',
+  catalog: 'catalog.view',
+  orders: 'orders.view',
+  couriers: 'couriers.view',
+  admins: 'admins.manage',
 }
 
-export function sectionsFor(role: AdminRole): readonly AdminSection[] {
-  return SECTIONS[role]
+const ORDER: readonly AdminSection[] = ['summary', 'catalog', 'orders', 'couriers', 'admins']
+
+/** Only decides what to show; the API enforces the same permissions on every call. */
+export function can(me: Pick<AdminMe, 'permissions'>, permission: Permission): boolean {
+  return me.permissions.includes(permission)
 }
 
-export function canOpen(role: AdminRole, section: AdminSection): boolean {
-  return SECTIONS[role].includes(section)
+export function sectionsFor(me: Pick<AdminMe, 'permissions'>): readonly AdminSection[] {
+  return ORDER.filter((section) =>
+    can(me, SECTION_PERMISSION[section as keyof typeof SECTION_PERMISSION]),
+  )
 }
 
-/** Where a role lands when it opens /admin. */
-export function homeFor(role: AdminRole): AdminSection {
-  return SECTIONS[role][0]
+export function canOpen(me: Pick<AdminMe, 'permissions'>, section: AdminSection): boolean {
+  return section === 'profile' || sectionsFor(me).includes(section)
+}
+
+/** Where an admin lands when they open /admin. */
+export function homeFor(me: Pick<AdminMe, 'permissions'>): AdminSection {
+  return sectionsFor(me)[0] ?? 'profile'
 }

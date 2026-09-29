@@ -180,12 +180,16 @@
       "catalog": "Catalog",
       "orders": "Orders",
       "couriers": "Couriers",
-      "admins": "Admins"
+      "admins": "Admins",
+      "profile": "Profile"
     },
     "roles": {
       "owner": "Owner",
       "catalog_manager": "Catalog manager",
-      "dispatcher": "Dispatcher"
+      "dispatcher": "Dispatcher",
+      "manager": "Manager",
+      "accountant": "Accountant",
+      "viewer": "Viewer"
     },
     "common": {
       "save": "Save",
@@ -199,7 +203,8 @@
       "next": "Next",
       "range": "{{from}}–{{to}} of {{total}}",
       "telegramId": "Telegram ID",
-      "telegramIdHint": "A number. The person can get it from @userinfobot."
+      "telegramIdHint": "A number. The person can get it from @userinfobot.",
+      "readOnly": "View only: your role cannot change this."
     },
     "auth": {
       "title": "Admin sign-in",
@@ -211,7 +216,11 @@
       "noAccessTitle": "No access",
       "noAccess": "This Telegram account is not an admin, or it was deactivated. Ask an owner to add you.",
       "otherAccount": "Sign in with another account",
-      "logout": "Sign out"
+      "logout": "Sign out",
+      "wrongCredentials": "Wrong login or password.",
+      "signIn": "Sign in",
+      "orTelegram": "or",
+      "noPasswordYet": "No password yet? Sign in through Telegram once and set one in your profile, or ask the owner to reset it."
     },
     "errors": {
       "invalidState": "This can't be done any more: the order or delivery has moved on.",
@@ -364,7 +373,9 @@
       "cashPending": "Cash not collected yet",
       "cashCollected": "Cash collected by the courier",
       "manualRefund": "Refund {{total}} by hand in the Click/Payme cabinet. Payment ID: {{charge}}. Telegram charge: {{telegram}}.",
-      "confirmRefund": "Refund done"
+      "confirmRefund": "Refund done",
+      "cancelOnly": "Cancel order",
+      "cancelMessageUnpaid": "No money was taken for this order, so there is nothing to refund. The items return to stock. This can't be undone."
     },
     "couriers": {
       "tabs": {
@@ -406,7 +417,51 @@
       "you": "you",
       "inactive": "Deactivated",
       "deactivateTitle": "Deactivate {{name}}?",
-      "deactivateMessage": "They lose access to the admin panel at once."
+      "deactivateMessage": "They lose access to the admin panel at once.",
+      "resetPassword": "Reset password",
+      "resetDone": "New temporary password for {{name}}",
+      "resetOnce": "It is shown only now. Pass it on privately; they must change it when they sign in.",
+      "temporaryPassword": "Temporary password",
+      "copy": "Copy",
+      "done": "Done",
+      "hasPassword": "has a password",
+      "noPassword": "no password"
+    },
+    "roleHints": {
+      "owner": "everything, including admins and refunds",
+      "manager": "everything except admins and manual refunds",
+      "catalog_manager": "products, prices, stock, photos",
+      "dispatcher": "orders and couriers; cancels only orders not paid yet (cash)",
+      "accountant": "revenue, orders, cancellations with refund, refunds",
+      "viewer": "sees summary, catalog, orders and couriers; changes nothing"
+    },
+    "password": {
+      "notSet": "Set a password in your profile first.",
+      "confirmRequired": "Confirm this action with your password.",
+      "changeRequired": "Set a new password in your profile first.",
+      "wrongCurrent": "The current password is wrong.",
+      "loginTaken": "This login is taken.",
+      "selfReset": "Change your own password in your profile.",
+      "confirmTitle": "Confirm with your password",
+      "confirmMessage": "This action moves money or changes admins. Enter your password; it stays confirmed for 15 minutes.",
+      "password": "Password",
+      "confirm": "Confirm",
+      "wrongPassword": "Wrong password.",
+      "profileTitle": "Profile",
+      "mustChange": "Your password was reset. Choose a new one to continue.",
+      "who": "{{name}}, {{role}}",
+      "hasPassword": "You can sign in with your login and password.",
+      "noPassword": "You have no password yet. Set one to sign in from any browser and to confirm refunds and admin changes.",
+      "login": "Login",
+      "loginHint": "3–32 characters: latin letters, digits, _ . -",
+      "current": "Current password",
+      "new": "New password",
+      "newHint": "At least 10 characters.",
+      "repeat": "Repeat the new password",
+      "tooShort": "The password must be at least 10 characters.",
+      "mismatch": "The passwords do not match.",
+      "saved": "Saved. Other sessions of yours have been signed out.",
+      "save": "Save"
     }
   }
 }

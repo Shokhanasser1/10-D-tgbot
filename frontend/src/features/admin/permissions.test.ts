@@ -1,24 +1,47 @@
 import { describe, expect, it } from 'vitest'
 
-import { canOpen, homeFor, sectionsFor } from './permissions'
+import { adminMe } from '../../test/adminFixtures'
+import { can, canOpen, homeFor, sectionsFor } from './permissions'
 
 describe('permissions', () => {
-  it('mirrors the API role table', () => {
-    expect(sectionsFor('owner')).toEqual(['summary', 'catalog', 'orders', 'couriers', 'admins'])
-    expect(sectionsFor('catalog_manager')).toEqual(['catalog'])
-    expect(sectionsFor('dispatcher')).toEqual(['orders', 'couriers'])
+  it('shows each role the sections its permissions open', () => {
+    expect(sectionsFor(adminMe('owner'))).toEqual([
+      'summary',
+      'catalog',
+      'orders',
+      'couriers',
+      'admins',
+    ])
+    expect(sectionsFor(adminMe('manager'))).toEqual(['summary', 'catalog', 'orders', 'couriers'])
+    expect(sectionsFor(adminMe('catalog_manager'))).toEqual(['catalog'])
+    expect(sectionsFor(adminMe('dispatcher'))).toEqual(['orders', 'couriers'])
+    expect(sectionsFor(adminMe('accountant'))).toEqual(['summary', 'orders'])
+    expect(sectionsFor(adminMe('viewer'))).toEqual(['summary', 'catalog', 'orders', 'couriers'])
   })
 
-  it('keeps revenue and admin management for owners', () => {
-    for (const role of ['catalog_manager', 'dispatcher'] as const) {
-      expect(canOpen(role, 'summary')).toBe(false)
-      expect(canOpen(role, 'admins')).toBe(false)
+  it('keeps admin management for owners and lets everyone open their profile', () => {
+    for (const role of [
+      'manager',
+      'catalog_manager',
+      'dispatcher',
+      'accountant',
+      'viewer',
+    ] as const) {
+      expect(canOpen(adminMe(role), 'admins')).toBe(false)
+      expect(canOpen(adminMe(role), 'profile')).toBe(true)
     }
   })
 
-  it('lands each role on its first section', () => {
-    expect(homeFor('owner')).toBe('summary')
-    expect(homeFor('catalog_manager')).toBe('catalog')
-    expect(homeFor('dispatcher')).toBe('orders')
+  it('gives a viewer nothing to change', () => {
+    const viewer = adminMe('viewer')
+    for (const permission of ['catalog.edit', 'couriers.manage', 'orders.cancel_unpaid'] as const) {
+      expect(can(viewer, permission)).toBe(false)
+    }
+  })
+
+  it('lands each role on its first section, or the profile when it has none', () => {
+    expect(homeFor(adminMe('owner'))).toBe('summary')
+    expect(homeFor(adminMe('dispatcher'))).toBe('orders')
+    expect(homeFor({ permissions: [] })).toBe('profile')
   })
 })

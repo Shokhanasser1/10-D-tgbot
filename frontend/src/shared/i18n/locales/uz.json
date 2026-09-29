@@ -180,12 +180,16 @@
       "catalog": "Katalog",
       "orders": "Buyurtmalar",
       "couriers": "Kuryerlar",
-      "admins": "Adminlar"
+      "admins": "Adminlar",
+      "profile": "Profil"
     },
     "roles": {
       "owner": "Egasi",
       "catalog_manager": "Katalog menejeri",
-      "dispatcher": "Dispetcher"
+      "dispatcher": "Dispetcher",
+      "manager": "Boshqaruvchi",
+      "accountant": "Buxgalter",
+      "viewer": "Kuzatuvchi"
     },
     "common": {
       "save": "Saqlash",
@@ -199,7 +203,8 @@
       "next": "Keyingi",
       "range": "{{total}} tadan {{from}}–{{to}}",
       "telegramId": "Telegram ID",
-      "telegramIdHint": "Raqam. Uni @userinfobot orqali bilish mumkin."
+      "telegramIdHint": "Raqam. Uni @userinfobot orqali bilish mumkin.",
+      "readOnly": "Faqat ko'rish: rolingiz buni o'zgartira olmaydi."
     },
     "auth": {
       "title": "Admin panelga kirish",
@@ -211,7 +216,11 @@
       "noAccessTitle": "Ruxsat yo'q",
       "noAccess": "Bu Telegram akkaunt admin emas yoki o'chirib qo'yilgan. Egasidan sizni qo'shishini so'rang.",
       "otherAccount": "Boshqa akkaunt bilan kirish",
-      "logout": "Chiqish"
+      "logout": "Chiqish",
+      "wrongCredentials": "Login yoki parol noto'g'ri.",
+      "signIn": "Kirish",
+      "orTelegram": "yoki",
+      "noPasswordYet": "Parol yo'qmi? Bir marta Telegram orqali kiring va profilda parol o'rnating yoki egadan parolni tiklashni so'rang."
     },
     "errors": {
       "invalidState": "Buni endi qilib bo'lmaydi: buyurtma yoki yetkazish boshqa holatga o'tgan.",
@@ -364,7 +373,9 @@
       "cashPending": "Naqd pul hali olinmagan",
       "cashCollected": "Kuryer naqd pulni oldi",
       "manualRefund": "{{total}} ni Click/Payme kabinetida qo'lda qaytaring. To'lov ID: {{charge}}. Telegram to'lovi: {{telegram}}.",
-      "confirmRefund": "Qaytarildi"
+      "confirmRefund": "Qaytarildi",
+      "cancelOnly": "Buyurtmani bekor qilish",
+      "cancelMessageUnpaid": "Bu buyurtma uchun hali pul olinmagan, qaytaradigan narsa yo'q. Mahsulotlar omborga qaytadi. Bu amalni qaytarib bo'lmaydi."
     },
     "couriers": {
       "tabs": {
@@ -406,7 +417,51 @@
       "you": "siz",
       "inactive": "O'chirilgan",
       "deactivateTitle": "{{name}} o'chirib qo'yilsinmi?",
-      "deactivateMessage": "U darhol admin panelga kira olmaydi."
+      "deactivateMessage": "U darhol admin panelga kira olmaydi.",
+      "resetPassword": "Parolni tiklash",
+      "resetDone": "{{name}} uchun yangi vaqtinchalik parol",
+      "resetOnce": "U faqat hozir ko'rsatiladi. Shaxsan yetkazing; kirishda uni albatta o'zgartirish kerak.",
+      "temporaryPassword": "Vaqtinchalik parol",
+      "copy": "Nusxalash",
+      "done": "Tayyor",
+      "hasPassword": "parol bor",
+      "noPassword": "parolsiz"
+    },
+    "roleHints": {
+      "owner": "hammasi, adminlar va qaytarishlar ham",
+      "manager": "adminlar va qo'lda qaytarishdan tashqari hammasi",
+      "catalog_manager": "mahsulotlar, narxlar, qoldiqlar, rasmlar",
+      "dispatcher": "buyurtmalar va kuryerlar; faqat hali to'lanmaganlarini bekor qiladi (naqd)",
+      "accountant": "tushum, buyurtmalar, qaytarish bilan bekor qilish, qaytarishlar",
+      "viewer": "hisobot, katalog, buyurtmalar va kuryerlarni ko'radi; hech narsani o'zgartirmaydi"
+    },
+    "password": {
+      "notSet": "Avval profilda parol o'rnating.",
+      "confirmRequired": "Amalni parol bilan tasdiqlang.",
+      "changeRequired": "Avval profilda yangi parol o'rnating.",
+      "wrongCurrent": "Joriy parol noto'g'ri.",
+      "loginTaken": "Bu login band.",
+      "selfReset": "O'z parolingizni profilda o'zgartiring.",
+      "confirmTitle": "Parol bilan tasdiqlang",
+      "confirmMessage": "Bu amal pul yoki adminlarga tegishli. Parolni kiriting — tasdiq 15 daqiqa amal qiladi.",
+      "password": "Parol",
+      "confirm": "Tasdiqlash",
+      "wrongPassword": "Parol noto'g'ri.",
+      "profileTitle": "Profil",
+      "mustChange": "Parolingiz tiklandi. Davom etish uchun yangisini o'rnating.",
+      "who": "{{name}}, {{role}}",
+      "hasPassword": "Login va parol bilan kirishingiz mumkin.",
+      "noPassword": "Hali parol yo'q. Istalgan brauzerdan kirish va qaytarishlarni tasdiqlash uchun parol o'rnating.",
+      "login": "Login",
+      "loginHint": "3–32 belgi: lotin harflari, raqamlar, _ . -",
+      "current": "Joriy parol",
+      "new": "Yangi parol",
+      "newHint": "Kamida 10 belgi.",
+      "repeat": "Yangi parolni takrorlang",
+      "tooShort": "Parol kamida 10 belgidan iborat bo'lishi kerak.",
+      "mismatch": "Parollar mos kelmadi.",
+      "saved": "Saqlandi. Boshqa seanslaringiz yakunlandi.",
+      "save": "Saqlash"
     }
   }
 }

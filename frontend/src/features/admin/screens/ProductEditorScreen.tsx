@@ -20,6 +20,7 @@ import {
 } from '../hooks'
 import type { ProductInput } from '../types'
 import layout from './ProductEditorScreen.module.css'
+import { EditGate } from '../components/EditGate'
 
 function BackLink() {
   const { t } = useTranslation()
@@ -133,5 +134,9 @@ function ExistingProduct({ productId }: { productId: number }) {
 }
 
 export function ProductEditorScreen({ productId }: { productId: number | null }) {
-  return productId === null ? <NewProduct /> : <ExistingProduct productId={productId} />
+  return (
+    <EditGate permission="catalog.edit">
+      {productId === null ? <NewProduct /> : <ExistingProduct productId={productId} />}
+    </EditGate>
+  )
 }

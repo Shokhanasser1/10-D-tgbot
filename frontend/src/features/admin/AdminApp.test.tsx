@@ -39,7 +39,14 @@ describe('AdminApp', () => {
     stubAdminBackend('owner')
     renderAdmin()
 
-    expect(await navLinks()).toEqual(['Summary', 'Catalog', 'Orders', 'Couriers', 'Admins'])
+    expect(await navLinks()).toEqual([
+      'Summary',
+      'Catalog',
+      'Orders',
+      'Couriers',
+      'Admins',
+      'Profile',
+    ])
     expect(await screen.findByRole('heading', { name: 'Summary' })).toBeInTheDocument()
     expect(screen.getByText('Dilnoza')).toBeInTheDocument()
     expect(screen.getByText('Owner')).toBeInTheDocument()
@@ -49,7 +56,7 @@ describe('AdminApp', () => {
     stubAdminBackend('catalog_manager')
     renderAdmin()
 
-    expect(await navLinks()).toEqual(['Catalog'])
+    expect(await navLinks()).toEqual(['Catalog', 'Profile'])
     expect(await screen.findByRole('heading', { name: 'Catalog' })).toBeInTheDocument()
   })
 
@@ -57,7 +64,7 @@ describe('AdminApp', () => {
     stubAdminBackend('dispatcher')
     renderAdmin()
 
-    expect(await navLinks()).toEqual(['Orders', 'Couriers'])
+    expect(await navLinks()).toEqual(['Orders', 'Couriers', 'Profile'])
     expect(await screen.findByRole('heading', { name: 'Orders' })).toBeInTheDocument()
   })
 

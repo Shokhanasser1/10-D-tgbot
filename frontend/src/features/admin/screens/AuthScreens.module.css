@@ -34,3 +34,31 @@
   text-decoration: underline;
   cursor: pointer;
 }
+
+.profile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 520px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+  text-align: left;
+}
+
+.divider {
+  width: 100%;
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}

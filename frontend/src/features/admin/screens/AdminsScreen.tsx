@@ -5,15 +5,22 @@ import { Card } from '../../../shared/ui/Card'
 import { PillButton } from '../../../shared/ui/PillButton'
 import { QueryError } from '../../../shared/ui/QueryError'
 import { Skeleton } from '../../../shared/ui/Skeleton'
-import { createAdmin, updateAdmin } from '../api'
+import { createAdmin, resetAdminPassword, updateAdmin } from '../api'
 import { Badge, ConfirmDialog, ErrorNote, Field, PageHeader } from '../components/ui'
 import { adminErrorKey } from '../errors'
 import { useAdmins, useAdminsMutation } from '../hooks'
-import type { Admin, AdminRole } from '../types'
+import type { Admin, AdminRole, PasswordReset } from '../types'
 import { inputClass } from '../components/inputClass'
 import styles from './CouriersScreen.module.css'
 
-const ROLES: AdminRole[] = ['owner', 'catalog_manager', 'dispatcher']
+const ROLES: AdminRole[] = [
+  'owner',
+  'manager',
+  'catalog_manager',
+  'dispatcher',
+  'accountant',
+  'viewer',
+]
 
 function RoleSelect({
   value,
@@ -99,7 +106,13 @@ function AddAdminForm() {
           )}
         </Field>
       </div>
-      <p className={styles.muted}>{t('admin.admins.rolesHint')}</p>
+      <ul className={styles.roleHints}>
+        {ROLES.map((role) => (
+          <li key={role}>
+            <strong>{t(`admin.roles.${role}`)}</strong> — {t(`admin.roleHints.${role}`)}
+          </li>
+        ))}
+      </ul>
       <ErrorNote message={add.error ? t(adminErrorKey(add.error)) : null} />
       <div className={styles.formActions}>
         <PillButton type="submit" disabled={add.isPending}>
@@ -118,6 +131,8 @@ export function AdminsScreen({ currentTelegramId }: { currentTelegramId: number 
     ({ id, ...body }: { id: number } & Partial<Pick<Admin, 'role' | 'is_active'>>) =>
       updateAdmin(id, body),
   )
+  const reset = useAdminsMutation((id: number) => resetAdminPassword(id))
+  const [issued, setIssued] = useState<(PasswordReset & { name: string }) | null>(null)
 
   return (
     <div className={styles.screen}>
@@ -128,6 +143,31 @@ export function AdminsScreen({ currentTelegramId }: { currentTelegramId: number 
       {query.isError && !query.data && <QueryError onRetry={() => query.refetch()} />}
       {query.isLoading && <Skeleton height={160} />}
       <ErrorNote message={change.error && !toDeactivate ? t(adminErrorKey(change.error)) : null} />
+      <ErrorNote message={reset.error ? t(adminErrorKey(reset.error)) : null} />
+      {issued && (
+        <Card className={styles.issued} role="status">
+          <p className={styles.name}>{t('admin.admins.resetDone', { name: issued.name })}</p>
+          <p className={styles.muted}>{t('admin.admins.resetOnce')}</p>
+          <p>
+            {t('admin.password.login')}: <code>{issued.login}</code>
+          </p>
+          <p>
+            {t('admin.admins.temporaryPassword')}: <code>{issued.temporary_password}</code>
+          </p>
+          <div className={styles.formActions}>
+            <PillButton
+              variant="secondary"
+              className={styles.small}
+              onClick={() => void navigator.clipboard?.writeText(issued.temporary_password)}
+            >
+              {t('admin.admins.copy')}
+            </PillButton>
+            <PillButton className={styles.small} onClick={() => setIssued(null)}>
+              {t('admin.admins.done')}
+            </PillButton>
+          </div>
+        </Card>
+      )}
       <ul className={styles.list}>
         {query.data?.map((admin) => {
           const isMe = admin.telegram_id === currentTelegramId
@@ -138,7 +178,14 @@ export function AdminsScreen({ currentTelegramId }: { currentTelegramId: number 
                   {admin.display_name}
                   {isMe && ` (${t('admin.admins.you')})`}
                 </span>
-                <span className={styles.muted}>{admin.telegram_id}</span>
+                <span className={styles.muted}>
+                  {admin.telegram_id}
+                  {admin.login && ` · ${admin.login}`}
+                  {' · '}
+                  {admin.has_password
+                    ? t('admin.admins.hasPassword')
+                    : t('admin.admins.noPassword')}
+                </span>
               </span>
               {!admin.is_active && <Badge tone="warning">{t('admin.admins.inactive')}</Badge>}
               <div>
@@ -149,6 +196,20 @@ export function AdminsScreen({ currentTelegramId }: { currentTelegramId: number 
                   onChange={(role) => change.mutate({ id: admin.id, role })}
                 />
               </div>
+              {admin.is_active && !isMe && (
+                <PillButton
+                  variant="secondary"
+                  className={styles.small}
+                  disabled={reset.isPending}
+                  onClick={() =>
+                    reset.mutate(admin.id, {
+                      onSuccess: (result) => setIssued({ ...result, name: admin.display_name }),
+                    })
+                  }
+                >
+                  {t('admin.admins.resetPassword')}
+                </PillButton>
+              )}
               {admin.is_active ? (
                 <PillButton
                   variant="secondary"

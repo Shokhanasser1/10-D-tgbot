@@ -20,6 +20,7 @@ import {
 import type { AdminCourier, AdminShipment } from '../types'
 import { inputClass } from '../components/inputClass'
 import styles from './CouriersScreen.module.css'
+import { EditGate } from '../components/EditGate'
 
 const CouriersMap = lazy(() =>
   import('../components/CouriersMap').then((module) => ({ default: module.CouriersMap })),
@@ -290,8 +291,10 @@ export function CouriersScreen() {
           </button>
         ))}
       </div>
-      {tab === 'couriers' && <CouriersTab />}
-      {tab === 'deliveries' && <DeliveriesTab />}
+      <EditGate permission="couriers.manage">
+        {tab === 'couriers' && <CouriersTab />}
+        {tab === 'deliveries' && <DeliveriesTab />}
+      </EditGate>
       {tab === 'map' && <MapTab />}
     </div>
   )

@@ -11,6 +11,7 @@ import { Skeleton } from '../../../shared/ui/Skeleton'
 import { cancelOrder, confirmManualRefund, retryRefund } from '../api'
 import { Badge, ConfirmDialog, ErrorNote, PageHeader } from '../components/ui'
 import { adminErrorKey } from '../errors'
+import { useCan } from '../meContext'
 import { formatDateTime, formatMoney } from '../format'
 import { useAdminOrder, useOrderAction } from '../hooks'
 import type { AdminOrder, RefundStatus } from '../types'
@@ -56,6 +57,9 @@ export function OrderDetailScreen() {
   const cancel = useOrderAction((reason: string) => cancelOrder(orderId, reason))
   const refund = useOrderAction(() => retryRefund(orderId))
   const confirmRefund = useOrderAction(() => confirmManualRefund(orderId))
+  const canCancelPaid = useCan('orders.cancel_paid')
+  const canCancelUnpaid = useCan('orders.cancel_unpaid')
+  const canRefund = useCan('refunds.manage')
 
   const order = query.data
   if (query.isError && !order) return <QueryError onRetry={() => query.refetch()} />
@@ -70,6 +74,9 @@ export function OrderDetailScreen() {
   const customerName =
     [order.customer.first_name, order.customer.last_name].filter(Boolean).join(' ') || '—'
   const refundStatus = order.payment?.refund_status ?? null
+  // Cancelling gives money back only if it was taken (cash is collected on delivery).
+  const moneyTaken = order.payment?.status === 'succeeded' && order.payment.method !== 'cash'
+  const mayCancel = moneyTaken ? canCancelPaid : canCancelUnpaid
 
   return (
     <div className={styles.screen}>
@@ -189,7 +196,7 @@ export function OrderDetailScreen() {
         </p>
       )}
       <div className={styles.actions}>
-        {refundStatus === 'manual_required' && (
+        {refundStatus === 'manual_required' && canRefund && (
           <PillButton
             disabled={confirmRefund.isPending}
             onClick={() => confirmRefund.mutate(undefined)}
@@ -197,19 +204,19 @@ export function OrderDetailScreen() {
             {t('admin.orders.confirmRefund')}
           </PillButton>
         )}
-        {refundStatus === 'failed' && (
+        {refundStatus === 'failed' && canRefund && (
           <PillButton disabled={refund.isPending} onClick={() => refund.mutate(undefined)}>
             {t('admin.orders.retryRefund')}
           </PillButton>
         )}
-        {(order.status === 'paid' || order.status === 'processing') && (
+        {(order.status === 'paid' || order.status === 'processing') && mayCancel && (
           <PillButton
             variant="secondary"
             className={styles.danger}
             disabled={!order.can_cancel}
             onClick={() => setConfirming(true)}
           >
-            {t('admin.orders.cancel')}
+            {moneyTaken ? t('admin.orders.cancel') : t('admin.orders.cancelOnly')}
           </PillButton>
         )}
       </div>
@@ -222,7 +229,11 @@ export function OrderDetailScreen() {
       <ConfirmDialog
         open={confirming}
         title={t('admin.orders.cancelTitle', { id: order.id })}
-        message={t('admin.orders.cancelMessage', { total: money(order.total) })}
+        message={
+          moneyTaken
+            ? t('admin.orders.cancelMessage', { total: money(order.total) })
+            : t('admin.orders.cancelMessageUnpaid')
+        }
         inputLabel={t('admin.orders.reason')}
         confirmLabel={t('admin.orders.cancelConfirm')}
         busy={cancel.isPending}

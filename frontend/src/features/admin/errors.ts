@@ -5,6 +5,12 @@ const KEY_BY_CODE: Record<string, string> = {
   last_owner: 'admin.errors.lastOwner',
   self_deactivation: 'admin.errors.selfDeactivation',
   already_exists: 'admin.errors.alreadyExists',
+  password_not_set: 'admin.password.notSet',
+  password_confirmation_required: 'admin.password.confirmRequired',
+  password_change_required: 'admin.password.changeRequired',
+  wrong_password: 'admin.password.wrongCurrent',
+  login_taken: 'admin.password.loginTaken',
+  self_reset: 'admin.password.selfReset',
 }
 
 function codeOf(detail: unknown): string | undefined {

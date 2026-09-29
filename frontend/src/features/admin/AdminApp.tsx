@@ -5,13 +5,16 @@ import { Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { QueryError } from '../../shared/ui/QueryError'
 import { Skeleton } from '../../shared/ui/Skeleton'
 import { AdminLayout } from './components/AdminLayout'
+import { PasswordConfirmationHost } from './components/PasswordConfirmationHost'
 import { isStatus } from './errors'
+import { AdminMeProvider } from './meContext'
 import { adminKeys, useAdminMe } from './hooks'
 import { canOpen, homeFor } from './permissions'
 import { AdminsScreen } from './screens/AdminsScreen'
 import { LoginScreen, NoAccessScreen } from './screens/AuthScreens'
 import { CategoriesScreen } from './screens/CategoriesScreen'
 import { CouriersScreen } from './screens/CouriersScreen'
+import { ProfileScreen } from './screens/ProfileScreen'
 import { OrderDetailScreen } from './screens/OrderDetailScreen'
 import { OrdersScreen } from './screens/OrdersScreen'
 import { ProductEditorScreen } from './screens/ProductEditorScreen'
@@ -62,34 +65,45 @@ export function AdminApp() {
   if (meQuery.isError || !meQuery.data) return <QueryError onRetry={() => meQuery.refetch()} />
 
   const me = meQuery.data
-  const { role } = me
-  const home = <Navigate to={`/admin/${homeFor(role)}`} replace />
+  // After an owner's reset nothing else works until a new password is set.
+  if (me.must_change_password) {
+    return (
+      <AdminLayout me={me}>
+        <ProfileScreen me={me} forced />
+      </AdminLayout>
+    )
+  }
+  const home = <Navigate to={`/admin/${homeFor(me)}`} replace />
 
   return (
-    <AdminLayout me={me}>
-      <Routes>
-        <Route index element={home} />
-        {canOpen(role, 'summary') && <Route path="summary" element={<SummaryScreen />} />}
-        {canOpen(role, 'catalog') && (
-          <>
-            <Route path="catalog" element={<ProductsScreen />} />
-            <Route path="catalog/new" element={<ProductEditorScreen productId={null} />} />
-            <Route path="catalog/products/:productId" element={<ProductEditorRoute />} />
-            <Route path="catalog/categories" element={<CategoriesScreen />} />
-          </>
-        )}
-        {canOpen(role, 'orders') && (
-          <>
-            <Route path="orders" element={<OrdersScreen />} />
-            <Route path="orders/:orderId" element={<OrderDetailScreen />} />
-          </>
-        )}
-        {canOpen(role, 'couriers') && <Route path="couriers" element={<CouriersScreen />} />}
-        {canOpen(role, 'admins') && (
-          <Route path="admins" element={<AdminsScreen currentTelegramId={me.telegram_id} />} />
-        )}
-        <Route path="*" element={home} />
-      </Routes>
-    </AdminLayout>
+    <AdminMeProvider value={me}>
+      <AdminLayout me={me}>
+        <PasswordConfirmationHost me={me} />
+        <Routes>
+          <Route index element={home} />
+          {canOpen(me, 'summary') && <Route path="summary" element={<SummaryScreen />} />}
+          {canOpen(me, 'catalog') && (
+            <>
+              <Route path="catalog" element={<ProductsScreen />} />
+              <Route path="catalog/new" element={<ProductEditorScreen productId={null} />} />
+              <Route path="catalog/products/:productId" element={<ProductEditorRoute />} />
+              <Route path="catalog/categories" element={<CategoriesScreen />} />
+            </>
+          )}
+          {canOpen(me, 'orders') && (
+            <>
+              <Route path="orders" element={<OrdersScreen />} />
+              <Route path="orders/:orderId" element={<OrderDetailScreen />} />
+            </>
+          )}
+          {canOpen(me, 'couriers') && <Route path="couriers" element={<CouriersScreen />} />}
+          {canOpen(me, 'admins') && (
+            <Route path="admins" element={<AdminsScreen currentTelegramId={me.telegram_id} />} />
+          )}
+          <Route path="profile" element={<ProfileScreen me={me} />} />
+          <Route path="*" element={home} />
+        </Routes>
+      </AdminLayout>
+    </AdminMeProvider>
   )
 }

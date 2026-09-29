@@ -37,6 +37,22 @@ export function useLogin() {
   })
 }
 
+export function usePasswordLogin() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: api.loginWithPassword,
+    onSuccess: (me) => queryClient.setQueryData(adminKeys.me, me),
+  })
+}
+
+export function useChangePassword() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: api.changeMyPassword,
+    onSuccess: (me) => queryClient.setQueryData(adminKeys.me, me),
+  })
+}
+
 export function useLogout() {
   const queryClient = useQueryClient()
   return useMutation({

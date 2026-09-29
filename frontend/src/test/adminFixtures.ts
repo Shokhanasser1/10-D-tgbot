@@ -10,12 +10,52 @@ import type {
   AdminProductListItem,
   AdminRole,
   AdminShipment,
+  Permission,
   CourierLocation,
   Summary,
 } from '../features/admin/types'
 
-export function adminMe(role: AdminRole = 'owner'): AdminMe {
-  return { telegram_id: 500, display_name: 'Dilnoza', role }
+/** A copy of the API's role table (backend app/core/permissions.py), for tests only. */
+export const PERMISSIONS_BY_ROLE: Record<AdminRole, Permission[]> = {
+  owner: [
+    'summary.view',
+    'catalog.view',
+    'catalog.edit',
+    'orders.view',
+    'orders.cancel_unpaid',
+    'orders.cancel_paid',
+    'refunds.manage',
+    'couriers.view',
+    'couriers.manage',
+    'admins.manage',
+  ],
+  manager: [
+    'summary.view',
+    'catalog.view',
+    'catalog.edit',
+    'orders.view',
+    'orders.cancel_unpaid',
+    'orders.cancel_paid',
+    'couriers.view',
+    'couriers.manage',
+  ],
+  catalog_manager: ['catalog.view', 'catalog.edit'],
+  dispatcher: ['orders.view', 'orders.cancel_unpaid', 'couriers.view', 'couriers.manage'],
+  accountant: ['summary.view', 'orders.view', 'orders.cancel_paid', 'refunds.manage'],
+  viewer: ['summary.view', 'catalog.view', 'orders.view', 'couriers.view'],
+}
+
+export function adminMe(role: AdminRole = 'owner', overrides: Partial<AdminMe> = {}): AdminMe {
+  return {
+    telegram_id: 500,
+    display_name: 'Dilnoza',
+    role,
+    permissions: PERMISSIONS_BY_ROLE[role],
+    login: 'dilnoza',
+    has_password: true,
+    must_change_password: false,
+    ...overrides,
+  }
 }
 
 export const adminCategories: AdminCategory[] = [

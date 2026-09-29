@@ -5,6 +5,7 @@ import {
   type LucideIcon,
   Package,
   Truck,
+  UserCog,
   Users,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -24,6 +25,7 @@ const ICONS: Record<AdminSection, LucideIcon> = {
   orders: ClipboardList,
   couriers: Truck,
   admins: Users,
+  profile: UserCog,
 }
 
 interface AdminLayoutProps {
@@ -40,7 +42,7 @@ export function AdminLayout({ me, children }: AdminLayoutProps) {
       <aside className={styles.sidebar}>
         <div className={styles.brand}>{t('admin.title')}</div>
         <nav aria-label={t('admin.title')} className={styles.nav}>
-          {sectionsFor(me.role).map((section) => {
+          {[...sectionsFor(me), 'profile' as const].map((section) => {
             const Icon = ICONS[section]
             return (
               <NavLink

@@ -1,13 +1,38 @@
 import type { OrderStatus } from '../orders/types'
 import type { DeliveryAddress } from '../../shared/types'
 
-export type AdminRole = 'owner' | 'catalog_manager' | 'dispatcher'
+export type AdminRole =
+  'owner' | 'manager' | 'catalog_manager' | 'dispatcher' | 'accountant' | 'viewer'
+
+export type Permission =
+  | 'summary.view'
+  | 'catalog.view'
+  | 'catalog.edit'
+  | 'orders.view'
+  | 'orders.cancel_unpaid'
+  | 'orders.cancel_paid'
+  | 'refunds.manage'
+  | 'couriers.view'
+  | 'couriers.manage'
+  | 'admins.manage'
 
 export interface AdminMe {
   /** Null only for the internal token, which the UI never uses. */
   telegram_id: number | null
   display_name: string
   role: AdminRole
+  /** What this admin may do; the API checks the same permissions on every call. */
+  permissions: Permission[]
+  login: string | null
+  has_password: boolean
+  /** After an owner's reset: nothing but the profile until a new password is set. */
+  must_change_password: boolean
+}
+
+export interface PasswordReset {
+  login: string
+  /** Shown once; the admin must replace it at the next sign-in. */
+  temporary_password: string
 }
 
 /** Fields the Telegram Login Widget hands to its callback, passed to the API untouched. */
@@ -29,6 +54,8 @@ export interface Admin {
   is_active: boolean
   created_at: string
   created_by: number | null
+  login?: string | null
+  has_password?: boolean
 }
 
 // --- catalog ---------------------------------------------------------------------------------

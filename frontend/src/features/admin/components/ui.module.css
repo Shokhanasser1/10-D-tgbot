@@ -135,3 +135,17 @@ textarea.input {
 .danger {
   background: var(--color-danger);
 }
+
+.gate {
+  display: contents;
+  border: none;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.readOnly {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}

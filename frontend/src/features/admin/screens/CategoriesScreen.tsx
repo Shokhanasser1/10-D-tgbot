@@ -15,6 +15,7 @@ import { adminErrorKey } from '../errors'
 import { useAdminAttributes, useAdminCategories, useCatalogMutation } from '../hooks'
 import type { AdminAttribute, AdminCategory, AttributeValueType } from '../types'
 import layout from './CategoriesScreen.module.css'
+import { EditGate } from '../components/EditGate'
 
 const VALUE_TYPES: AttributeValueType[] = ['text', 'number', 'boolean', 'color']
 
@@ -193,62 +194,63 @@ export function CategoriesScreen() {
         ← {t('admin.catalog.backToProducts')}
       </Link>
       <PageHeader title={t('admin.catalog.categoriesAndAttributes')} />
-
-      <Card className={styles.section}>
-        <h2 className={styles.sectionTitle}>{t('admin.catalog.categories')}</h2>
-        {categories.data.map((category) => (
-          <details key={category.id} className={layout.item}>
-            <summary className={layout.summary}>
-              <span>{category.name}</span>
-              <span className={styles.muted}>{category.slug}</span>
-            </summary>
-            <div className={layout.body}>
-              <CategoryForm category={category} />
-              <TranslationsEditor
-                entityType="category"
-                entityId={category.id}
-                translations={category.translations}
-                fields={nameField}
-              />
-            </div>
-          </details>
-        ))}
-        <h3 className={layout.subTitle}>{t('admin.catalog.addCategory')}</h3>
-        <CategoryForm category={null} />
-      </Card>
-
-      <Card className={styles.section}>
-        <h2 className={styles.sectionTitle}>{t('admin.catalog.attributes')}</h2>
-        <p className={styles.muted}>{t('admin.catalog.attributesHint')}</p>
-        {attributes.data.map((attribute) => {
-          const category = categories.data.find((c) => c.id === attribute.category_id)
-          const label =
-            attribute.translations[i18n.language]?.name ??
-            attribute.translations.en?.name ??
-            attribute.key
-          return (
-            <details key={attribute.id} className={layout.item}>
+      <EditGate permission="catalog.edit">
+        <Card className={styles.section}>
+          <h2 className={styles.sectionTitle}>{t('admin.catalog.categories')}</h2>
+          {categories.data.map((category) => (
+            <details key={category.id} className={layout.item}>
               <summary className={layout.summary}>
-                <span>{label}</span>
-                <span className={styles.muted}>
-                  {attribute.key} · {category?.name ?? '—'}
-                </span>
+                <span>{category.name}</span>
+                <span className={styles.muted}>{category.slug}</span>
               </summary>
               <div className={layout.body}>
-                <AttributeForm attribute={attribute} categories={categories.data} />
+                <CategoryForm category={category} />
                 <TranslationsEditor
-                  entityType="attribute"
-                  entityId={attribute.id}
-                  translations={attribute.translations}
+                  entityType="category"
+                  entityId={category.id}
+                  translations={category.translations}
                   fields={nameField}
                 />
               </div>
             </details>
-          )
-        })}
-        <h3 className={layout.subTitle}>{t('admin.catalog.addAttribute')}</h3>
-        <AttributeForm attribute={null} categories={categories.data} />
-      </Card>
+          ))}
+          <h3 className={layout.subTitle}>{t('admin.catalog.addCategory')}</h3>
+          <CategoryForm category={null} />
+        </Card>
+
+        <Card className={styles.section}>
+          <h2 className={styles.sectionTitle}>{t('admin.catalog.attributes')}</h2>
+          <p className={styles.muted}>{t('admin.catalog.attributesHint')}</p>
+          {attributes.data.map((attribute) => {
+            const category = categories.data.find((c) => c.id === attribute.category_id)
+            const label =
+              attribute.translations[i18n.language]?.name ??
+              attribute.translations.en?.name ??
+              attribute.key
+            return (
+              <details key={attribute.id} className={layout.item}>
+                <summary className={layout.summary}>
+                  <span>{label}</span>
+                  <span className={styles.muted}>
+                    {attribute.key} · {category?.name ?? '—'}
+                  </span>
+                </summary>
+                <div className={layout.body}>
+                  <AttributeForm attribute={attribute} categories={categories.data} />
+                  <TranslationsEditor
+                    entityType="attribute"
+                    entityId={attribute.id}
+                    translations={attribute.translations}
+                    fields={nameField}
+                  />
+                </div>
+              </details>
+            )
+          })}
+          <h3 className={layout.subTitle}>{t('admin.catalog.addAttribute')}</h3>
+          <AttributeForm attribute={null} categories={categories.data} />
+        </Card>
+      </EditGate>
     </div>
   )
 }

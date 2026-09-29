@@ -26,6 +26,8 @@ export interface ApiFetchOptions {
    * credential; state-changing requests then carry the header the API requires against CSRF.
    */
   admin?: boolean
+  /** Extra request headers. */
+  headers?: Record<string, string>
 }
 
 const SAFE_METHODS = new Set(['GET', 'HEAD'])
@@ -54,7 +56,7 @@ export function buildUrl(
 }
 
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const { method = 'GET', body, params, admin = false } = options
+  const { method = 'GET', body, params, admin = false, headers: extraHeaders = {} } = options
 
   const url = buildUrl(API_BASE_URL, path, params)
   const initData = getInitDataRaw()
@@ -67,6 +69,7 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   // admins an empty value would shadow the session cookie, so it is left out instead.
   if (!admin || initData) headers.Authorization = `tma ${initData}`
   if (admin && !initData && !SAFE_METHODS.has(method)) headers['X-Requested-With'] = 'admin'
+  Object.assign(headers, extraHeaders)
 
   const response = await fetch(url.toString(), {
     method,

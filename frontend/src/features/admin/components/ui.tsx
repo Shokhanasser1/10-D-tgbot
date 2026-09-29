@@ -55,6 +55,8 @@ interface ConfirmDialogProps {
   confirmLabel: string
   /** When set, the dialog asks for a text (e.g. a reason) and requires it. */
   inputLabel?: string
+  /** A password field instead of a text area; its value is passed on untrimmed. */
+  password?: boolean
   maxLength?: number
   busy?: boolean
   error?: string | null
@@ -68,6 +70,7 @@ export function ConfirmDialog({
   message,
   confirmLabel,
   inputLabel,
+  password = false,
   maxLength = 500,
   busy = false,
   error = null,
@@ -111,7 +114,7 @@ export function ConfirmDialog({
         className={styles.dialogBody}
         onSubmit={(event) => {
           event.preventDefault()
-          if (!disabled) onConfirm(text.trim())
+          if (!disabled) onConfirm(password ? text : text.trim())
         }}
       >
         <h2 id={`${inputId}-title`} className={styles.dialogTitle}>
@@ -123,14 +126,26 @@ export function ConfirmDialog({
             <label htmlFor={inputId} className={styles.label}>
               {inputLabel}
             </label>
-            <textarea
-              id={inputId}
-              className={styles.input}
-              value={text}
-              maxLength={maxLength}
-              rows={3}
-              onChange={(event) => setText(event.target.value)}
-            />
+            {password ? (
+              <input
+                id={inputId}
+                type="password"
+                autoComplete="current-password"
+                className={styles.input}
+                value={text}
+                maxLength={200}
+                onChange={(event) => setText(event.target.value)}
+              />
+            ) : (
+              <textarea
+                id={inputId}
+                className={styles.input}
+                value={text}
+                maxLength={maxLength}
+                rows={3}
+                onChange={(event) => setText(event.target.value)}
+              />
+            )}
           </div>
         )}
         <ErrorNote message={error} />
