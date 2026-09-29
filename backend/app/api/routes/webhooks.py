@@ -4,9 +4,16 @@ from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import verify_telegram_webhook_secret
+from app.config import get_settings
 from app.db.session import get_db
 from app.schemas.telegram_update import TelegramUpdate
-from app.services import location_service, order_admin_service, order_service, stripe_service
+from app.services import (
+    bot_service,
+    location_service,
+    order_admin_service,
+    order_service,
+    stripe_service,
+)
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
@@ -57,6 +64,10 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Malformed update"
         ) from exc
+
+    reply = bot_service.start_reply(update, get_settings().webapp_url)
+    if reply is not None:
+        return reply  # Telegram performs the Bot API call given in the webhook answer
 
     await location_service.handle_update(db, update)
     return {"status": "ok"}

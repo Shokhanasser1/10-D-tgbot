@@ -42,7 +42,9 @@ origin (nginx proxies it), so there is no CORS to configure. Migrations run on s
 
 > **Telegram only opens HTTPS Mini Apps.** To try it in a real Telegram client, expose port 8080
 > through a tunnel (e.g. `ngrok http 8080` or `cloudflared tunnel --url http://localhost:8080`),
-> then in @BotFather set the bot's Mini App / menu button URL to the tunnel's `https://` address.
+> then run `scripts.set_telegram_webhook https://<tunnel>` (see "Couriers & tracking"): it registers
+> the webhook and sets the bot's menu button to open the shop. With `WEBAPP_URL` set to the same
+> address the bot also answers `/start` with an "Open shop" button.
 > Opened directly in a browser the app loads but every API call is rejected, because there is no
 > `initData` to authenticate with.
 
@@ -130,6 +132,11 @@ docker compose up -d --build
 docker compose exec api python -m scripts.set_telegram_webhook https://<your-public-origin>
 docker compose exec api python -m scripts.set_telegram_webhook --info    # check last_error_message
 ```
+
+Registering also points the bot's menu button at `https://<your-public-origin>/` (pass
+`--no-menu-button` to keep your own). The same webhook delivers `/start`, which the bot answers
+with a greeting and an "Open shop" button to `WEBAPP_URL`, in Russian, Uzbek or English by the
+user's Telegram language.
 
 The public origin must be HTTPS (locally, use `ngrok`/`cloudflared`). A Telegram bot can have
 **one** update consumer: the webhook and `getUpdates` polling are mutually exclusive, so do not

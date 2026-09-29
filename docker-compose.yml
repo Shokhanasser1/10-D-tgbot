@@ -36,6 +36,7 @@ services:
       # Courier delivery. An empty webhook secret keeps POST /webhooks/telegram switched off (404).
       TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+      WEBAPP_URL: ${WEBAPP_URL:-}
       MAX_ACTIVE_DELIVERIES_PER_COURIER: ${MAX_ACTIVE_DELIVERIES_PER_COURIER:-3}
       LOCATION_STALE_SECONDS: ${LOCATION_STALE_SECONDS:-120}
       # Admin panel

@@ -85,11 +85,17 @@ def test_set_posts_to_the_bot_api_and_never_prints_the_token(
     code = script.main(["https://shop.example.com"])
 
     assert code == 0
-    (request,) = telegram
+    request, menu = telegram
     assert request.full_url.endswith("/setWebhook")
     body = json.loads(request.data)
     assert body["url"] == "https://shop.example.com/api/webhooks/telegram"
     assert body["secret_token"] == SECRET
+    assert menu.full_url.endswith("/setChatMenuButton")
+    assert json.loads(menu.data)["menu_button"] == {
+        "type": "web_app",
+        "text": "Shop",
+        "web_app": {"url": "https://shop.example.com/"},
+    }
     out = capsys.readouterr()
     assert TOKEN not in out.out + out.err
     assert SECRET not in out.out + out.err
@@ -191,3 +197,9 @@ def test_a_network_failure_does_not_leak_the_token(
     out = capsys.readouterr()
     assert "connection refused" in out.err
     assert TOKEN not in out.out + out.err
+
+
+def test_the_menu_button_can_be_left_alone(telegram: list[urllib.request.Request]) -> None:
+    assert script.main(["https://shop.example.com", "--no-menu-button"]) == 0
+
+    assert [r.full_url.rsplit("/", 1)[1] for r in telegram] == ["setWebhook"]

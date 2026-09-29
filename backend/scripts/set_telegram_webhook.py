@@ -1,4 +1,7 @@
-"""Register, inspect or remove the Telegram webhook that delivers couriers' Live Location.
+"""Register, inspect or remove the Telegram webhook (couriers' Live Location and /start).
+
+Registering also sets the bot's menu button to open the Mini App at the same origin, so the
+@BotFather "Menu Button" step is not needed (skip it with --no-menu-button).
 
 Usage (from backend/):
     python -m scripts.set_telegram_webhook https://shop.example.com   # register
@@ -51,6 +54,16 @@ def build_set_payload(
     return payload
 
 
+def build_menu_button_payload(origin: str, text: str = "Shop") -> dict[str, Any]:
+    return {
+        "menu_button": {
+            "type": "web_app",
+            "text": text,
+            "web_app": {"url": origin.strip().rstrip("/") + "/"},
+        }
+    }
+
+
 def call_telegram(token: str, method: str, payload: dict[str, Any] | None = None) -> Any:
     """POST to the Bot API. Errors are re-raised without the URL, which contains the token."""
     request = urllib.request.Request(
@@ -89,6 +102,9 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--delete", action="store_true", help="remove the webhook")
     parser.add_argument("--max-connections", type=int, help="concurrent connections, 1-100")
     parser.add_argument("--drop-pending", action="store_true", help="discard queued updates")
+    parser.add_argument(
+        "--no-menu-button", action="store_true", help="leave the bot's menu button as it is"
+    )
     return parser.parse_args(argv)
 
 
@@ -130,6 +146,10 @@ def main(argv: list[str] | None = None) -> int:
             )
             call_telegram(settings.telegram_bot_token, "setWebhook", payload)
             print(f"Webhook set to {url}")
+            if not args.no_menu_button:
+                button = build_menu_button_payload(args.origin)
+                call_telegram(settings.telegram_bot_token, "setChatMenuButton", button)
+                print(f"Menu button opens {button['menu_button']['web_app']['url']}")
     except (ValueError, RuntimeError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

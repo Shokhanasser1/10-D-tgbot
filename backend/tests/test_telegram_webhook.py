@@ -229,3 +229,80 @@ async def test_a_position_arriving_after_deactivation_is_ignored(
 
     assert (await post(client, update())).status_code == 200
     assert await positions(db_session) == []
+
+
+# --- /start ----------------------------------------------------------------------------------
+
+
+def start_update(text: str = "/start", chat_type: str = "private", language: str | None = "ru"):
+    sender: dict = {"id": 870_001, "is_bot": False, "first_name": "Aziza"}
+    if language is not None:
+        sender["language_code"] = language
+    return {
+        "update_id": 7,
+        "message": {
+            "message_id": 1,
+            "date": 1_758_700_000,
+            "from": sender,
+            "chat": {"id": 870_001, "type": chat_type},
+            "text": text,
+        },
+    }
+
+
+async def test_start_answers_with_a_button_that_opens_the_shop(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(get_settings(), "webapp_url", "https://shop.example.com/")
+
+    response = await post(client, start_update())
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["method"] == "sendMessage"
+    assert body["chat_id"] == 870_001
+    assert body["text"].startswith("Добро пожаловать")
+    assert body["reply_markup"] == {
+        "inline_keyboard": [
+            [{"text": "Открыть магазин", "web_app": {"url": "https://shop.example.com/"}}]
+        ]
+    }
+
+
+@pytest.mark.parametrize(("language", "greeting"), [("uz", "Xush kelibsiz"), ("de", "Welcome")])
+async def test_start_speaks_the_users_language_or_english(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch, language: str, greeting: str
+) -> None:
+    monkeypatch.setattr(get_settings(), "webapp_url", "https://shop.example.com/")
+
+    body = (await post(client, start_update(language=language))).json()
+
+    assert body["text"].startswith(greeting)
+
+
+async def test_start_with_a_payload_or_bot_name_is_still_start(client: AsyncClient) -> None:
+    for text in ("/start promo42", "/start@shop_bot"):
+        assert (await post(client, start_update(text=text))).json()["method"] == "sendMessage"
+
+
+async def test_start_without_an_https_webapp_url_has_no_button(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(get_settings(), "webapp_url", "http://localhost:8080/")
+
+    body = (await post(client, start_update(language=None))).json()
+
+    assert body["text"].startswith("Welcome")
+    assert "reply_markup" not in body
+
+
+@pytest.mark.parametrize(
+    "update_body",
+    [
+        start_update(text="/help"),
+        start_update(text="start"),
+        start_update(chat_type="group"),
+    ],
+)
+async def test_other_messages_get_no_reply(client: AsyncClient, update_body: dict) -> None:
+    assert (await post(client, update_body)).json() == {"status": "ok"}

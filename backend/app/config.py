@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     # Empty disables POST /webhooks/telegram (it answers 404).
     telegram_webhook_secret: str = ""
     telegram_bot_username: str = ""
+    # Public https:// address of the Mini App; the bot's /start reply opens it with a button.
+    webapp_url: str = ""
 
     internal_api_token: str = ""
 

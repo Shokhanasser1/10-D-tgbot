@@ -1,4 +1,4 @@
-"""The slice of Telegram's Update object we read (Live Location messages).
+"""The slice of Telegram's Update object we read (Live Location messages and /start).
 
 Deliberately lenient: unknown fields are ignored and nearly everything is optional, because
 Telegram sends many kinds of update to the same endpoint and only one carries a position.
@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class TelegramSender(BaseModel):
     id: int
     is_bot: bool = False
+    language_code: str | None = None
 
 
 class TelegramChat(BaseModel):
@@ -28,6 +29,7 @@ class TelegramMessage(BaseModel):
     sender: TelegramSender | None = Field(default=None, alias="from")
     chat: TelegramChat | None = None
     location: TelegramLocation | None = None
+    text: str | None = None
 
 
 class TelegramUpdate(BaseModel):
