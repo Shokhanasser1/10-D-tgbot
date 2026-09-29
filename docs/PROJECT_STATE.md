@@ -1,6 +1,6 @@
 # Project state (handoff)
 
-Snapshot: 2026-09-24 (updated after Spec 4 design), branch `main`, **no git remote, nothing pushed**.
+Snapshot: 2026-09-29 (after Spec 4 implementation and MVP hardening), branch `main`, **no git remote, nothing pushed**.
 Working tree was clean at the time of writing. Written for another engineer or AI picking this up cold.
 
 ## 1. What this is
@@ -14,9 +14,9 @@ niches through data (categories, attributes, translations), not code changes. Th
 | 1 Storefront | catalog, cart, Stripe checkout, orders, en/ru/uz, light minimalist UI | **done**, committed |
 | 2 Own courier delivery + live GPS | courier pool/claim, Telegram Live Location tracking, delivery pin, customer map | **done**, committed (10 commits `9a386c6`..`8f9c581`) |
 | 3 Admin panel | roles, catalog, orders with cancel + refund, couriers + map, summary, admins | **done**, committed |
-| 4 Stock reservation | reserve `stock_qty` at checkout, 15-min hold, expiry sweeper, cart restore, refund of late payments | **designed, not implemented** |
+| 4 Stock reservation | reserve `stock_qty` at checkout, 15-min hold, expiry sweeper, cart restore, refund of late payments | **done**, committed (`2100f11`) |
 
-Designs are in `docs/superpowers/specs/`. Spec 2's §16 and Spec 3's §14 "Implementation notes" list
+Designs are in `docs/superpowers/specs/`. Spec 2's §16, Spec 3's §14 and Spec 4's §12 "Implementation notes" list
 where the build refined each design; read them before trusting the rest of those documents.
 `README.md` covers running, Stripe, the courier setup ("Couriers & tracking") and the admin panel
 ("Admin panel": first owner, roles, browser sign-in, refunds, photos).
@@ -59,13 +59,18 @@ The owner teaches students with this project, so explanations should say *why*, 
 
 ## 3. Verified state
 
-- Backend: **403 tests pass**, 97% coverage, ruff clean. Alembic head **`bbb147ebf681`**.
-- Frontend: **306 tests pass**, lint/prettier/`tsc`/build clean (one pre-existing oxlint warning in
+- Backend: **435 tests pass**, 96% coverage, ruff clean. Alembic head **`c4f1a2b3d5e6`**. The suite also
+  passes inside the production image (Python 3.12, SQLAlchemy 2.1, stripe 11), which differs from the
+  local Python 3.14 / SQLAlchemy 2.0 / stripe 15 set-up.
+- Frontend: **315 tests pass**, lint/prettier/`tsc`/build clean (one pre-existing oxlint warning in
   `router.tsx`).
 - Manually verified against a real API + database over HTTP (whole courier flow), and in a real
   browser (map tiles, markers, pin tap, courier claim flow, live marker update).
 - Admin panel verified in a browser against the real API + DB (summary, cancel, photo upload, phone
   layout, courier map); production images built and run (upload through nginx, `/media/` served).
+- Spec 4 verified in the rebuilt Docker stack: migration applied on startup, the sweeper expired an overdue
+  order (stock back, items back in the cart), checkout without Stripe keys answers 502 `payment_unavailable`
+  and keeps the cart.
 - **Not verified**: a real Telegram client with a real bot webhook over HTTPS; the Login Widget on a
   real domain; real Stripe refunds.
 
@@ -81,7 +86,8 @@ backend/app/
                   courier_admin_service, location_service (webhook ingestion), tracking_service,
                   order_service, checkout_service, stripe_service, catalog(_admin)_service, cart_service,
                   admin_service, catalog_admin_query_service, image_service, stock_service,
-                  order_admin_service (list/detail/cancel/refund), stats_service
+                  order_admin_service (list/detail/cancel/refund), stats_service,
+                  reservation_service (expiry sweeper, Spec 4), bot_service (/start reply)
   models/         SQLAlchemy models; enums.py has ShipmentStatus / ACTIVE_SHIPMENT_STATUSES / AdminRole
   schemas/        pydantic I/O models
   core/           initData + Login Widget verification, admin_session, images (Pillow), rate_limit,
@@ -106,7 +112,13 @@ Courier (initData + active courier row, else 403): `GET /courier/me|pool|deliver
 `POST /courier/deliveries/{shipment_id}/claim|release|pickup|deliver`.
 
 Webhooks: `POST /webhooks/stripe` (signature), `POST /webhooks/telegram`
-(`X-Telegram-Bot-Api-Secret-Token`; empty `TELEGRAM_WEBHOOK_SECRET` means 404).
+(`X-Telegram-Bot-Api-Secret-Token`; empty `TELEGRAM_WEBHOOK_SECRET` means 404). The Telegram webhook
+answers `/start` in a private chat by returning a `sendMessage` (greeting + web_app button to `WEBAPP_URL`)
+as its response body; every other update gets `{"status": "ok"}`.
+
+Checkout: 409 `code=insufficient_stock` when a line cannot be reserved (nothing written); 502
+`code=payment_unavailable` for any Stripe error (global handler). The response includes `reserved_until`.
+`GET /orders/{id}` also returns `reserved_until`, `cancel_reason`, `refund_status`.
 
 Admin, `/internal/*` (roles O=owner, C=catalog_manager, D=dispatcher; the internal token counts as O).
 No credentials is 401; wrong token, non-admin or wrong role is 403.
@@ -156,6 +168,16 @@ Location* in the bot chat; Telegram posts each update to the webhook (first `mes
 `is_stale` is computed server-side (`LOCATION_STALE_SECONDS`, default 120); a stationary courier looks
 stale because Telegram only sends updates on movement.
 
+**Stock reservation (Spec 4).** Checkout subtracts `stock_qty` (guarded UPDATE per variant, ascending id)
+and sets `orders.reserved_until = now + RESERVATION_TTL_MINUTES`, commits, *then* calls Stripe; a Stripe
+failure cancels the order (`payment_setup_failed`) and restores stock and cart. A lifespan task
+(`reservation_service.run_sweeper`, every `RESERVATION_SWEEP_SECONDS`) expires overdue unpaid orders:
+cancel the PaymentIntent first (if Stripe says it succeeded/processing, leave the order alone), then a
+guarded UPDATE to `cancelled`/`payment_expired`, stock back, payment `canceled`, items back to the active
+cart (archived products skipped). `mark_order_paid` no longer takes stock for orders with `reserved_until`
+(legacy orders with NULL keep the take-at-payment + `stock_shortfall` path); a payment for a cancelled
+order with no refund yet is refunded in full (key `late-payment-<id>`).
+
 **Delivery pin.** Optional `latitude`/`longitude` on checkout, both-or-neither, strict in-range numbers.
 `GET /orders/{id}` returns them to the owner. Older orders without the keys still load.
 
@@ -173,7 +195,8 @@ ports, and for Spec 2: `TELEGRAM_WEBHOOK_SECRET` (charset `A-Za-z0-9_-`, 1–256
 and `MAP_TILE_URL` / `MAP_DEFAULT_CENTER` / `MAP_ATTRIBUTION` (baked into the web image as `VITE_MAP_*`;
 empty = public OpenStreetMap, which is for light use only). Spec 3: `ADMIN_SESSION_SECRET` (required by
 compose and outside `ENV=development`), `ADMIN_BOOTSTRAP_TELEGRAM_IDS` (owners created on startup),
-`SHOP_TIMEZONE` (UTC), `LOW_STOCK_THRESHOLD` (5); backend-only `ADMIN_COOKIE_SECURE` (false for local
+`SHOP_TIMEZONE` (UTC), `LOW_STOCK_THRESHOLD` (5); Spec 4: `RESERVATION_TTL_MINUTES` (15),
+`RESERVATION_SWEEP_SECONDS` (60, 0 = off); `WEBAPP_URL` (public https address for the /start button); backend-only `ADMIN_COOKIE_SECURE` (false for local
 http), `MEDIA_ROOT` (`/data/media` in Docker, the `media` volume shared with nginx); frontend
 `VITE_TELEGRAM_BOT_USERNAME` (baked from `TELEGRAM_BOT_USERNAME`).
 `backend/.env` and `frontend/.env` exist locally with fake dev values and are gitignored.
@@ -189,6 +212,12 @@ cd frontend && npm run lint && npm test && npm run build
 python -m scripts.make_dev_init_data <telegram_id>    # signed initData for dev outside Telegram
 python -m scripts.seed_demo_data                      # demo catalog
 python -m scripts.seed_courier_demo --courier 222 --customer 111 --lat 52.52 --lng 13.405
+```
+
+Backend tests inside the production image (catches dependency drift; run from the repo root in Git Bash):
+
+```bash
+MSYS_NO_PATHCONV=1 docker compose run --rm --no-deps --user root --entrypoint sh   -v "$(pwd -W)/backend/tests:/app/tests" -e ENV=development   -e TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/storefront_test api   -c "pip install -q 'pytest>=8.3,<9' 'pytest-asyncio>=0.24,<1' 'faker>=30,<31' && python -m pytest -q"
 ```
 
 Manual end-to-end recipe: run uvicorn with per-process overrides instead of editing `.env`
@@ -216,23 +245,27 @@ then open `http://127.0.0.1:5173/admin` (the mock initData signs you in; the wid
 
 ## 10. Open items and suggested next steps
 
-**Next session starts here:** Spec 4 (stock reservation) is designed in
-`docs/superpowers/specs/2026-09-24-stock-reservation-design.md`. The owner confirmed §2 (15-min hold;
-on expiry cancel + return items to the cart; payment after expiry is always refunded) and approach A
-(subtract `stock_qty` at checkout). §4–§9 are drafted but not yet reviewed with the owner. Next:
-walk the owner through §4–§9, then write the implementation plan, then implement test-first.
-The owner explicitly said not to implement yet.
+**Next session starts here:** Specs 1–4 are built; the code is at MVP. What is left needs the owner's
+accounts and decisions rather than code (see the list below). The owner asked on 2026-09-29 to "finish
+to an MVP"; that was taken as approval of Spec 4 §4–§9.
 
-Specs 1–3 are built. What remains besides Spec 4:
+**Open business question to raise with the owner:** the shop is in Tashkent but charges EUR through
+Stripe, and Stripe does not onboard merchants in Uzbekistan. For real payments the owner needs either a
+Stripe account in a supported country or a local provider (Payme, Click, Uzum) / Telegram Payments,
+which would be a new spec replacing `stripe_service` and the Stripe Elements step.
+
+What remains:
 
 1. Try the real thing once: HTTPS tunnel (`ngrok`/`cloudflared`) → `python -m scripts.set_telegram_webhook https://<origin>`
+   (also sets the bot's menu button; put the same origin in `WEBAPP_URL` for the /start button)
    → a real courier account sharing Live Location from a phone. `--info` shows Telegram's `last_error_message`.
    For the admin panel in a browser: BotFather `/setdomain` to the tunnel's domain, then sign in at `/admin`.
 2. Stripe: subscribe the webhook endpoint to `refund.created|updated|failed` and run a test-mode refund.
 3. Before real traffic: set `MAP_TILE_URL`/`MAP_ATTRIBUTION` for a proper tile provider; strong `INTERNAL_API_TOKEN`,
    `ADMIN_SESSION_SECRET` and `POSTGRES_PASSWORD`; serve over HTTPS; back up the `media` volume with the database.
 4. Push: there is no remote yet. Decide where the repository lives before CI can run.
-5. Not asked for, but likely next: deleting variants, an audit log beyond "who cancelled", charts in the summary.
+5. Not asked for, but likely next: Telegram messages to customers on status changes (paid / out for
+   delivery / delivered), deleting variants, an audit log beyond "who cancelled", charts in the summary.
 
 ## 11. Assumptions the product owner has not explicitly confirmed
 
