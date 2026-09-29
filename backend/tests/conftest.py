@@ -16,6 +16,12 @@ settings.internal_api_token = "test-internal-token"
 settings.admin_session_secret = "test-admin-session-secret"
 # A local backend/.env may turn this off for plain-http development; tests expect the default.
 settings.admin_cookie_secure = True
+# Prices in the tests assume these, whatever a local backend/.env says (the example uses sums).
+settings.default_currency = "EUR"
+settings.shipping_flat_rate = "4.99"
+settings.free_shipping_threshold = "50.00"
+settings.shop_timezone = "UTC"
+settings.notification_send_seconds = 0
 # Checkout needs at least one payment method; Stripe calls are faked in the tests that pay.
 settings.stripe_secret_key = "sk_test_dummy"
 settings.stripe_publishable_key = "pk_test_dummy"

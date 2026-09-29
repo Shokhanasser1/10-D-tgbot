@@ -1,10 +1,14 @@
 # Telegram Mini App Storefront
 
-An e-commerce storefront that runs as a Telegram Mini App: catalog, cart, checkout with Stripe,
-and order tracking. It launches with a cosmetics catalog but is built to take other niches
+An e-commerce storefront that runs as a Telegram Mini App: catalog, cart, checkout (Click/Payme
+through Telegram Payments, cash on delivery, or Stripe), own couriers with live tracking, an admin
+panel and Telegram notifications. It launches with a cosmetics catalog but is built to take other niches
 without code changes — products, categories and their attributes are all data.
 
-This is built in three specs, designs in [`docs/superpowers/specs/`](docs/superpowers/specs/):
+> **Учебный запуск без Docker (Windows):** [`ZAPUSK_BEZ_DOCKER.md`](ZAPUSK_BEZ_DOCKER.md) — PostgreSQL,
+> Python и Node.js, пошагово на русском.
+
+It was built in six specs, designs in [`docs/superpowers/specs/`](docs/superpowers/specs/):
 
 1. **Storefront** (done) — catalog, cart, Stripe checkout, orders.
    [Design](docs/superpowers/specs/2026-09-22-telegram-miniapp-storefront-design.md)
@@ -14,12 +18,18 @@ This is built in three specs, designs in [`docs/superpowers/specs/`](docs/superp
 3. **Admin panel** (done) — catalog, orders with cancel and refund, couriers, a summary and
    admin accounts with roles, inside the Mini App and in a desktop browser.
    [Design](docs/superpowers/specs/2026-09-24-admin-panel-design.md)
+4. **Stock reservation** (done) — stock is held at checkout for 15 minutes; unpaid orders expire and
+   return their items to the cart. [Design](docs/superpowers/specs/2026-09-24-stock-reservation-design.md)
+5. **Telegram notifications** (done) — customers, couriers and owners hear about their orders in the
+   bot chat. [Design](docs/superpowers/specs/2026-09-29-telegram-notifications-design.md)
+6. **Payments in Uzbekistan** (done) — Click/Payme via Telegram Payments and cash on delivery, in UZS;
+   Stripe stays optional. [Design](docs/superpowers/specs/2026-09-29-uzbek-payments-design.md)
 
 | | |
 |---|---|
 | Backend | FastAPI (async), SQLAlchemy 2.0, PostgreSQL 16, Alembic |
 | Frontend | React 19 + TypeScript + Vite, react-query, react-i18next (en / ru / uz) |
-| Payments | Stripe Payment Element inside the Mini App, confirmed by webhook |
+| Payments | Click/Payme via Telegram Payments, cash on delivery, optional Stripe |
 | Delivery | Own couriers, GPS from Telegram Live Location, Leaflet + OpenStreetMap maps |
 | Auth | Telegram `initData`, verified server-side; admins in a browser sign in with the Telegram Login Widget |
 
@@ -274,12 +284,9 @@ volume, which nginx serves under `/media/`. Back that volume up with the databas
 
 ## Develop without Docker
 
-Start only the database (or point `DATABASE_URL` at any Postgres 16):
-
-```bash
-docker compose up -d db
-docker compose exec db psql -U postgres -c "CREATE DATABASE storefront_test;"   # used by pytest
-```
+You need a PostgreSQL 16: a local install (the Windows installer from postgresql.org, user
+`postgres`, password `postgres`, port 5432, as in `backend/.env.example`) or `docker compose up -d db`.
+The step-by-step Russian guide for a machine without Docker is [`ZAPUSK_BEZ_DOCKER.md`](ZAPUSK_BEZ_DOCKER.md).
 
 **Backend** (Python 3.12+):
 
@@ -287,8 +294,10 @@ docker compose exec db psql -U postgres -c "CREATE DATABASE storefront_test;"   
 cd backend
 python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -r requirements-dev.txt
-cp .env.example .env                                   # set TELEGRAM_BOT_TOKEN
+cp .env.example .env                                   # set ADMIN_BOOTSTRAP_TELEGRAM_IDS
+python -m scripts.create_databases                     # storefront + storefront_test
 alembic upgrade head
+python -m scripts.seed_demo_data                       # demo catalog
 uvicorn app.main:app --reload                          # http://localhost:8000/docs
 ```
 
