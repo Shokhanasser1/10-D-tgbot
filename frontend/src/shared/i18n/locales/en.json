@@ -53,7 +53,8 @@
     },
     "soldOut": "Some items just sold out. Check your cart and try again.",
     "backToCart": "Back to cart",
-    "payBy": "We hold your items until {{time}}. Please pay before then."
+    "payBy": "We hold your items until {{time}}. Please pay before then.",
+    "paymentUnavailable": "Payments are unavailable right now. Your cart is saved, please try again later."
   },
   "orders": {
     "title": "My orders",

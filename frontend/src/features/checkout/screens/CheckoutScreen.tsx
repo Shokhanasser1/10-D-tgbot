@@ -102,16 +102,26 @@ export function CheckoutScreen() {
             </PillButton>
           </div>
         ) : (
-          <p className={styles.error}>{t('common.error')}</p>
+          <p className={styles.error}>
+            {errorCode(checkoutMutation.error) === 'payment_unavailable'
+              ? t('checkout.paymentUnavailable')
+              : t('common.error')}
+          </p>
         ))}
     </div>
   )
 }
 
-function isSoldOut(error: unknown): boolean {
-  if (!(error instanceof ApiError) || error.status !== 409) return false
+function errorCode(error: unknown): string | undefined {
+  if (!(error instanceof ApiError)) return undefined
   const detail = error.detail
-  return typeof detail === 'object' && detail !== null && 'code' in detail
-    ? (detail as { code: unknown }).code === 'insufficient_stock'
-    : false
+  if (typeof detail === 'object' && detail !== null && 'code' in detail) {
+    const { code } = detail as { code: unknown }
+    return typeof code === 'string' ? code : undefined
+  }
+  return undefined
+}
+
+function isSoldOut(error: unknown): boolean {
+  return errorCode(error) === 'insufficient_stock'
 }

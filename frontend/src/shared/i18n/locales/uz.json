@@ -53,7 +53,8 @@
     },
     "soldOut": "Ba'zi mahsulotlar hozirgina sotilib ketdi. Savatni tekshirib, qaytadan urinib ko'ring.",
     "backToCart": "Savatga qaytish",
-    "payBy": "Mahsulotlarni siz uchun {{time}} gacha saqlaymiz. Shu vaqtgacha to'lang."
+    "payBy": "Mahsulotlarni siz uchun {{time}} gacha saqlaymiz. Shu vaqtgacha to'lang.",
+    "paymentUnavailable": "To'lov hozircha ishlamayapti. Savat saqlandi, keyinroq urinib ko'ring."
   },
   "orders": {
     "title": "Mening buyurtmalarim",

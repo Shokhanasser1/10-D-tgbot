@@ -1,7 +1,12 @@
+import logging
+
+import stripe
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
+
+logger = logging.getLogger(__name__)
 
 
 class InvalidInitDataError(Exception):
@@ -63,6 +68,16 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def _integrity_error_handler(request: Request, exc: IntegrityError) -> JSONResponse:
         return JSONResponse(
             status_code=400, content={"detail": "Request conflicts with existing data"}
+        )
+
+    @app.exception_handler(stripe.StripeError)
+    async def _stripe_error_handler(request: Request, exc: stripe.StripeError) -> JSONResponse:
+        # Missing keys, an outage or a rejected request: the customer can only try again later.
+        # Stripe's message may describe the shop's account, so it is logged, not returned.
+        logger.error("Stripe call failed on %s %s: %s", request.method, request.url.path, exc)
+        return JSONResponse(
+            status_code=502,
+            content={"detail": "Payment provider unavailable", "code": "payment_unavailable"},
         )
 
     @app.exception_handler(RequestValidationError)

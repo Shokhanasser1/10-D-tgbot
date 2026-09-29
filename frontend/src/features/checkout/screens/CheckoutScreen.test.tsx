@@ -171,6 +171,28 @@ describe('CheckoutScreen', () => {
     expect(await screen.findByText('cart page')).toBeInTheDocument()
   })
 
+  it('says payments are unavailable when the payment provider is down', async () => {
+    const user = userEvent.setup()
+    server.use(
+      http.post(`${API}/checkout`, () =>
+        HttpResponse.json(
+          { detail: 'Payment provider unavailable', code: 'payment_unavailable' },
+          { status: 502 },
+        ),
+      ),
+    )
+    renderScreen(<CheckoutScreen />, routeOptions)
+
+    await fillAddress(user)
+    await user.click(screen.getByRole('button', { name: 'Continue to payment' }))
+
+    expect(
+      await screen.findByText(
+        'Payments are unavailable right now. Your cart is saved, please try again later.',
+      ),
+    ).toBeInTheDocument()
+  })
+
   describe('delivery pin', () => {
     type Body = { delivery_address: Record<string, unknown> }
 

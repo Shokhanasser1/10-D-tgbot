@@ -206,8 +206,13 @@ async def test_stripe_failure_at_checkout_returns_stock_and_cart(
     variant = await _variant(db_session, stock=5)
     fake_stripe.fail_create = True
 
-    with pytest.raises(stripe.APIConnectionError):
-        await _checkout(client, 4103, [(variant.id, 2)])
+    response = await _checkout(client, 4103, [(variant.id, 2)])
+
+    assert response.status_code == 502
+    assert response.json() == {
+        "detail": "Payment provider unavailable",
+        "code": "payment_unavailable",
+    }
 
     order_id = await db_session.scalar(select(Order.id).where(Order.telegram_id == 4103))
     order = await _order(db_session, order_id)
