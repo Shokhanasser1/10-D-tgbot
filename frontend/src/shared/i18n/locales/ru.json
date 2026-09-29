@@ -67,7 +67,8 @@
       "cashHint": "Оплата при получении заказа",
       "stripe": "Картой (Stripe)",
       "stripeHint": "Visa, Mastercard"
-    }
+    },
+    "noMethods": "В магазине пока не настроена оплата."
   },
   "orders": {
     "title": "Мои заказы",

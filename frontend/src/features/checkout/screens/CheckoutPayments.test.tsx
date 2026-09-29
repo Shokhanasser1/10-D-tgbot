@@ -117,4 +117,12 @@ describe('CheckoutScreen payment methods', () => {
     expect(await screen.findByText('order page')).toBeInTheDocument()
     expect(openInvoice).toHaveBeenCalledTimes(2)
   })
+
+  it('says so instead of failing when the shop has no payment method yet', async () => {
+    offer([])
+    renderScreen(<CheckoutScreen />, routeOptions)
+
+    expect(await screen.findByText('Payments are not set up in this shop yet.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Continue to payment' })).toBeDisabled()
+  })
 })

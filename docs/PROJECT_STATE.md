@@ -1,6 +1,6 @@
 # Project state (handoff)
 
-Snapshot: 2026-09-29 (after Spec 5, Telegram notifications), branch `main`, **no git remote, nothing pushed**.
+Snapshot: 2026-09-29 (after Spec 6, payments in Uzbekistan), branch `main`, **no git remote, nothing pushed**.
 Working tree was clean at the time of writing. Written for another engineer or AI picking this up cold.
 
 ## 1. What this is
@@ -16,8 +16,9 @@ niches through data (categories, attributes, translations), not code changes. Th
 | 3 Admin panel | roles, catalog, orders with cancel + refund, couriers + map, summary, admins | **done**, committed |
 | 4 Stock reservation | reserve `stock_qty` at checkout, 15-min hold, expiry sweeper, cart restore, refund of late payments | **done**, committed (`2100f11`) |
 | 5 Telegram notifications | outbox table + background sender; customers, couriers, owners/dispatchers | **done**, committed (`0dd7657`) |
+| 6 Payments in Uzbekistan | Click/Payme via Telegram Payments, cash on delivery, UZS; Stripe kept as an option | **done**, committed (`b6813c5`) |
 
-Designs are in `docs/superpowers/specs/`. Spec 2's §16, Spec 3's §14 and Spec 4's §12 and Spec 5's §11 "Implementation notes" list
+Designs are in `docs/superpowers/specs/`. Spec 2's §16, Spec 3's §14 and Spec 4's §12, Spec 5's §11 and Spec 6's §13 "Implementation notes" list
 where the build refined each design; read them before trusting the rest of those documents.
 `README.md` covers running, Stripe, the courier setup ("Couriers & tracking") and the admin panel
 ("Admin panel": first owner, roles, browser sign-in, refunds, photos).
@@ -60,10 +61,10 @@ The owner teaches students with this project, so explanations should say *why*, 
 
 ## 3. Verified state
 
-- Backend: **477 tests pass**, ruff clean. Alembic head **`d7e2f3a4b5c6`**. The suite also
+- Backend: **504 tests pass** (locally and inside the production image), ruff clean. Alembic head **`e8f9a0b1c2d3`**. The suite also
   passes inside the production image (Python 3.12, SQLAlchemy 2.1, stripe 11), which differs from the
   local Python 3.14 / SQLAlchemy 2.0 / stripe 15 set-up.
-- Frontend: **318 tests pass**, lint/prettier/`tsc`/build clean (one pre-existing oxlint warning in
+- Frontend: **330 tests pass**, lint/prettier/`tsc`/build clean (one pre-existing oxlint warning in
   `router.tsx`).
 - Manually verified against a real API + database over HTTP (whole courier flow), and in a real
   browser (map tiles, markers, pin tap, courier claim flow, live marker update).
@@ -74,6 +75,9 @@ The owner teaches students with this project, so explanations should say *why*, 
   and keeps the cart.
 - Spec 5 verified in Docker against the real Bot API: an expired order queued a message with a button, the
   sender posted it and Telegram's "chat not found" marked it `undeliverable` (test user, nobody messaged).
+- Spec 6 verified in Docker: an invalid provider token makes the real Bot API answer PAYMENT_PROVIDER_INVALID,
+  the API returns 502 and keeps the cart; a cash order goes straight to the pool and a cancel refunds nothing.
+  Test notifications were deleted before re-enabling the sender. A real Click/Payme test payment is not done yet.
 - **Not verified**: a real Telegram client with a real bot webhook over HTTPS; the Login Widget on a
   real domain; real Stripe refunds.
 
@@ -256,14 +260,15 @@ then open `http://127.0.0.1:5173/admin` (the mock initData signs you in; the wid
 
 ## 10. Open items and suggested next steps
 
-**Next session starts here:** Specs 1–5 are built; the code is at MVP. What is left needs the owner's
+**Next session starts here:** Specs 1–6 are built; the code is at MVP with Uzbek payments. What is left needs the owner's
 accounts and decisions rather than code (see the list below). The owner asked on 2026-09-29 to "finish
 to an MVP"; that was taken as approval of Spec 4 §4–§9.
 
-**Open business question to raise with the owner:** the shop is in Tashkent but charges EUR through
-Stripe, and Stripe does not onboard merchants in Uzbekistan. For real payments the owner needs either a
-Stripe account in a supported country or a local provider (Payme, Click, Uzum) / Telegram Payments,
-which would be a new spec replacing `stripe_service` and the Stripe Elements step.
+**Owner's switch-over to the Uzbek set-up (not done by us, their `.env` and data):** set `DEFAULT_CURRENCY=UZS`,
+`SHIPPING_FLAT_RATE=20000`, `FREE_SHIPPING_THRESHOLD=300000`, `CASH_ON_DELIVERY_ENABLED=true`, the Click or Payme
+provider token from @BotFather, `WEBAPP_URL`; re-run `set_telegram_webhook` (it now asks for `pre_checkout_query`);
+re-enter catalog prices in sums (the local demo DB still has EUR-era prices; `seed_demo_data` now seeds sums).
+Without any payment method configured the checkout shows "Payments are not set up in this shop yet".
 
 What remains:
 

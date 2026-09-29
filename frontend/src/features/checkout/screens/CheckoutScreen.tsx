@@ -67,6 +67,7 @@ export function CheckoutScreen() {
   const methods = methodsQuery.data?.methods ?? []
   const [chosen, setChosen] = useState<PaymentMethod | undefined>()
   const method = chosen ?? methods[0]
+  const noMethods = methodsQuery.isSuccess && methods.length === 0
 
   const checkoutMutation = useMutation({
     mutationFn: (address: DeliveryAddress) => postCheckout(address, method),
@@ -130,11 +131,16 @@ export function CheckoutScreen() {
       <h1 className={styles.title}>{t('checkout.title')}</h1>
       <AddressForm
         onSubmit={(address) => checkoutMutation.mutate(address)}
-        isSubmitting={checkoutMutation.isPending || methodsQuery.isLoading}
+        isSubmitting={checkoutMutation.isPending || methodsQuery.isLoading || noMethods}
         submitLabel={method === 'cash' ? t('checkout.placeOrder') : undefined}
       >
         {method && <PaymentMethodPicker methods={methods} value={method} onChange={setChosen} />}
       </AddressForm>
+      {noMethods && (
+        <p className={styles.error} role="alert">
+          {t('checkout.noMethods')}
+        </p>
+      )}
       {checkoutMutation.isError &&
         (isSoldOut(checkoutMutation.error) ? (
           <div className={styles.soldOut} role="alert">

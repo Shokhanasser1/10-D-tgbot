@@ -67,7 +67,8 @@
       "cashHint": "Pay the courier when the order arrives",
       "stripe": "Card (Stripe)",
       "stripeHint": "Visa, Mastercard"
-    }
+    },
+    "noMethods": "Payments are not set up in this shop yet."
   },
   "orders": {
     "title": "My orders",

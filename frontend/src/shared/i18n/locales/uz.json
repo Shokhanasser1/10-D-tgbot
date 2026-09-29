@@ -67,7 +67,8 @@
       "cashHint": "Buyurtma kelganda to'lanadi",
       "stripe": "Karta (Stripe)",
       "stripeHint": "Visa, Mastercard"
-    }
+    },
+    "noMethods": "Do'konda to'lov hali sozlanmagan."
   },
   "orders": {
     "title": "Mening buyurtmalarim",
