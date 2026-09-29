@@ -1,6 +1,6 @@
 # Project state (handoff)
 
-Snapshot: 2026-09-29 (after Spec 4 implementation and MVP hardening), branch `main`, **no git remote, nothing pushed**.
+Snapshot: 2026-09-29 (after Spec 5, Telegram notifications), branch `main`, **no git remote, nothing pushed**.
 Working tree was clean at the time of writing. Written for another engineer or AI picking this up cold.
 
 ## 1. What this is
@@ -15,8 +15,9 @@ niches through data (categories, attributes, translations), not code changes. Th
 | 2 Own courier delivery + live GPS | courier pool/claim, Telegram Live Location tracking, delivery pin, customer map | **done**, committed (10 commits `9a386c6`..`8f9c581`) |
 | 3 Admin panel | roles, catalog, orders with cancel + refund, couriers + map, summary, admins | **done**, committed |
 | 4 Stock reservation | reserve `stock_qty` at checkout, 15-min hold, expiry sweeper, cart restore, refund of late payments | **done**, committed (`2100f11`) |
+| 5 Telegram notifications | outbox table + background sender; customers, couriers, owners/dispatchers | **done**, committed (`0dd7657`) |
 
-Designs are in `docs/superpowers/specs/`. Spec 2's §16, Spec 3's §14 and Spec 4's §12 "Implementation notes" list
+Designs are in `docs/superpowers/specs/`. Spec 2's §16, Spec 3's §14 and Spec 4's §12 and Spec 5's §11 "Implementation notes" list
 where the build refined each design; read them before trusting the rest of those documents.
 `README.md` covers running, Stripe, the courier setup ("Couriers & tracking") and the admin panel
 ("Admin panel": first owner, roles, browser sign-in, refunds, photos).
@@ -59,10 +60,10 @@ The owner teaches students with this project, so explanations should say *why*, 
 
 ## 3. Verified state
 
-- Backend: **435 tests pass**, 96% coverage, ruff clean. Alembic head **`c4f1a2b3d5e6`**. The suite also
+- Backend: **477 tests pass**, ruff clean. Alembic head **`d7e2f3a4b5c6`**. The suite also
   passes inside the production image (Python 3.12, SQLAlchemy 2.1, stripe 11), which differs from the
   local Python 3.14 / SQLAlchemy 2.0 / stripe 15 set-up.
-- Frontend: **315 tests pass**, lint/prettier/`tsc`/build clean (one pre-existing oxlint warning in
+- Frontend: **318 tests pass**, lint/prettier/`tsc`/build clean (one pre-existing oxlint warning in
   `router.tsx`).
 - Manually verified against a real API + database over HTTP (whole courier flow), and in a real
   browser (map tiles, markers, pin tap, courier claim flow, live marker update).
@@ -71,6 +72,8 @@ The owner teaches students with this project, so explanations should say *why*, 
 - Spec 4 verified in the rebuilt Docker stack: migration applied on startup, the sweeper expired an overdue
   order (stock back, items back in the cart), checkout without Stripe keys answers 502 `payment_unavailable`
   and keeps the cart.
+- Spec 5 verified in Docker against the real Bot API: an expired order queued a message with a button, the
+  sender posted it and Telegram's "chat not found" marked it `undeliverable` (test user, nobody messaged).
 - **Not verified**: a real Telegram client with a real bot webhook over HTTPS; the Login Widget on a
   real domain; real Stripe refunds.
 
@@ -87,7 +90,8 @@ backend/app/
                   order_service, checkout_service, stripe_service, catalog(_admin)_service, cart_service,
                   admin_service, catalog_admin_query_service, image_service, stock_service,
                   order_admin_service (list/detail/cancel/refund), stats_service,
-                  reservation_service (expiry sweeper, Spec 4), bot_service (/start reply)
+                  reservation_service (expiry sweeper, Spec 4), bot_service (/start reply),
+                  notification_templates/_service/_events/_sender (Spec 5 outbox)
   models/         SQLAlchemy models; enums.py has ShipmentStatus / ACTIVE_SHIPMENT_STATUSES / AdminRole
   schemas/        pydantic I/O models
   core/           initData + Login Widget verification, admin_session, images (Pillow), rate_limit,
@@ -178,6 +182,12 @@ cart (archived products skipped). `mark_order_paid` no longer takes stock for or
 (legacy orders with NULL keep the take-at-payment + `stock_shortfall` path); a payment for a cancelled
 order with no refund yet is refunded in full (key `late-payment-<id>`).
 
+**Notifications (Spec 5).** Services call `notification_events.<event>(db, ...)` inside their own transaction,
+before `commit`, only on the branch where the guarded UPDATE matched; rows land in `notifications` with a unique
+`dedupe_key`. `notification_sender.run_sender` (started by `app.main.background_tasks` when
+`NOTIFICATION_SEND_SECONDS > 0` and a bot token is set) leases 25 due rows at a time, sends, and records
+sent / undeliverable / failed / retry with backoff. Anything that changes order state should enqueue its event.
+
 **Delivery pin.** Optional `latitude`/`longitude` on checkout, both-or-neither, strict in-range numbers.
 `GET /orders/{id}` returns them to the owner. Older orders without the keys still load.
 
@@ -196,7 +206,8 @@ and `MAP_TILE_URL` / `MAP_DEFAULT_CENTER` / `MAP_ATTRIBUTION` (baked into the we
 empty = public OpenStreetMap, which is for light use only). Spec 3: `ADMIN_SESSION_SECRET` (required by
 compose and outside `ENV=development`), `ADMIN_BOOTSTRAP_TELEGRAM_IDS` (owners created on startup),
 `SHOP_TIMEZONE` (UTC), `LOW_STOCK_THRESHOLD` (5); Spec 4: `RESERVATION_TTL_MINUTES` (15),
-`RESERVATION_SWEEP_SECONDS` (60, 0 = off); `WEBAPP_URL` (public https address for the /start button); backend-only `ADMIN_COOKIE_SECURE` (false for local
+`RESERVATION_SWEEP_SECONDS` (60, 0 = off); `WEBAPP_URL` (public https address for the /start button and notification buttons);
+Spec 5: `NOTIFICATION_SEND_SECONDS` (2, 0 = off); backend-only `ADMIN_COOKIE_SECURE` (false for local
 http), `MEDIA_ROOT` (`/data/media` in Docker, the `media` volume shared with nginx); frontend
 `VITE_TELEGRAM_BOT_USERNAME` (baked from `TELEGRAM_BOT_USERNAME`).
 `backend/.env` and `frontend/.env` exist locally with fake dev values and are gitignored.
@@ -245,7 +256,7 @@ then open `http://127.0.0.1:5173/admin` (the mock initData signs you in; the wid
 
 ## 10. Open items and suggested next steps
 
-**Next session starts here:** Specs 1–4 are built; the code is at MVP. What is left needs the owner's
+**Next session starts here:** Specs 1–5 are built; the code is at MVP. What is left needs the owner's
 accounts and decisions rather than code (see the list below). The owner asked on 2026-09-29 to "finish
 to an MVP"; that was taken as approval of Spec 4 §4–§9.
 
@@ -264,8 +275,7 @@ What remains:
 3. Before real traffic: set `MAP_TILE_URL`/`MAP_ATTRIBUTION` for a proper tile provider; strong `INTERNAL_API_TOKEN`,
    `ADMIN_SESSION_SECRET` and `POSTGRES_PASSWORD`; serve over HTTPS; back up the `media` volume with the database.
 4. Push: there is no remote yet. Decide where the repository lives before CI can run.
-5. Not asked for, but likely next: Telegram messages to customers on status changes (paid / out for
-   delivery / delivered), deleting variants, an audit log beyond "who cancelled", charts in the summary.
+5. Not asked for, but likely next: a notification history block in the admin order page, deleting variants, an audit log beyond "who cancelled", charts in the summary.
 
 ## 11. Assumptions the product owner has not explicitly confirmed
 
