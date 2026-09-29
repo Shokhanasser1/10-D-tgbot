@@ -35,10 +35,13 @@ docker compose up -d db
 ```
 cd backend
 .venv\Scripts\activate
+pip install -r requirements-dev.txt
 alembic upgrade head
 uvicorn app.main:app --reload --port 8000
 ```
 
+- `pip install -r requirements-dev.txt` доустанавливает библиотеки, которые появились в проекте после
+  создания `.venv`. Если ничего не изменилось, команда просто ничего не сделает.
 - `alembic upgrade head` приводит таблицы базы к последней версии.
 - `--reload` перезапускает сервер сам, когда меняется код.
 
@@ -153,6 +156,7 @@ npm test                        # база не нужна
 |---|---|---|
 | `address already in use`, порт 8000 занят | Docker-версия ещё запущена | `docker compose stop api web` |
 | В админке «Нет доступа» или ошибка 401 | строка в `frontend\.env` устарела (24 часа) или выдана не для вашего ID | повторите `make_dev_init_data`, перезапустите `npm run dev` |
+| `SHOP_TIMEZONE 'Asia/Tashkent' is not a known IANA time zone` или `No module named ...` | в `.venv` не хватает библиотек (в Windows нет своей базы часовых поясов, её даёт пакет `tzdata`) | `pip install -r requirements-dev.txt` в активированном `.venv` |
 | `ConnectionRefusedError` в бэкенде или тестах | база не запущена | откройте Docker Desktop, затем `docker compose up -d db` |
 | `docker: command not found` / ошибка подключения к Docker | Docker Desktop не запущен | запустите Docker Desktop и подождите 1–2 минуты |
 | Каталог пустой на <http://localhost:5173> | в базе нет товаров | `python -m scripts.seed_demo_data` |
