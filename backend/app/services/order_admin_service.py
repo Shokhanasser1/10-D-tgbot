@@ -18,7 +18,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.core.exceptions import ConflictError, NotFoundError
 from app.models.courier import Courier
-from app.models.enums import OrderStatus, PaymentStatus, RefundStatus, ShipmentStatus
+from app.models.enums import (
+    OrderStatus,
+    PaymentMethod,
+    PaymentStatus,
+    RefundStatus,
+    ShipmentStatus,
+)
 from app.models.order import Order, OrderItem
 from app.models.payment import Payment
 from app.models.shipment import Shipment
@@ -106,6 +112,7 @@ async def list_orders(
                     TelegramUser.last_name,
                     Shipment.status.label("shipment_status"),
                     Payment.refund_status,
+                    Order.payment_method,
                 )
                 .join(TelegramUser, TelegramUser.telegram_id == Order.telegram_id)
                 .outerjoin(Shipment, Shipment.order_id == Order.id)
@@ -135,6 +142,7 @@ async def list_orders(
                 shipment_status=r.shipment_status,
                 stock_shortfall=r.stock_shortfall,
                 refund_status=r.refund_status,
+                payment_method=r.payment_method,
             )
             for r in rows
         ],
@@ -164,9 +172,14 @@ async def get_order(db: AsyncSession, order_id: int) -> OrderAdminDetailOut:
     ).all()
     payment = (
         await db.execute(
-            select(Payment.status, Payment.amount, Payment.refund_status).where(
-                Payment.order_id == order_id
-            )
+            select(
+                Payment.method,
+                Payment.status,
+                Payment.amount,
+                Payment.refund_status,
+                Payment.telegram_payment_charge_id,
+                Payment.provider_payment_charge_id,
+            ).where(Payment.order_id == order_id)
         )
     ).first()
     shipment = (
@@ -214,7 +227,12 @@ async def get_order(db: AsyncSession, order_id: int) -> OrderAdminDetailOut:
         ],
         payment=(
             OrderAdminPaymentOut(
-                status=payment.status, amount=payment.amount, refund_status=payment.refund_status
+                method=payment.method,
+                status=payment.status,
+                amount=payment.amount,
+                refund_status=payment.refund_status,
+                telegram_payment_charge_id=payment.telegram_payment_charge_id,
+                provider_payment_charge_id=payment.provider_payment_charge_id,
             )
             if payment
             else None
@@ -333,20 +351,63 @@ async def cancel_order(
     if courier_id is not None:
         await courier_state.purge_location_if_idle(db, courier_id)
 
-    payment_intent = await db.scalar(
-        update(Payment)
-        .where(Payment.order_id == order_id, Payment.status == PaymentStatus.succeeded)
-        .values(refund_status=RefundStatus.pending)
-        .returning(Payment.stripe_payment_intent_id)
-        .execution_options(synchronize_session=False)
-    )
-    await notification_events.order_cancelled(db, order_id, reason)
+    stripe_refund = await _start_refund(db, order_id, reason)
     # Commit before talking to Stripe: money must never go back for an order the database
     # still shows as on its way.
     await db.commit()
 
-    if payment_intent is not None:
-        await refund_payment(db, order_id, payment_intent, f"refund-order-{order_id}")
+    if stripe_refund is not None:
+        await refund_payment(db, order_id, stripe_refund, f"refund-order-{order_id}")
+    return await get_order(db, order_id)
+
+
+async def _start_refund(db: AsyncSession, order_id: int, reason: str) -> str | None:
+    """Settle the money of a cancelled order (no commit), by how it was paid.
+
+    Returns the Stripe PaymentIntent to refund after committing, if any. Telegram Payments has
+    no refund API, so an owner refunds by hand; cash was never collected before pickup.
+    """
+    method = await db.scalar(select(Payment.method).where(Payment.order_id == order_id))
+    if method == PaymentMethod.cash:
+        await db.execute(
+            update(Payment)
+            .where(Payment.order_id == order_id, Payment.status != PaymentStatus.succeeded)
+            .values(status=PaymentStatus.canceled)
+            .execution_options(synchronize_session=False)
+        )
+        await notification_events.order_cancelled(db, order_id, reason, refunded=False)
+        return None
+
+    manual = method == PaymentMethod.telegram
+    refunded = await db.scalar(
+        update(Payment)
+        .where(Payment.order_id == order_id, Payment.status == PaymentStatus.succeeded)
+        .values(refund_status=RefundStatus.manual_required if manual else RefundStatus.pending)
+        .returning(Payment.stripe_payment_intent_id)
+        .execution_options(synchronize_session=False)
+    )
+    await notification_events.order_cancelled(db, order_id, reason, refunded=True)
+    if manual:
+        await notification_events.refund_manual_required(db, order_id)
+        return None
+    return refunded
+
+
+async def confirm_manual_refund(db: AsyncSession, order_id: int) -> OrderAdminDetailOut:
+    """An owner refunded a Telegram payment in the provider's cabinet and says so."""
+    confirmed = await db.scalar(
+        update(Payment)
+        .where(Payment.order_id == order_id, Payment.refund_status == RefundStatus.manual_required)
+        .values(refund_status=RefundStatus.succeeded)
+        .returning(Payment.id)
+        .execution_options(synchronize_session=False)
+    )
+    if confirmed is None:
+        if await db.scalar(select(Order.id).where(Order.id == order_id)) is None:
+            raise NotFoundError("Order not found")
+        raise ConflictError("There is no manual refund to confirm", code="invalid_state")
+    await notification_events.refund_succeeded(db, order_id)
+    await db.commit()
     return await get_order(db, order_id)
 
 

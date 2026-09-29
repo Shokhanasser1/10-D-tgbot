@@ -1,0 +1,17 @@
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.text {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-danger);
+}

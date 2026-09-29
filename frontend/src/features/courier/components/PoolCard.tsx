@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 
+import { formatMoney } from '../../../shared/money/formatMoney'
 import { Card } from '../../../shared/ui/Card'
 import { PillButton } from '../../../shared/ui/PillButton'
 import { formatAgo, secondsSince } from '../../../shared/time/formatAgo'
@@ -14,7 +15,7 @@ interface PoolCardProps {
 }
 
 export function PoolCard({ item, isBusy, onClaim }: PoolCardProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const now = useNow(15_000)
 
   return (
@@ -29,6 +30,13 @@ export function PoolCard({ item, isBusy, onClaim }: PoolCardProps) {
         {item.street}, {item.city}
       </p>
       <p className={styles.meta}>{t('courier.pool.items', { count: item.item_count })}</p>
+      {item.cash_to_collect && (
+        <p className={styles.meta}>
+          {t('courier.cash', {
+            total: formatMoney(item.cash_to_collect, item.currency ?? 'UZS', i18n.language),
+          })}
+        </p>
+      )}
       <PillButton
         className={styles.action}
         disabled={isBusy}

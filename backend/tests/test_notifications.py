@@ -108,7 +108,7 @@ def test_money_uses_a_symbol_when_there_is_one() -> None:
     from decimal import Decimal
 
     assert money(Decimal("44.9"), "EUR") == "€44.90"
-    assert money(Decimal("120000"), "UZS") == "120000.00 UZS"
+    assert money(Decimal("120000"), "UZS") == "UZS 120,000"  # whole sums, grouped
 
 
 def test_no_button_without_an_https_webapp_url(monkeypatch: pytest.MonkeyPatch) -> None:

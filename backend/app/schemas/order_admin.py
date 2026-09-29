@@ -3,7 +3,13 @@ from decimal import Decimal
 
 from pydantic import BaseModel, Field
 
-from app.models.enums import OrderStatus, PaymentStatus, RefundStatus, ShipmentStatus
+from app.models.enums import (
+    OrderStatus,
+    PaymentMethod,
+    PaymentStatus,
+    RefundStatus,
+    ShipmentStatus,
+)
 from app.schemas.checkout import DeliveryAddressIn
 
 
@@ -18,6 +24,7 @@ class OrderAdminListItem(BaseModel):
     shipment_status: ShipmentStatus | None
     stock_shortfall: bool
     refund_status: RefundStatus | None
+    payment_method: PaymentMethod = PaymentMethod.stripe
 
 
 class OrderAdminPage(BaseModel):
@@ -43,9 +50,13 @@ class OrderAdminCustomerOut(BaseModel):
 
 
 class OrderAdminPaymentOut(BaseModel):
+    method: PaymentMethod = PaymentMethod.stripe
     status: PaymentStatus
     amount: Decimal
     refund_status: RefundStatus | None
+    # Telegram Payments: to find the payment in the Click/Payme cabinet for a manual refund.
+    telegram_payment_charge_id: str | None = None
+    provider_payment_charge_id: str | None = None
 
 
 class OrderAdminShipmentOut(BaseModel):

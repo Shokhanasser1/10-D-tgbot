@@ -130,6 +130,14 @@ export function OrdersScreen() {
                     {order.refund_status === 'failed' && (
                       <Badge tone="negative">{t('admin.orders.refundFailed')}</Badge>
                     )}
+                    {order.refund_status === 'manual_required' && (
+                      <Badge tone="negative">{t('admin.orders.refund.manual_required')}</Badge>
+                    )}
+                    {order.payment_method && order.payment_method !== 'stripe' && (
+                      <Badge tone="neutral">
+                        {t(`admin.orders.method.${order.payment_method}`)}
+                      </Badge>
+                    )}
                   </span>
                 </span>
                 <span className={styles.side}>

@@ -33,6 +33,10 @@ class ForbiddenError(Exception):
     """Raised by the service layer when the caller is authenticated but not allowed."""
 
 
+class PaymentUnavailableError(Exception):
+    """A payment provider refused or could not be reached. The message is for logs only."""
+
+
 class BadRequestError(Exception):
     """Raised by the service layer for invalid requests that aren't a resource conflict."""
 
@@ -70,11 +74,12 @@ def register_exception_handlers(app: FastAPI) -> None:
             status_code=400, content={"detail": "Request conflicts with existing data"}
         )
 
+    @app.exception_handler(PaymentUnavailableError)
     @app.exception_handler(stripe.StripeError)
-    async def _stripe_error_handler(request: Request, exc: stripe.StripeError) -> JSONResponse:
+    async def _payment_error_handler(request: Request, exc: Exception) -> JSONResponse:
         # Missing keys, an outage or a rejected request: the customer can only try again later.
-        # Stripe's message may describe the shop's account, so it is logged, not returned.
-        logger.error("Stripe call failed on %s %s: %s", request.method, request.url.path, exc)
+        # The provider's message may describe the shop's account, so it is logged, not returned.
+        logger.error("Payment call failed on %s %s: %s", request.method, request.url.path, exc)
         return JSONResponse(
             status_code=502,
             content={"detail": "Payment provider unavailable", "code": "payment_unavailable"},

@@ -8,7 +8,7 @@ import { Card } from '../../../shared/ui/Card'
 import { PillButton } from '../../../shared/ui/PillButton'
 import { QueryError } from '../../../shared/ui/QueryError'
 import { Skeleton } from '../../../shared/ui/Skeleton'
-import { cancelOrder, retryRefund } from '../api'
+import { cancelOrder, confirmManualRefund, retryRefund } from '../api'
 import { Badge, ConfirmDialog, ErrorNote, PageHeader } from '../components/ui'
 import { adminErrorKey } from '../errors'
 import { formatDateTime, formatMoney } from '../format'
@@ -22,6 +22,7 @@ const REFUND_TONE: Record<RefundStatus, 'neutral' | 'positive' | 'negative'> = {
   pending: 'neutral',
   succeeded: 'positive',
   failed: 'negative',
+  manual_required: 'negative',
 }
 
 function History({ order }: { order: AdminOrder }) {
@@ -54,6 +55,7 @@ export function OrderDetailScreen() {
   const [confirming, setConfirming] = useState(false)
   const cancel = useOrderAction((reason: string) => cancelOrder(orderId, reason))
   const refund = useOrderAction(() => retryRefund(orderId))
+  const confirmRefund = useOrderAction(() => confirmManualRefund(orderId))
 
   const order = query.data
   if (query.isError && !order) return <QueryError onRetry={() => query.refetch()} />
@@ -107,6 +109,20 @@ export function OrderDetailScreen() {
               </li>
             ))}
           </ul>
+          {order.payment?.method && (
+            <p className={styles.muted}>
+              {t('admin.orders.paymentMethod', {
+                method: t(`admin.orders.method.${order.payment.method}`),
+              })}
+              {order.payment.method === 'cash' &&
+                order.status !== 'cancelled' &&
+                ` · ${t(
+                  order.payment.status === 'succeeded'
+                    ? 'admin.orders.cashCollected'
+                    : 'admin.orders.cashPending',
+                )}`}
+            </p>
+          )}
           <dl className={styles.totals}>
             <dt>{t('admin.orders.subtotal')}</dt>
             <dd>{money(order.subtotal)}</dd>
@@ -163,7 +179,24 @@ export function OrderDetailScreen() {
         </Card>
       </div>
 
+      {refundStatus === 'manual_required' && (
+        <p className={styles.notes} role="status">
+          {t('admin.orders.manualRefund', {
+            total: money(order.payment?.amount ?? order.total),
+            charge: order.payment?.provider_payment_charge_id ?? '—',
+            telegram: order.payment?.telegram_payment_charge_id ?? '—',
+          })}
+        </p>
+      )}
       <div className={styles.actions}>
+        {refundStatus === 'manual_required' && (
+          <PillButton
+            disabled={confirmRefund.isPending}
+            onClick={() => confirmRefund.mutate(undefined)}
+          >
+            {t('admin.orders.confirmRefund')}
+          </PillButton>
+        )}
         {refundStatus === 'failed' && (
           <PillButton disabled={refund.isPending} onClick={() => refund.mutate(undefined)}>
             {t('admin.orders.retryRefund')}
@@ -184,6 +217,7 @@ export function OrderDetailScreen() {
         <p className={styles.muted}>{t('admin.orders.cannotCancel')}</p>
       )}
       <ErrorNote message={refund.error ? t(adminErrorKey(refund.error)) : null} />
+      <ErrorNote message={confirmRefund.error ? t(adminErrorKey(confirmRefund.error)) : null} />
 
       <ConfirmDialog
         open={confirming}

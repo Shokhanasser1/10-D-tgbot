@@ -4,6 +4,8 @@ from typing import Self
 
 from pydantic import BaseModel, Field, model_validator
 
+from app.models.enums import PaymentMethod
+
 
 class DeliveryAddressIn(BaseModel):
     street: str
@@ -27,11 +29,21 @@ class DeliveryAddressIn(BaseModel):
 
 class CheckoutRequest(BaseModel):
     delivery_address: DeliveryAddressIn
+    # Omitted: the first method the shop has switched on.
+    payment_method: PaymentMethod | None = None
+
+
+class PaymentMethodsOut(BaseModel):
+    methods: list[PaymentMethod]
+    currency: str
 
 
 class CheckoutResponse(BaseModel):
     order_id: int
-    client_secret: str
+    payment_method: PaymentMethod
+    # Stripe: confirm the PaymentIntent with this. Telegram: open this invoice. Cash: neither.
+    client_secret: str | None = None
+    invoice_url: str | None = None
     total: Decimal
     currency: str
     # Stock is held until then; an unpaid order is cancelled afterwards.

@@ -30,6 +30,8 @@ interface TelegramWebAppHaptic {
   notificationOccurred: (type: 'error' | 'success' | 'warning') => void
 }
 
+export type InvoiceStatus = 'paid' | 'cancelled' | 'failed' | 'pending'
+
 interface TelegramWebApp {
   initData: string
   initDataUnsafe: { user?: TelegramUser }
@@ -45,6 +47,7 @@ interface TelegramWebApp {
   openTelegramLink?: (url: string) => void
   isVersionAtLeast?: (version: string) => boolean
   requestWriteAccess?: (callback?: (granted: boolean) => void) => void
+  openInvoice?: (url: string, callback?: (status: InvoiceStatus) => void) => void
   disableVerticalSwipes?: () => void
   enableVerticalSwipes?: () => void
 }
@@ -119,4 +122,17 @@ export function requestWriteAccessIfNeeded(): void {
   if (webApp?.initDataUnsafe.user?.allows_write_to_pm !== false) return
   if (webApp.isVersionAtLeast && !webApp.isVersionAtLeast('6.9')) return
   webApp.requestWriteAccess?.()
+}
+
+/**
+ * Opens a Telegram Payments invoice (Click/Payme) over the Mini App and reports how it ended.
+ * Outside Telegram there is nothing to open it with, so it reports "failed".
+ */
+export function openInvoice(url: string, onClose: (status: InvoiceStatus) => void): void {
+  const webApp = getWebApp()
+  if (!isTelegramEnv() || !webApp?.openInvoice) {
+    onClose('failed')
+    return
+  }
+  webApp.openInvoice(url, onClose)
 }

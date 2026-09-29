@@ -54,7 +54,20 @@
     "soldOut": "Some items just sold out. Check your cart and try again.",
     "backToCart": "Back to cart",
     "payBy": "We hold your items until {{time}}. Please pay before then.",
-    "paymentUnavailable": "Payments are unavailable right now. Your cart is saved, please try again later."
+    "paymentUnavailable": "Payments are unavailable right now. Your cart is saved, please try again later.",
+    "placeOrder": "Place order",
+    "payWithTelegram": "Pay",
+    "invoiceClosed": "Payment was not completed. You can try again while the items are held.",
+    "invoiceFailed": "Payment didn't go through. Try again or choose another method.",
+    "method": {
+      "title": "Payment",
+      "telegram": "Card (Click / Payme)",
+      "telegramHint": "Uzcard, Humo and other cards, right in Telegram",
+      "cash": "Cash on delivery",
+      "cashHint": "Pay the courier when the order arrives",
+      "stripe": "Card (Stripe)",
+      "stripeHint": "Visa, Mastercard"
+    }
   },
   "orders": {
     "title": "My orders",
@@ -79,7 +92,12 @@
     "refund": {
       "pending": "Your payment is being refunded.",
       "succeeded": "Your payment has been refunded.",
-      "failed": "We couldn't refund your payment automatically. The shop will contact you."
+      "failed": "We couldn't refund your payment automatically. The shop will contact you.",
+      "manual_required": "The shop is refunding your payment."
+    },
+    "payment": {
+      "cash": "Pay in cash on delivery: {{total}}",
+      "cashCollected": "Paid in cash on delivery"
     }
   },
   "courier": {
@@ -110,7 +128,8 @@
       "pickup": "Picked up",
       "deliver": "Delivered",
       "release": "Give back",
-      "openMaps": "Open in maps"
+      "openMaps": "Open in maps",
+      "deliverCash": "Delivered, cash received"
     },
     "notes": "Notes",
     "gps": {
@@ -125,7 +144,8 @@
       "limitReached": "You are at your limit of active deliveries. Finish one first.",
       "invalidState": "This delivery has changed. The list was refreshed.",
       "gone": "This delivery is no longer available."
-    }
+    },
+    "cash": "Collect in cash: {{total}}"
   },
   "time": {
     "secondsAgo": "{{n}} s ago",
@@ -320,7 +340,8 @@
       "refund": {
         "pending": "Refund in progress",
         "succeeded": "Refunded",
-        "failed": "Refund failed"
+        "failed": "Refund failed",
+        "manual_required": "Refund by hand"
       },
       "retryRefund": "Retry refund",
       "cancel": "Cancel and refund",
@@ -332,7 +353,17 @@
       "systemReason": {
         "payment_expired": "not paid in time",
         "payment_setup_failed": "payment could not be started"
-      }
+      },
+      "method": {
+        "telegram": "Click/Payme",
+        "cash": "Cash",
+        "stripe": "Stripe"
+      },
+      "paymentMethod": "Payment: {{method}}",
+      "cashPending": "Cash not collected yet",
+      "cashCollected": "Cash collected by the courier",
+      "manualRefund": "Refund {{total}} by hand in the Click/Payme cabinet. Payment ID: {{charge}}. Telegram charge: {{telegram}}.",
+      "confirmRefund": "Refund done"
     },
     "couriers": {
       "tabs": {

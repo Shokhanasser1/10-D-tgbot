@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 
 from pydantic import BaseModel
 
@@ -22,6 +23,9 @@ class PoolItemOut(BaseModel):
     street: str
     item_count: int
     placed_at: datetime
+    # Cash on delivery: what the courier collects. Null for orders paid online.
+    cash_to_collect: Decimal | None = None
+    currency: str = "EUR"
 
 
 class DeliveryItemOut(BaseModel):
@@ -39,7 +43,7 @@ class CourierAddressOut(BaseModel):
 
 
 class CourierDeliveryOut(BaseModel):
-    """A delivery the courier holds. No money fields: payment was taken at checkout."""
+    """A delivery the courier holds. Money only for cash on delivery: what to collect."""
 
     shipment_id: int
     order_id: int
@@ -49,6 +53,8 @@ class CourierDeliveryOut(BaseModel):
     items: list[DeliveryItemOut]
     assigned_at: datetime | None
     picked_up_at: datetime | None
+    cash_to_collect: Decimal | None = None
+    currency: str = "EUR"
 
 
 class CourierDeliveriesOut(BaseModel):

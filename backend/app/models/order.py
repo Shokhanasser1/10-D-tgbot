@@ -20,7 +20,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from app.models.enums import OrderStatus
+from app.models.enums import OrderStatus, PaymentMethod
 
 if TYPE_CHECKING:
     from app.models.payment import Payment
@@ -49,6 +49,12 @@ class Order(Base):
         default=OrderStatus.pending_payment,
     )
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="EUR")
+    payment_method: Mapped[PaymentMethod] = mapped_column(
+        Enum(PaymentMethod, native_enum=False, length=20),
+        nullable=False,
+        default=PaymentMethod.stripe,
+        server_default=PaymentMethod.stripe.value,
+    )
     subtotal: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     shipping_cost: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     total: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)

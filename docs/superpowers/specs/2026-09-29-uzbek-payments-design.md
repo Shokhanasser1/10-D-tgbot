@@ -1,6 +1,7 @@
 # Spec 6: Payments in Uzbekistan (Click/Payme via Telegram Payments, cash on delivery)
 
-Status: **designed, approved section by section by the owner (2026-09-29), not implemented.**
+Status: **implemented** (2026-09-29) after the owner approved the design section by section; §13 lists
+where the build refined it.
 
 ## 1. Problem
 
@@ -174,3 +175,21 @@ payment method and "Refund done", UZS price formatting.
 
 Direct Payme/Click Merchant APIs and automatic refunds for them, partial refunds, cash limits, card
 payments on delivery (POS terminals), multi-currency catalogs, exchange rates, fiscal receipts (OFD).
+
+## 13. Implementation notes
+
+- Migration `e8f9a0b1c2d3`: `orders.payment_method`, `payments.method`, the two Telegram charge IDs,
+  nullable `stripe_payment_intent_id`. Downgrade deletes payments without a Stripe ID.
+- Modules: `payment_methods` (enabled methods, choice), `telegram_payments` (invoice parameters,
+  `createInvoiceLink`), `telegram_payment_webhook` (pre-checkout answer, successful payment).
+  `core.exceptions.PaymentUnavailableError` is the provider-neutral 502 `payment_unavailable`.
+- `order_service.mark_order_paid` takes optional `charge_ids`; `confirm_cash_order` moves a cash order
+  to the pool inside checkout's transaction. Pre-checkout also checks that the payer is the order's
+  customer.
+- `order_admin_service._start_refund` settles the money by method on cancel;
+  `confirm_manual_refund` backs `POST /internal/orders/{id}/refund/confirm` (owner only).
+- Courier pool and delivery responses carry `cash_to_collect` and `currency`; the customer order detail
+  carries `payment_method`; the admin detail payment carries `method` and the charge IDs.
+- Frontend: `shared/money/formatMoney` (UZS without decimals) is used by `Price` and the admin; Stripe's
+  script is only loaded when a Stripe payment step is shown.
+- `docker-compose.yml` defaults stay EUR / Stripe for existing set-ups; `.env.example` is the Uzbek shop.

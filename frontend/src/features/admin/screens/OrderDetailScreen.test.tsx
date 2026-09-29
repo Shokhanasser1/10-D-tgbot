@@ -143,4 +143,38 @@ describe('OrderDetailScreen', () => {
 
     expect(await screen.findByText('Cancelled: not paid in time')).toBeInTheDocument()
   })
+
+  it('asks an owner to refund a Click/Payme payment by hand and to confirm it', async () => {
+    const backend = stubAdminBackend()
+    serve(
+      adminOrder({
+        status: 'cancelled',
+        can_cancel: false,
+        cancel_reason: 'Broken',
+        cancelled_at: '2026-09-24T12:00:00Z',
+        payment: {
+          method: 'telegram',
+          status: 'succeeded',
+          amount: '34.97',
+          refund_status: 'manual_required',
+          telegram_payment_charge_id: 'tg_1',
+          provider_payment_charge_id: 'click_777',
+        },
+      }),
+    )
+    renderOrder()
+
+    expect(
+      await screen.findByText(/Click\/Payme cabinet\. Payment ID: click_777/),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Payment: Click/Payme')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Refund done' }))
+
+    await waitFor(() =>
+      expect(backend.writes()[0]).toMatchObject({
+        method: 'POST',
+        path: '/orders/42/refund/confirm',
+      }),
+    )
+  })
 })

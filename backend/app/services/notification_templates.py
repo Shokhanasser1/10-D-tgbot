@@ -26,6 +26,15 @@ TEMPLATES: dict[str, dict[str, str]] = {
         ),
         "refund_succeeded": "The payment for order #{order_id} has been refunded.",
         "refund_failed": "⚠ The refund for order #{order_id} failed. Retry it in the admin panel.",
+        "order_confirmed_cash": (
+            "Order #{order_id} is confirmed. Pay in cash on delivery: {total}."
+        ),
+        "pool_cash": " Cash: {total}.",
+        "order_cancelled_unpaid": "Order #{order_id} was cancelled by the shop: {reason}.",
+        "refund_manual": (
+            "Refund {total} for order #{order_id} by hand in the Click/Payme cabinet "
+            '(payment ID {charge}), then press "Refund done" in the admin panel.'
+        ),
         "button_order": "Open order",
         "button_courier": "Open deliveries",
         "button_admin": "Open in admin",
@@ -44,6 +53,15 @@ TEMPLATES: dict[str, dict[str, str]] = {
         "order_cancelled": "Магазин отменил заказ №{order_id}: {reason}. Деньги вернутся вам.",
         "refund_succeeded": "Оплата за заказ №{order_id} возвращена.",
         "refund_failed": "⚠ Возврат по заказу №{order_id} не прошёл. Повторите его в админке.",
+        "order_confirmed_cash": (
+            "Заказ №{order_id} принят. Оплата наличными при получении: {total}."
+        ),
+        "pool_cash": " Наличные: {total}.",
+        "order_cancelled_unpaid": "Магазин отменил заказ №{order_id}: {reason}.",
+        "refund_manual": (
+            "Верните {total} за заказ №{order_id} вручную в кабинете Click/Payme "
+            "(ID платежа {charge}), затем нажмите «Возврат сделан» в админке."
+        ),
         "button_order": "Открыть заказ",
         "button_courier": "Открыть доставки",
         "button_admin": "Открыть в админке",
@@ -68,6 +86,15 @@ TEMPLATES: dict[str, dict[str, str]] = {
         "refund_failed": (
             "⚠ №{order_id} buyurtma bo'yicha qaytarish amalga oshmadi. Admin panelda qayta urining."
         ),
+        "order_confirmed_cash": (
+            "№{order_id} buyurtma qabul qilindi. Yetkazilganda naqd to'lov: {total}."
+        ),
+        "pool_cash": " Naqd: {total}.",
+        "order_cancelled_unpaid": "Do'kon №{order_id} buyurtmani bekor qildi: {reason}.",
+        "refund_manual": (
+            "№{order_id} buyurtma uchun {total} ni Click/Payme kabinetida qo'lda qaytaring "
+            "(to'lov ID {charge}), so'ng admin panelda «Qaytarildi» tugmasini bosing."
+        ),
         "button_order": "Buyurtmani ochish",
         "button_courier": "Yetkazishlarni ochish",
         "button_admin": "Admin panelda ochish",
@@ -76,6 +103,9 @@ TEMPLATES: dict[str, dict[str, str]] = {
 }
 
 _CURRENCY_SYMBOLS = {"EUR": "€", "USD": "$", "GBP": "£"}
+# Currencies priced in whole units in practice: shown without decimals.
+_WHOLE_UNIT = {"UZS"}
+_SUM_WORD = {"ru": "сум", "uz": "so'm"}
 
 
 def language_of(locale: str | None) -> str:
@@ -86,9 +116,16 @@ def render(key: str, locale: str | None, **values: object) -> str:
     return TEMPLATES[language_of(locale)][key].format(**values)
 
 
-def money(amount: Decimal, currency: str) -> str:
-    symbol = _CURRENCY_SYMBOLS.get(currency.upper())
-    return f"{symbol}{amount:.2f}" if symbol else f"{amount:.2f} {currency.upper()}"
+def money(amount: Decimal, currency: str, locale: str | None = None) -> str:
+    code = currency.upper()
+    language = language_of(locale)
+    if code in _WHOLE_UNIT:
+        whole = int(amount.quantize(Decimal("1")))
+        if language == "en":
+            return f"{code} {whole:,}"
+        return f"{whole:,}".replace(",", " ") + f" {_SUM_WORD.get(language, code)}"
+    symbol = _CURRENCY_SYMBOLS.get(code)
+    return f"{symbol}{amount:.2f}" if symbol else f"{amount:.2f} {code}"
 
 
 def items(count: int, locale: str | None) -> str:

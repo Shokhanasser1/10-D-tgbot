@@ -128,7 +128,9 @@ export interface TranslationInput {
 // --- orders ----------------------------------------------------------------------------------
 
 export type AdminShipmentStatus = 'processing' | 'assigned' | 'shipped' | 'delivered' | 'cancelled'
-export type RefundStatus = 'pending' | 'succeeded' | 'failed'
+export type RefundStatus = 'pending' | 'succeeded' | 'failed' | 'manual_required'
+
+export type PaymentMethod = 'telegram' | 'cash' | 'stripe'
 
 export interface AdminOrderListItem {
   id: number
@@ -141,6 +143,7 @@ export interface AdminOrderListItem {
   shipment_status: AdminShipmentStatus | null
   stock_shortfall: boolean
   refund_status: RefundStatus | null
+  payment_method?: PaymentMethod
 }
 
 export interface AdminOrderItem {
@@ -169,7 +172,15 @@ export interface AdminOrder {
     username: string | null
   }
   items: AdminOrderItem[]
-  payment: { status: string; amount: string; refund_status: RefundStatus | null } | null
+  payment: {
+    method?: PaymentMethod
+    status: string
+    amount: string
+    refund_status: RefundStatus | null
+    /** Telegram Payments: to find the payment in the Click/Payme cabinet. */
+    telegram_payment_charge_id?: string | null
+    provider_payment_charge_id?: string | null
+  } | null
   shipment: {
     id: number
     status: AdminShipmentStatus

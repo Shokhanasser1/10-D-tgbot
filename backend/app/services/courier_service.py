@@ -1,9 +1,11 @@
+from decimal import Decimal
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.geo import destination_from_address
 from app.models.courier import Courier, CourierLocation
-from app.models.enums import ACTIVE_SHIPMENT_STATUSES, OrderStatus, ShipmentStatus
+from app.models.enums import ACTIVE_SHIPMENT_STATUSES, OrderStatus, PaymentMethod, ShipmentStatus
 from app.models.order import Order, OrderItem
 from app.models.shipment import Shipment
 from app.schemas.courier import (
@@ -17,6 +19,10 @@ from app.schemas.courier import (
 POOL_LIMIT = 100
 
 
+def _cash(method: PaymentMethod, total: Decimal) -> Decimal | None:
+    return total if method == PaymentMethod.cash else None
+
+
 def _text(address: dict, key: str) -> str:
     # Addresses are stored JSON; tolerate a missing or null field rather than failing the list.
     return str(address.get(key) or "")
@@ -25,7 +31,15 @@ def _text(address: dict, key: str) -> str:
 async def get_pool(db: AsyncSession) -> list[PoolItemOut]:
     rows = (
         await db.execute(
-            select(Shipment.id, Shipment.order_id, Order.placed_at, Order.delivery_address)
+            select(
+                Shipment.id,
+                Shipment.order_id,
+                Order.placed_at,
+                Order.delivery_address,
+                Order.payment_method,
+                Order.total,
+                Order.currency,
+            )
             .join(Order, Order.id == Shipment.order_id)
             .where(
                 Shipment.status == ShipmentStatus.processing,
@@ -58,6 +72,8 @@ async def get_pool(db: AsyncSession) -> list[PoolItemOut]:
             street=_text(row.delivery_address, "street"),
             item_count=int(counts.get(row.order_id, 0)),
             placed_at=row.placed_at,
+            cash_to_collect=_cash(row.payment_method, row.total),
+            currency=row.currency,
         )
         for row in rows
     ]
@@ -75,6 +91,9 @@ async def get_deliveries(db: AsyncSession, courier: Courier) -> CourierDeliverie
                 Shipment.picked_up_at,
                 Order.id.label("order_id"),
                 Order.delivery_address,
+                Order.payment_method,
+                Order.total,
+                Order.currency,
             )
             .join(Order, Order.id == Shipment.order_id)
             .where(
@@ -122,6 +141,8 @@ async def get_deliveries(db: AsyncSession, courier: Courier) -> CourierDeliverie
                 items=items_by_order.get(row.order_id, []),
                 assigned_at=row.assigned_at,
                 picked_up_at=row.picked_up_at,
+                cash_to_collect=_cash(row.payment_method, row.total),
+                currency=row.currency,
             )
             for row in rows
         ],

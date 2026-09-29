@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
+import { formatMoney } from '../../../shared/money/formatMoney'
 import { formatClock } from '../../../shared/time/formatClock'
 import { Card } from '../../../shared/ui/Card'
 import { PillButton } from '../../../shared/ui/PillButton'
@@ -23,6 +24,15 @@ export function PaymentNotice({ order }: { order: OrderDetail }) {
   const queryClient = useQueryClient()
 
   const lines: string[] = []
+  if (order.payment_method === 'cash' && order.status !== 'cancelled') {
+    lines.push(
+      order.payment_status === 'succeeded'
+        ? t('orders.payment.cashCollected')
+        : t('orders.payment.cash', {
+            total: formatMoney(order.total, order.currency, i18n.language),
+          }),
+    )
+  }
   if (order.status === 'pending_payment' && order.reserved_until) {
     lines.push(
       t('orders.reservation.pending', { time: formatClock(order.reserved_until, i18n.language) }),

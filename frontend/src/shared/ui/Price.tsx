@@ -1,3 +1,5 @@
+import { formatMoney } from '../money/formatMoney'
+
 interface PriceProps {
   amount: number | string
   currency: string
@@ -5,10 +7,5 @@ interface PriceProps {
 }
 
 export function Price({ amount, currency, locale }: PriceProps) {
-  const formatted = new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency,
-  }).format(Number(amount))
-
-  return <span>{formatted}</span>
+  return <span>{formatMoney(amount, currency, locale)}</span>
 }

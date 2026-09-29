@@ -1,5 +1,7 @@
 import { useTranslation } from 'react-i18next'
 
+import { formatMoney } from '../../../shared/money/formatMoney'
+
 import { openExternalLink } from '../../../shared/telegram/webApp'
 import { Card } from '../../../shared/ui/Card'
 import { PillButton } from '../../../shared/ui/PillButton'
@@ -22,7 +24,7 @@ export function DeliveryCard({
   onDeliver,
   onRelease,
 }: DeliveryCardProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { address } = delivery
   const tel = telHref(address.phone)
   const isOnTheWay = delivery.status === 'shipped'
@@ -53,6 +55,14 @@ export function DeliveryCard({
         </p>
       )}
 
+      {delivery.cash_to_collect && (
+        <p className={styles.cash}>
+          {t('courier.cash', {
+            total: formatMoney(delivery.cash_to_collect, delivery.currency ?? 'UZS', i18n.language),
+          })}
+        </p>
+      )}
+
       <ul className={styles.items}>
         {delivery.items.map((item, index) => (
           <li key={index}>
@@ -75,7 +85,9 @@ export function DeliveryCard({
           disabled={isBusy}
           onClick={() => onDeliver(delivery.shipment_id)}
         >
-          {t('courier.actions.deliver')}
+          {delivery.cash_to_collect
+            ? t('courier.actions.deliverCash')
+            : t('courier.actions.deliver')}
         </PillButton>
       ) : (
         <>

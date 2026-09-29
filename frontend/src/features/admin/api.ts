@@ -116,6 +116,9 @@ export const cancelOrder = (id: number, reason: string) =>
   admin<AdminOrder>(`/orders/${id}/cancel`, { method: 'POST', body: { reason } })
 export const retryRefund = (id: number) =>
   admin<AdminOrder>(`/orders/${id}/refund`, { method: 'POST' })
+/** An owner refunded a Click/Payme payment in the provider's cabinet. */
+export const confirmManualRefund = (id: number) =>
+  admin<AdminOrder>(`/orders/${id}/refund/confirm`, { method: 'POST' })
 
 // --- couriers --------------------------------------------------------------------------------
 

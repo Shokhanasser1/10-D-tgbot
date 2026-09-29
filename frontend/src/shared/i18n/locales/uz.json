@@ -54,7 +54,20 @@
     "soldOut": "Ba'zi mahsulotlar hozirgina sotilib ketdi. Savatni tekshirib, qaytadan urinib ko'ring.",
     "backToCart": "Savatga qaytish",
     "payBy": "Mahsulotlarni siz uchun {{time}} gacha saqlaymiz. Shu vaqtgacha to'lang.",
-    "paymentUnavailable": "To'lov hozircha ishlamayapti. Savat saqlandi, keyinroq urinib ko'ring."
+    "paymentUnavailable": "To'lov hozircha ishlamayapti. Savat saqlandi, keyinroq urinib ko'ring.",
+    "placeOrder": "Buyurtma berish",
+    "payWithTelegram": "To'lash",
+    "invoiceClosed": "To'lov yakunlanmadi. Mahsulotlar band ekan, qayta urinib ko'ring.",
+    "invoiceFailed": "To'lov o'tmadi. Qayta urining yoki boshqa usulni tanlang.",
+    "method": {
+      "title": "To'lov",
+      "telegram": "Karta (Click / Payme)",
+      "telegramHint": "Uzcard, Humo va boshqa kartalar, Telegram ichida",
+      "cash": "Kuryerga naqd",
+      "cashHint": "Buyurtma kelganda to'lanadi",
+      "stripe": "Karta (Stripe)",
+      "stripeHint": "Visa, Mastercard"
+    }
   },
   "orders": {
     "title": "Mening buyurtmalarim",
@@ -79,7 +92,12 @@
     "refund": {
       "pending": "To'lovingiz qaytarilmoqda.",
       "succeeded": "To'lovingiz qaytarildi.",
-      "failed": "To'lovni avtomatik qaytarib bo'lmadi. Do'kon siz bilan bog'lanadi."
+      "failed": "To'lovni avtomatik qaytarib bo'lmadi. Do'kon siz bilan bog'lanadi.",
+      "manual_required": "Do'kon to'lovingizni qaytarmoqda."
+    },
+    "payment": {
+      "cash": "Yetkazilganda naqd to'lov: {{total}}",
+      "cashCollected": "Yetkazilganda naqd to'landi"
     }
   },
   "courier": {
@@ -110,7 +128,8 @@
       "pickup": "Oldim",
       "deliver": "Yetkazildi",
       "release": "Qaytarish",
-      "openMaps": "Xaritada ochish"
+      "openMaps": "Xaritada ochish",
+      "deliverCash": "Yetkazildi, pul olindi"
     },
     "notes": "Izoh",
     "gps": {
@@ -125,7 +144,8 @@
       "limitReached": "Faol yetkazib berishlar chegarasiga yetdingiz. Avval birini yakunlang.",
       "invalidState": "Yetkazib berish o'zgardi. Ro'yxat yangilandi.",
       "gone": "Bu yetkazib berish endi mavjud emas."
-    }
+    },
+    "cash": "Naqd olish: {{total}}"
   },
   "time": {
     "secondsAgo": "{{n}} soniya oldin",
@@ -320,7 +340,8 @@
       "refund": {
         "pending": "Pul qaytarilmoqda",
         "succeeded": "Pul qaytarildi",
-        "failed": "Qaytarishda xato"
+        "failed": "Qaytarishda xato",
+        "manual_required": "Qo'lda qaytarish"
       },
       "retryRefund": "Qaytarishni takrorlash",
       "cancel": "Bekor qilish va pulni qaytarish",
@@ -332,7 +353,17 @@
       "systemReason": {
         "payment_expired": "o'z vaqtida to'lanmadi",
         "payment_setup_failed": "to'lovni boshlab bo'lmadi"
-      }
+      },
+      "method": {
+        "telegram": "Click/Payme",
+        "cash": "Naqd",
+        "stripe": "Stripe"
+      },
+      "paymentMethod": "To'lov: {{method}}",
+      "cashPending": "Naqd pul hali olinmagan",
+      "cashCollected": "Kuryer naqd pulni oldi",
+      "manualRefund": "{{total}} ni Click/Payme kabinetida qo'lda qaytaring. To'lov ID: {{charge}}. Telegram to'lovi: {{telegram}}.",
+      "confirmRefund": "Qaytarildi"
     },
     "couriers": {
       "tabs": {

@@ -76,7 +76,26 @@ from translations (`en`, `ru`, `uz`) and fall back to `en` when a language is mi
 carry the attribute values (`shade`, `size`, …) and the stock; the cart and orders reference
 variants, not products.
 
-### Stripe
+### Payments: Click/Payme and cash on delivery
+
+The shop sells in `DEFAULT_CURRENCY` (UZS in `.env.example`) and offers every payment method that is
+configured; the customer picks one at checkout.
+
+- **Card via Click or Payme** (Telegram Payments). In @BotFather: your bot → *Payments* → *CLICK
+  Uzbekistan* or *Payme* → pick the test or live mode and copy the token into
+  `TELEGRAM_PAYMENT_PROVIDER_TOKEN`. The API creates an invoice (`createInvoiceLink`), the Mini App opens
+  it with Telegram's own payment sheet, and the bot webhook confirms the order (`pre_checkout_query`)
+  and records the payment (`successful_payment`). So the Telegram webhook must be registered
+  (`scripts.set_telegram_webhook`, see "Couriers & tracking"); re-run it after upgrading, since it now
+  also asks for `pre_checkout_query`. Telegram Payments has no refund API: when a paid order is
+  cancelled, owners get a message with the amount and the provider's payment ID, refund it in the
+  Click/Payme merchant cabinet, then press **Refund done** on the order in the admin panel.
+- **Cash on delivery** (`CASH_ON_DELIVERY_ENABLED=true`). The order goes to the couriers at once; the
+  courier sees how much to collect and marks "Delivered, cash received". Cancelling before delivery
+  refunds nothing, because nothing was taken.
+- **Stripe** stays available for shops elsewhere: it is offered when both Stripe keys are set.
+
+### Stripe (optional)
 
 Payments need Stripe keys in `.env` (use test-mode keys while developing): `STRIPE_SECRET_KEY`,
 `STRIPE_PUBLISHABLE_KEY`, and `STRIPE_WEBHOOK_SECRET`. Without them the app runs and you can browse

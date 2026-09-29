@@ -17,6 +17,9 @@ export interface PoolItem {
   street: string
   item_count: number
   placed_at: string
+  /** Cash on delivery: what the courier collects. Null for orders paid online. */
+  cash_to_collect?: string | null
+  currency?: string
 }
 
 export interface DeliveryLine {
@@ -44,6 +47,8 @@ export interface CourierDelivery {
   items: DeliveryLine[]
   assigned_at: string | null
   picked_up_at: string | null
+  cash_to_collect?: string | null
+  currency?: string
 }
 
 export interface CourierDeliveries {

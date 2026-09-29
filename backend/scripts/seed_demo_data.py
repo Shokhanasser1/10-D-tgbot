@@ -35,7 +35,7 @@ async def seed() -> None:
             ProductCreate(
                 category_id=lipstick_category.id,
                 base_sku="LIP-VELVET",
-                base_price="19.99",
+                base_price="89000",
                 status=ProductStatus.active,
             ),
         )
@@ -70,7 +70,7 @@ async def seed() -> None:
                 VariantCreate(
                     product_id=lipstick.id,
                     sku=f"LIP-VELVET-{sku_suffix}",
-                    price="19.99",
+                    price="89000",
                     stock_qty=25,
                     attribute_values={"shade": shade},
                 ),
@@ -89,7 +89,7 @@ async def seed() -> None:
             ProductCreate(
                 category_id=serum_category.id,
                 base_sku="SERUM-VITC",
-                base_price="24.50",
+                base_price="129000",
                 status=ProductStatus.active,
             ),
         )
@@ -121,7 +121,7 @@ async def seed() -> None:
         await catalog_admin_service.create_variant(
             db,
             VariantCreate(
-                product_id=serum.id, sku="SERUM-VITC-30ML", price="24.50", stock_qty=40
+                product_id=serum.id, sku="SERUM-VITC-30ML", price="129000", stock_qty=40
             ),
         )
         await catalog_admin_service.create_product_image(

@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, type ReactNode, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { LazyMapPicker } from '../../../shared/map/LazyMapPicker'
@@ -9,6 +9,9 @@ import styles from './AddressForm.module.css'
 interface AddressFormProps {
   onSubmit: (address: DeliveryAddress) => void
   isSubmitting: boolean
+  /** Shown above the submit button, e.g. the payment method picker. */
+  children?: ReactNode
+  submitLabel?: string
 }
 
 const EMPTY_ADDRESS: DeliveryAddress = {
@@ -20,7 +23,7 @@ const EMPTY_ADDRESS: DeliveryAddress = {
   notes: '',
 }
 
-export function AddressForm({ onSubmit, isSubmitting }: AddressFormProps) {
+export function AddressForm({ onSubmit, isSubmitting, children, submitLabel }: AddressFormProps) {
   const { t } = useTranslation()
   const [address, setAddress] = useState<DeliveryAddress>(EMPTY_ADDRESS)
   const [pin, setPin] = useState<Coordinates | null>(null)
@@ -80,8 +83,9 @@ export function AddressForm({ onSubmit, isSubmitting }: AddressFormProps) {
         className={styles.textarea}
       />
       <LazyMapPicker value={pin} onChange={setPin} />
+      {children}
       <PillButton type="submit" disabled={isSubmitting} className={styles.submit}>
-        {t('checkout.continue')}
+        {submitLabel ?? t('checkout.continue')}
       </PillButton>
     </form>
   )

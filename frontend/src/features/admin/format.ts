@@ -5,6 +5,4 @@ export function formatDateTime(value: string | null, locale: string): string {
   )
 }
 
-export function formatMoney(amount: string | number, currency: string, locale: string): string {
-  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(Number(amount))
-}
+export { formatMoney } from '../../shared/money/formatMoney'

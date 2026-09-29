@@ -162,7 +162,14 @@ async def test_order_detail(client: AsyncClient, db_session: AsyncSession) -> No
     )
     assert body["customer"]["telegram_id"] == 960_011
     assert body["items"][0]["sku"].startswith("COURIER-V-")
-    assert body["payment"] == {"status": "succeeded", "amount": "14.99", "refund_status": None}
+    assert body["payment"] == {
+        "method": "stripe",
+        "status": "succeeded",
+        "amount": "14.99",
+        "refund_status": None,
+        "telegram_payment_charge_id": None,
+        "provider_payment_charge_id": None,
+    }
     assert body["shipment"]["courier_name"] == "Bekzod"
     assert body["shipment"]["status"] == "assigned"
     assert body["can_cancel"] is True

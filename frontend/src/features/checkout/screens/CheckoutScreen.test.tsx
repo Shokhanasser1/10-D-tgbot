@@ -41,7 +41,9 @@ function stubCheckout(onRequest?: (body: unknown) => void) {
       onRequest?.(await request.json())
       return HttpResponse.json({
         order_id: 77,
+        payment_method: 'stripe',
         client_secret: 'cs_test_secret',
+        invoice_url: null,
         total: '24.99',
         currency: 'EUR',
         reserved_until: '2026-09-22T10:15:00Z',

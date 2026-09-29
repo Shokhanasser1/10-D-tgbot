@@ -25,6 +25,9 @@ export const handlers = [
   }),
   http.get(`${API}/catalog/products/:id`, () => HttpResponse.json(productDetail)),
   http.get(`${API}/cart/items`, () => HttpResponse.json(cart)),
+  http.get(`${API}/checkout/methods`, () =>
+    HttpResponse.json({ methods: ['stripe'], currency: 'EUR' }),
+  ),
   http.get(`${API}/orders`, () => HttpResponse.json(orders)),
   http.get(`${API}/orders/:id`, () => HttpResponse.json(orderDetail)),
   http.get(`${API}/orders/:id/tracking`, () => HttpResponse.json(trackingProcessing)),

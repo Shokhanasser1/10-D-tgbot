@@ -11,7 +11,17 @@ from tests.courier_factories import add_courier, add_paid_order, tma_headers
 COURIER_A = 820_001
 COURIER_B = 820_002
 
-POOL_KEYS = {"shipment_id", "order_id", "city", "street", "item_count", "placed_at"}
+POOL_KEYS = {
+    "shipment_id",
+    "order_id",
+    "city",
+    "street",
+    "item_count",
+    "placed_at",
+    # Cash on delivery only (Spec 6): what to collect. Null for orders paid online.
+    "cash_to_collect",
+    "currency",
+}
 MONEY_KEYS = {"total", "subtotal", "shipping_cost", "unit_price_snapshot", "price", "amount"}
 
 
@@ -68,6 +78,7 @@ async def test_pool_reveals_only_what_is_needed_to_choose_an_order(
 
     assert set(item) == POOL_KEYS
     assert (item["city"], item["street"], item["item_count"]) == ("Hamburg", "Reeperbahn 5", 3)
+    assert item["cash_to_collect"] is None  # paid online: the courier handles no money
     body = json.dumps(item)
     for private in ("+491234567", "secret", "53.55", "9.99", "10178"):
         assert private not in body

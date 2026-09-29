@@ -55,4 +55,22 @@ describe('PaymentNotice', () => {
 
     expect(container).toBeEmptyDOMElement()
   })
+
+  it('reminds a cash customer what to pay on delivery', () => {
+    renderNotice({
+      payment_method: 'cash',
+      status: 'paid',
+      payment_status: 'requires_payment_method',
+      total: '198000.00',
+      currency: 'UZS',
+    })
+
+    expect(screen.getByText(/^Pay in cash on delivery: UZS.198,000$/)).toBeInTheDocument()
+  })
+
+  it('says the shop is refunding a Click/Payme payment by hand', () => {
+    renderNotice({ status: 'cancelled', refund_status: 'manual_required' })
+
+    expect(screen.getByText('The shop is refunding your payment.')).toBeInTheDocument()
+  })
 })

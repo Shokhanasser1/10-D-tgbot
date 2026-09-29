@@ -30,7 +30,12 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set TELEGRAM_BOT_TOKEN in .env (from @BotFather)}
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?set INTERNAL_API_TOKEN in .env to a long random string}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      # Payments in Uzbekistan: Click/Payme through Telegram Payments, and cash on delivery.
+      TELEGRAM_PAYMENT_PROVIDER_TOKEN: ${TELEGRAM_PAYMENT_PROVIDER_TOKEN:-}
+      CASH_ON_DELIVERY_ENABLED: ${CASH_ON_DELIVERY_ENABLED:-false}
+      DEFAULT_CURRENCY: ${DEFAULT_CURRENCY:-EUR}
       SHIPPING_FLAT_RATE: ${SHIPPING_FLAT_RATE:-4.99}
       FREE_SHIPPING_THRESHOLD: ${FREE_SHIPPING_THRESHOLD:-50.00}
       # Courier delivery. An empty webhook secret keeps POST /webhooks/telegram switched off (404).

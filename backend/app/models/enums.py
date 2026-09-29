@@ -55,6 +55,14 @@ class RefundStatus(enum.StrEnum):
     pending = "pending"
     succeeded = "succeeded"
     failed = "failed"
+    # The provider has no refund API (Telegram Payments): an owner refunds in its cabinet.
+    manual_required = "manual_required"
+
+
+class PaymentMethod(enum.StrEnum):
+    telegram = "telegram"  # Telegram Payments with Click or Payme as the provider
+    cash = "cash"  # paid to the courier on delivery
+    stripe = "stripe"
 
 
 class NotificationStatus(enum.StrEnum):

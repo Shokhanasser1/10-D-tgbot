@@ -31,7 +31,10 @@ class Notification(Base):
     # The same event reported twice (a replayed webhook) inserts nothing the second time.
     dedupe_key: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
     text: Mapped[str] = mapped_column(Text, nullable=False)
-    reply_markup: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    # none_as_null: a message without buttons stores SQL NULL, not the JSON value null.
+    reply_markup: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB(none_as_null=True), nullable=True
+    )
     status: Mapped[NotificationStatus] = mapped_column(
         Enum(NotificationStatus, native_enum=False, length=20),
         nullable=False,

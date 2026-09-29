@@ -14,8 +14,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.admin import Admin
 from app.models.courier import Courier
-from app.models.enums import AdminRole
+from app.models.enums import AdminRole, PaymentMethod
 from app.models.order import Order, OrderItem
+from app.models.payment import Payment
 from app.models.telegram_user import TelegramUser
 from app.services import notification_service
 from app.services.notification_templates import items, money, render
@@ -50,12 +51,20 @@ async def _to_customer(
     dedupe_key: str,
     *,
     button: tuple[str, str] | None = None,
+    template: str | None = None,
+    with_total: bool = False,
     **values: object,
 ) -> None:
+    """Enqueue `template` (default: `kind`); `with_total` adds the order total as `{total}`."""
     customer = await _customer(db, order_id)
     if customer is None:
         return
     chat_id, locale = customer
+    if with_total:
+        total, currency = (
+            await db.execute(select(Order.total, Order.currency).where(Order.id == order_id))
+        ).one()
+        values["total"] = money(total, currency, locale)
     markup = (
         notification_service.web_app_button(render(button[0], locale), button[1])
         if button
@@ -66,7 +75,7 @@ async def _to_customer(
         chat_id=chat_id,
         kind=kind,
         dedupe_key=dedupe_key,
-        text=render(kind, locale, order_id=order_id, **values),
+        text=render(template or kind, locale, order_id=order_id, **values),
         reply_markup=markup,
     )
 
@@ -87,6 +96,13 @@ async def _pool_message(
         await db.scalar(select(func.sum(OrderItem.qty)).where(OrderItem.order_id == order_id)) or 0
     )
     place = ", ".join(str(address.get(k)) for k in ("city", "street") if address.get(k))
+    order = (
+        await db.execute(
+            select(Order.total, Order.currency, Order.payment_method).where(Order.id == order_id)
+        )
+    ).one()
+    # A courier collecting cash needs to know how much (and to bring change).
+    cash = order.payment_method == PaymentMethod.cash
     stmt = select(Courier.id, Courier.telegram_id).where(Courier.is_active)
     if exclude_courier_id is not None:
         stmt = stmt.where(Courier.id != exclude_courier_id)
@@ -99,7 +115,12 @@ async def _pool_message(
             chat_id=courier.telegram_id,
             kind=kind,
             dedupe_key=f"{key}:{courier.telegram_id}",
-            text=render(kind, locale, place=place, items=items(count, locale)),
+            text=render(kind, locale, place=place, items=items(count, locale))
+            + (
+                render("pool_cash", locale, total=money(order.total, order.currency, locale))
+                if cash
+                else ""
+            ),
             reply_markup=notification_service.web_app_button(
                 render("button_courier", locale), "courier"
             ),
@@ -107,8 +128,17 @@ async def _pool_message(
 
 
 async def order_paid(db: AsyncSession, order_id: int) -> None:
+    """Paid online, or confirmed for cash on delivery: the order is now in the courier pool."""
+    method = await db.scalar(select(Order.payment_method).where(Order.id == order_id))
+    cash = method == PaymentMethod.cash
     await _to_customer(
-        db, order_id, "order_paid", f"order_paid:{order_id}", button=_order_button(order_id)
+        db,
+        order_id,
+        "order_paid",
+        f"order_paid:{order_id}",
+        button=_order_button(order_id),
+        template="order_confirmed_cash" if cash else None,
+        with_total=cash,
     )
     await _pool_message(db, order_id, "pool_new", f"pool_new:{order_id}")
 
@@ -128,7 +158,10 @@ async def order_paid(db: AsyncSession, order_id: int) -> None:
     for telegram_id in admins:
         locale = locales.get(telegram_id)
         text = render(
-            "admin_new_order", locale, order_id=order_id, total=money(order.total, order.currency)
+            "admin_new_order",
+            locale,
+            order_id=order_id,
+            total=money(order.total, order.currency, locale),
         )
         if order.stock_shortfall:
             text += render("admin_shortfall", locale)
@@ -194,13 +227,17 @@ async def order_expired(db: AsyncSession, order_id: int) -> None:
     )
 
 
-async def order_cancelled(db: AsyncSession, order_id: int, reason: str) -> None:
+async def order_cancelled(
+    db: AsyncSession, order_id: int, reason: str, *, refunded: bool = True
+) -> None:
+    """`refunded` is False when no money was taken (cash before delivery)."""
     await _to_customer(
         db,
         order_id,
         "order_cancelled",
         f"order_cancelled:{order_id}",
         button=_order_button(order_id),
+        template=None if refunded else "order_cancelled_unpaid",
         reason=reason,
     )
 
@@ -226,6 +263,43 @@ async def refund_failed(db: AsyncSession, order_id: int, ref: str) -> None:
             kind="refund_failed",
             dedupe_key=f"refund_failed:{order_id}:{ref}:{telegram_id}",
             text=render("refund_failed", locale, order_id=order_id),
+            reply_markup=notification_service.web_app_button(
+                render("button_admin", locale), f"admin/orders/{order_id}"
+            ),
+        )
+
+
+async def refund_manual_required(db: AsyncSession, order_id: int) -> None:
+    """A Telegram (Click/Payme) payment must be refunded by hand: tell the owners how."""
+    payment = (
+        await db.execute(
+            select(Payment.amount, Payment.currency, Payment.provider_payment_charge_id).where(
+                Payment.order_id == order_id
+            )
+        )
+    ).first()
+    if payment is None:
+        return
+    owners = list(
+        await db.scalars(
+            select(Admin.telegram_id).where(Admin.is_active, Admin.role == AdminRole.owner)
+        )
+    )
+    locales = await _locales(db, owners)
+    for telegram_id in owners:
+        locale = locales.get(telegram_id)
+        await notification_service.enqueue(
+            db,
+            chat_id=telegram_id,
+            kind="refund_manual",
+            dedupe_key=f"refund_manual:{order_id}:{telegram_id}",
+            text=render(
+                "refund_manual",
+                locale,
+                order_id=order_id,
+                total=money(payment.amount, payment.currency, locale),
+                charge=payment.provider_payment_charge_id or "—",
+            ),
             reply_markup=notification_service.web_app_button(
                 render("button_admin", locale), f"admin/orders/{order_id}"
             ),

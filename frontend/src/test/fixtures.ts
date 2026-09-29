@@ -112,6 +112,7 @@ export const orderDetail: OrderDetail = {
   payment_status: 'succeeded',
   shipment_status: 'processing',
   refund_status: null,
+  payment_method: 'stripe',
   reserved_until: '2026-09-22T10:15:00Z',
   cancel_reason: null,
 }

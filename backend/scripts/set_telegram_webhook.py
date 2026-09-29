@@ -25,8 +25,9 @@ from typing import Any
 from app.config import get_settings
 
 DEFAULT_PATH = "/api/webhooks/telegram"
-# Only these two kinds of update carry a Live Location; asking for nothing else keeps traffic low.
-ALLOWED_UPDATES = ["message", "edited_message"]
+# Messages carry /start, Live Location (edited_message for later positions) and successful
+# payments; pre_checkout_query is Telegram asking to confirm a payment. Nothing else is needed.
+ALLOWED_UPDATES = ["message", "edited_message", "pre_checkout_query"]
 TELEGRAM_API = "https://api.telegram.org"
 
 

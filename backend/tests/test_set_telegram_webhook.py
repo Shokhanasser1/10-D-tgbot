@@ -68,7 +68,7 @@ def test_the_payload_carries_the_secret_and_only_the_updates_we_read() -> None:
     assert payload == {
         "url": "https://x.example/api/webhooks/telegram",
         "secret_token": SECRET,
-        "allowed_updates": ["message", "edited_message"],
+        "allowed_updates": ["message", "edited_message", "pre_checkout_query"],
     }
 
 

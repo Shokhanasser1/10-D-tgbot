@@ -19,8 +19,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.core.exceptions import ConflictError, NotFoundError
 from app.models.courier import Courier
-from app.models.enums import ACTIVE_SHIPMENT_STATUSES, OrderStatus, ShipmentStatus
+from app.models.enums import (
+    ACTIVE_SHIPMENT_STATUSES,
+    OrderStatus,
+    PaymentMethod,
+    PaymentStatus,
+    ShipmentStatus,
+)
 from app.models.order import Order
+from app.models.payment import Payment
 from app.models.shipment import Shipment
 from app.schemas.courier import ShipmentActionOut
 from app.services import courier_state, notification_events
@@ -163,6 +170,13 @@ async def _transition(
     if transition is _PICKUP:
         await notification_events.order_picked_up(db, order_id)
     elif transition is _DELIVER:
+        # Cash on delivery: handing the order over is when the money is collected.
+        await db.execute(
+            update(Payment)
+            .where(Payment.order_id == order_id, Payment.method == PaymentMethod.cash)
+            .values(status=PaymentStatus.succeeded)
+            .execution_options(synchronize_session=False)
+        )
         await notification_events.order_delivered(db, order_id)
     elif transition is _RELEASE:
         await notification_events.order_back_in_pool(

@@ -13,6 +13,7 @@ from app.services import (
     order_admin_service,
     order_service,
     stripe_service,
+    telegram_payment_webhook,
 )
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
@@ -64,6 +65,15 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Malformed update"
         ) from exc
+
+    if update.pre_checkout_query is not None:
+        # Answered in the response body: Telegram needs the verdict within 10 seconds.
+        return await telegram_payment_webhook.answer_pre_checkout(db, update.pre_checkout_query)
+    if update.message is not None and update.message.successful_payment is not None:
+        await telegram_payment_webhook.record_successful_payment(
+            db, update.message.successful_payment
+        )
+        return {"status": "ok"}
 
     reply = bot_service.start_reply(update, get_settings().webapp_url)
     if reply is not None:

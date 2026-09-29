@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     stripe_secret_key: str = ""
     stripe_publishable_key: str = ""
     stripe_webhook_secret: str = ""
+    # Telegram Payments: the provider token from @BotFather -> Payments (Click or Payme).
+    telegram_payment_provider_token: str = ""
+    cash_on_delivery_enabled: bool = False
     default_currency: str = "EUR"
 
     cors_origins: list[str] = ["http://localhost:5173"]

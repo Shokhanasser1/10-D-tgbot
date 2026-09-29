@@ -1,6 +1,6 @@
 import { Elements } from '@stripe/react-stripe-js'
 import { loadStripe } from '@stripe/stripe-js'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
@@ -12,35 +12,68 @@ import type { DeliveryAddress } from '../../../shared/types'
 import { PillButton } from '../../../shared/ui/PillButton'
 import { Skeleton } from '../../../shared/ui/Skeleton'
 import { useOrder } from '../../orders/hooks'
-import { postCheckout } from '../api'
+import {
+  type CheckoutResponse,
+  fetchPaymentMethods,
+  type PaymentMethod,
+  postCheckout,
+} from '../api'
 import { AddressForm } from '../components/AddressForm'
+import { PaymentMethodPicker } from '../components/PaymentMethodPicker'
 import { StripePaymentForm } from '../components/StripePaymentForm'
+import { TelegramInvoiceStep } from '../components/TelegramInvoiceStep'
 import styles from './CheckoutScreen.module.css'
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string)
+// Only Stripe shops load Stripe's script (loadStripe fetches it on first call).
+let stripePromise: ReturnType<typeof loadStripe> | undefined
+function getStripe() {
+  stripePromise ??= loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string)
+  return stripePromise
+}
 
 type Step =
   | { name: 'address' }
-  | { name: 'payment'; orderId: number; clientSecret: string; reservedUntil: string }
+  | { name: 'stripe'; orderId: number; clientSecret: string; reservedUntil: string }
+  | { name: 'telegram'; orderId: number; invoiceUrl: string; reservedUntil: string }
   | { name: 'confirming'; orderId: number }
+
+function nextStep(response: CheckoutResponse): Step {
+  if (response.payment_method === 'telegram' && response.invoice_url) {
+    return {
+      name: 'telegram',
+      orderId: response.order_id,
+      invoiceUrl: response.invoice_url,
+      reservedUntil: response.reserved_until,
+    }
+  }
+  if (response.payment_method === 'stripe' && response.client_secret) {
+    return {
+      name: 'stripe',
+      orderId: response.order_id,
+      clientSecret: response.client_secret,
+      reservedUntil: response.reserved_until,
+    }
+  }
+  // Cash on delivery: nothing to pay now, the order is already confirmed.
+  return { name: 'confirming', orderId: response.order_id }
+}
 
 export function CheckoutScreen() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [step, setStep] = useState<Step>({ name: 'address' })
+  const methodsQuery = useQuery({ queryKey: ['payment-methods'], queryFn: fetchPaymentMethods })
+  const methods = methodsQuery.data?.methods ?? []
+  const [chosen, setChosen] = useState<PaymentMethod | undefined>()
+  const method = chosen ?? methods[0]
 
   const checkoutMutation = useMutation({
-    mutationFn: (address: DeliveryAddress) => postCheckout(address),
+    mutationFn: (address: DeliveryAddress) => postCheckout(address, method),
     onSuccess: (response) => {
       // Order updates are sent to the bot chat; Telegram asks the user once if needed.
       requestWriteAccessIfNeeded()
-      setStep({
-        name: 'payment',
-        orderId: response.order_id,
-        clientSecret: response.client_secret,
-        reservedUntil: response.reserved_until,
-      })
+      setStep(nextStep(response))
     },
     onError: (error) => {
       if (isSoldOut(error)) {
@@ -74,17 +107,20 @@ export function CheckoutScreen() {
     )
   }
 
-  if (step.name === 'payment') {
+  if (step.name === 'stripe' || step.name === 'telegram') {
+    const paid = () => setStep({ name: 'confirming', orderId: step.orderId })
     return (
       <div className={styles.screen}>
         <p className={styles.deadline}>
           {t('checkout.payBy', { time: formatClock(step.reservedUntil, i18n.language) })}
         </p>
-        <Elements stripe={stripePromise} options={{ clientSecret: step.clientSecret }}>
-          <StripePaymentForm
-            onPaid={() => setStep({ name: 'confirming', orderId: step.orderId })}
-          />
-        </Elements>
+        {step.name === 'telegram' ? (
+          <TelegramInvoiceStep invoiceUrl={step.invoiceUrl} onPaid={paid} />
+        ) : (
+          <Elements stripe={getStripe()} options={{ clientSecret: step.clientSecret }}>
+            <StripePaymentForm onPaid={paid} />
+          </Elements>
+        )}
       </div>
     )
   }
@@ -94,8 +130,11 @@ export function CheckoutScreen() {
       <h1 className={styles.title}>{t('checkout.title')}</h1>
       <AddressForm
         onSubmit={(address) => checkoutMutation.mutate(address)}
-        isSubmitting={checkoutMutation.isPending}
-      />
+        isSubmitting={checkoutMutation.isPending || methodsQuery.isLoading}
+        submitLabel={method === 'cash' ? t('checkout.placeOrder') : undefined}
+      >
+        {method && <PaymentMethodPicker methods={methods} value={method} onChange={setChosen} />}
+      </AddressForm>
       {checkoutMutation.isError &&
         (isSoldOut(checkoutMutation.error) ? (
           <div className={styles.soldOut} role="alert">
