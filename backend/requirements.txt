@@ -1,11 +1,13 @@
 fastapi>=0.115,<1.0
 uvicorn[standard]>=0.32,<1.0
-sqlalchemy>=2.0,<3.0
+sqlalchemy[asyncio]>=2.0,<3.0
 asyncpg>=0.30,<1.0
 alembic>=1.14,<2.0
 pydantic>=2.9,<3.0
 pydantic-settings>=2.6,<3.0
 stripe>=11.0,<12.0
+# Stripe's *_async calls (checkout, refunds, cancelling payments) need httpx at runtime.
+httpx>=0.27,<1.0
 python-multipart>=0.0.12
 # Summary days are counted in SHOP_TIMEZONE; slim images ship no system zone database.
 tzdata>=2024.1
