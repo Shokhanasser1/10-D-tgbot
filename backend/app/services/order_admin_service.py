@@ -33,7 +33,7 @@ from app.schemas.order_admin import (
     OrderAdminPaymentOut,
     OrderAdminShipmentOut,
 )
-from app.services import courier_state, stock_service, stripe_service
+from app.services import courier_state, notification_events, stock_service, stripe_service
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -340,6 +340,7 @@ async def cancel_order(
         .returning(Payment.stripe_payment_intent_id)
         .execution_options(synchronize_session=False)
     )
+    await notification_events.order_cancelled(db, order_id, reason)
     # Commit before talking to Stripe: money must never go back for an order the database
     # still shows as on its way.
     await db.commit()
@@ -388,15 +389,25 @@ async def refund_payment(db: AsyncSession, order_id: int, payment_intent: str, k
     except stripe.StripeError:
         logger.exception("refund for order %s failed", order_id)
         values: dict[str, object] = {"refund_status": RefundStatus.failed}
+        ref = key  # Stripe refused before creating a refund: this attempt names the failure
     else:
         values = {"refund_status": _refund_status(refund.status), "stripe_refund_id": refund.id}
+        ref = refund.id
     await db.execute(
         update(Payment)
         .where(Payment.order_id == order_id)
         .values(**values)
         .execution_options(synchronize_session=False)
     )
+    await _notify_refund(db, order_id, values["refund_status"], ref)
     await db.commit()
+
+
+async def _notify_refund(db: AsyncSession, order_id: int, status: object, ref: str | None) -> None:
+    if status == RefundStatus.succeeded:
+        await notification_events.refund_succeeded(db, order_id)
+    elif status == RefundStatus.failed:
+        await notification_events.refund_failed(db, order_id, ref or "unknown")
 
 
 async def apply_refund_event(
@@ -408,7 +419,7 @@ async def apply_refund_event(
     values: dict[str, object] = {"refund_status": _refund_status(stripe_status)}
     if refund_id:
         values["stripe_refund_id"] = refund_id
-    await db.execute(
+    order_id = await db.scalar(
         update(Payment)
         .where(
             Payment.stripe_payment_intent_id == payment_intent,
@@ -417,6 +428,9 @@ async def apply_refund_event(
             Payment.refund_status != RefundStatus.succeeded,
         )
         .values(**values)
+        .returning(Payment.order_id)
         .execution_options(synchronize_session=False)
     )
+    if order_id is not None:
+        await _notify_refund(db, order_id, values["refund_status"], refund_id)
     await db.commit()

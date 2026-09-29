@@ -4,6 +4,8 @@ export interface TelegramUser {
   first_name?: string
   last_name?: string
   language_code?: string
+  /** False when the bot may not message this user yet (they never opened a chat with it). */
+  allows_write_to_pm?: boolean
 }
 
 interface TelegramWebAppMainButton {
@@ -42,6 +44,7 @@ interface TelegramWebApp {
   openLink?: (url: string) => void
   openTelegramLink?: (url: string) => void
   isVersionAtLeast?: (version: string) => boolean
+  requestWriteAccess?: (callback?: (granted: boolean) => void) => void
   disableVerticalSwipes?: () => void
   enableVerticalSwipes?: () => void
 }
@@ -104,4 +107,16 @@ export function openTelegramLink(url: string): void {
   const webApp = getWebApp()
   if (webApp?.openTelegramLink) webApp.openTelegramLink(url)
   else window.open(url, '_blank', 'noopener')
+}
+
+/**
+ * Asks the user to let the bot message them (order updates arrive in the bot chat), but only
+ * inside Telegram and only when Telegram says the bot may not write to them yet.
+ */
+export function requestWriteAccessIfNeeded(): void {
+  if (!isTelegramEnv()) return
+  const webApp = getWebApp()
+  if (webApp?.initDataUnsafe.user?.allows_write_to_pm !== false) return
+  if (webApp.isVersionAtLeast && !webApp.isVersionAtLeast('6.9')) return
+  webApp.requestWriteAccess?.()
 }

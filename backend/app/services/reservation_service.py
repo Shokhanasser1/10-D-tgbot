@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.enums import OrderStatus, PaymentStatus
 from app.models.order import Order
 from app.models.payment import Payment
-from app.services import cart_service, stock_service, stripe_service
+from app.services import cart_service, notification_events, stock_service, stripe_service
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +76,7 @@ async def expire_order(db: AsyncSession, order_id: int) -> bool:
         return False
 
     await release_unpaid_order(db, order_id)
+    await notification_events.order_expired(db, order_id)
     await db.commit()
     return True
 

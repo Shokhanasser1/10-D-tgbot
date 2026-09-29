@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
 import { ApiError } from '../../../shared/api/client'
+import { requestWriteAccessIfNeeded } from '../../../shared/telegram/webApp'
 import { formatClock } from '../../../shared/time/formatClock'
 import type { DeliveryAddress } from '../../../shared/types'
 import { PillButton } from '../../../shared/ui/PillButton'
@@ -32,6 +33,8 @@ export function CheckoutScreen() {
   const checkoutMutation = useMutation({
     mutationFn: (address: DeliveryAddress) => postCheckout(address),
     onSuccess: (response) => {
+      // Order updates are sent to the bot chat; Telegram asks the user once if needed.
+      requestWriteAccessIfNeeded()
       setStep({
         name: 'payment',
         orderId: response.order_id,

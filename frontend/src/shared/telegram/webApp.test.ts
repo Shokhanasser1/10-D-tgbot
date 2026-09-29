@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { getInitDataRaw, isTelegramEnv, openExternalLink, openTelegramLink } from './webApp'
+import {
+  getInitDataRaw,
+  isTelegramEnv,
+  openExternalLink,
+  openTelegramLink,
+  requestWriteAccessIfNeeded,
+} from './webApp'
 
 function stubTelegram(initData: string) {
   window.Telegram = { WebApp: { initData } } as unknown as Window['Telegram']
@@ -92,4 +98,41 @@ describe('opening links', () => {
       expect(windowOpen).not.toHaveBeenCalled()
     },
   )
+})
+
+describe('requestWriteAccessIfNeeded', () => {
+  function stubUser(allows: boolean | undefined, initData = 'query_id=abc&hash=def') {
+    const requestWriteAccess = vi.fn()
+    window.Telegram = {
+      WebApp: {
+        initData,
+        initDataUnsafe: { user: { id: 1, allows_write_to_pm: allows } },
+        isVersionAtLeast: () => true,
+        requestWriteAccess,
+      },
+    } as unknown as Window['Telegram']
+    return requestWriteAccess
+  }
+
+  it('asks when the bot may not write to the user yet', () => {
+    const request = stubUser(false)
+    requestWriteAccessIfNeeded()
+    expect(request).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not ask when writing is already allowed or unknown', () => {
+    const allowed = stubUser(true)
+    requestWriteAccessIfNeeded()
+    expect(allowed).not.toHaveBeenCalled()
+
+    const unknown = stubUser(undefined)
+    requestWriteAccessIfNeeded()
+    expect(unknown).not.toHaveBeenCalled()
+  })
+
+  it('does nothing outside Telegram', () => {
+    const request = stubUser(false, '')
+    requestWriteAccessIfNeeded()
+    expect(request).not.toHaveBeenCalled()
+  })
 })

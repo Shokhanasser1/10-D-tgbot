@@ -23,7 +23,7 @@ from app.models.enums import ACTIVE_SHIPMENT_STATUSES, OrderStatus, ShipmentStat
 from app.models.order import Order
 from app.models.shipment import Shipment
 from app.schemas.courier import ShipmentActionOut
-from app.services import courier_state
+from app.services import courier_state, notification_events
 
 settings = get_settings()
 
@@ -117,6 +117,7 @@ async def claim(db: AsyncSession, courier: Courier, shipment_id: int) -> Shipmen
         # An idle courier has no business having a stored position; drop any leftover.
         await courier_state.clear_location(db, courier.id)
 
+    await notification_events.order_claimed(db, order_id, courier.name)
     await db.commit()
     return ShipmentActionOut(
         shipment_id=shipment_id, order_id=order_id, status=ShipmentStatus.assigned
@@ -159,6 +160,14 @@ async def _transition(
     if transition.purges_location:
         await courier_state.purge_location_if_idle(db, courier.id)
 
+    if transition is _PICKUP:
+        await notification_events.order_picked_up(db, order_id)
+    elif transition is _DELIVER:
+        await notification_events.order_delivered(db, order_id)
+    elif transition is _RELEASE:
+        await notification_events.order_back_in_pool(
+            db, order_id, released_by_courier_id=courier.id
+        )
     await db.commit()
     return ShipmentActionOut(
         shipment_id=shipment_id, order_id=order_id, status=transition.to_status
@@ -220,6 +229,8 @@ async def force_release(db: AsyncSession, shipment_id: int) -> ShipmentActionOut
     )
     await courier_state.purge_location_if_idle(db, courier_id)
 
+    # The courier it was taken from does not need telling that it is back in the pool.
+    await notification_events.order_back_in_pool(db, order_id, released_by_courier_id=courier_id)
     await db.commit()
     return ShipmentActionOut(
         shipment_id=shipment_id, order_id=order_id, status=ShipmentStatus.processing

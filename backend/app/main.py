@@ -8,10 +8,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api.router import api_router
-from app.config import get_settings
+from app.config import Settings, get_settings
 from app.core.exceptions import register_exception_handlers
 from app.db.session import async_session_factory
-from app.services import admin_service, reservation_service
+from app.services import admin_service, notification_sender, reservation_service
 
 
 @asynccontextmanager
@@ -22,18 +22,38 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         async with async_session_factory() as session:
             await admin_service.bootstrap_owners(session, ids)
 
-    sweeper = None
+    tasks = background_tasks(settings)
+    yield
+    for task in tasks:
+        task.cancel()
+    for task in tasks:
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+
+def background_tasks(settings: Settings) -> list[asyncio.Task[None]]:
+    """The periodic jobs this process runs: the reservation sweeper and the message sender."""
+    tasks = []
     if settings.reservation_sweep_seconds > 0:
-        sweeper = asyncio.create_task(
-            reservation_service.run_sweeper(
-                async_session_factory, settings.reservation_sweep_seconds
+        tasks.append(
+            asyncio.create_task(
+                reservation_service.run_sweeper(
+                    async_session_factory, settings.reservation_sweep_seconds
+                )
             )
         )
-    yield
-    if sweeper is not None:
-        sweeper.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await sweeper
+    # Without a token there is nobody to send as; messages simply wait in the outbox.
+    if settings.notification_send_seconds > 0 and settings.telegram_bot_token:
+        tasks.append(
+            asyncio.create_task(
+                notification_sender.run_sender(
+                    async_session_factory,
+                    settings.telegram_bot_token,
+                    settings.notification_send_seconds,
+                )
+            )
+        )
+    return tasks
 
 
 def create_app() -> FastAPI:

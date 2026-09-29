@@ -63,6 +63,10 @@ class Settings(BaseSettings):
     reservation_ttl_minutes: int = Field(default=15, ge=1)
     reservation_sweep_seconds: int = Field(default=60, ge=0)
 
+    # Telegram notifications (Spec 5): how often the sender delivers queued messages
+    # (0 turns the sender off in this process; it also stays off without a bot token).
+    notification_send_seconds: float = Field(default=2, ge=0)
+
     @field_validator("telegram_webhook_secret")
     @classmethod
     def _validate_webhook_secret(cls, value: str) -> str:

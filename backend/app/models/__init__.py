@@ -4,6 +4,7 @@ from app.models.attribute import Attribute
 from app.models.cart import Cart, CartItem
 from app.models.category import Category
 from app.models.courier import Courier, CourierLocation
+from app.models.notification import Notification
 from app.models.order import Order, OrderItem
 from app.models.payment import Payment
 from app.models.product import Product
@@ -22,6 +23,7 @@ __all__ = [
     "Category",
     "Courier",
     "CourierLocation",
+    "Notification",
     "Order",
     "OrderItem",
     "Payment",

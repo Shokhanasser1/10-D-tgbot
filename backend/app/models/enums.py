@@ -57,5 +57,12 @@ class RefundStatus(enum.StrEnum):
     failed = "failed"
 
 
+class NotificationStatus(enum.StrEnum):
+    pending = "pending"
+    sent = "sent"
+    failed = "failed"  # gave up: retries exhausted, or Telegram rejected the message itself
+    undeliverable = "undeliverable"  # the user blocked the bot or never opened a chat with it
+
+
 # A courier is "working" while they hold a shipment in one of these states.
 ACTIVE_SHIPMENT_STATUSES = (ShipmentStatus.assigned, ShipmentStatus.shipped)

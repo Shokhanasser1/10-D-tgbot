@@ -103,6 +103,28 @@ Stripe PaymentIntent, marks the order `cancelled` with reason `payment_expired`,
 and returns the items to the customer's cart. A payment that still arrives for an expired order is
 refunded in full automatically, so the Stripe webhook also needs `refund.*` events (see "Admin panel").
 
+### Telegram notifications
+
+The bot tells people what happened without them opening the app:
+
+| Who | About |
+|---|---|
+| customer | paid, courier assigned, on the way, delivered, payment time ran out, cancelled by the shop, refunded |
+| active couriers | a new order in the pool, an order back in the pool (city, street, item count only) |
+| owners and dispatchers | every new paid order (flagged when stock ran short) |
+| owners | a refund that failed |
+
+Messages are written in the recipient's language (the one the Mini App uses) and carry a button that
+opens the right screen at `WEBAPP_URL`, so set that to the shop's `https://` address. They are stored in
+the `notifications` table in the same transaction as the change they report, and a background task in
+the API sends them (every `NOTIFICATION_SEND_SECONDS`, 2), with retries when Telegram or the network
+fails. Telegram only lets a bot message people who have opened a chat with it; for anyone else the
+message is marked `undeliverable`. After checkout the Mini App asks the customer to allow messages if
+Telegram says the bot cannot write to them yet. Without `TELEGRAM_BOT_TOKEN` nothing is sent.
+
+To see what was sent: `docker compose exec db psql -U postgres -d storefront -c
+"select created_at, chat_id, kind, status, last_error from notifications order by id desc limit 20"`.
+
 ## Couriers & tracking
 
 Couriers use the same Mini App: once a Telegram account is registered as a courier, a truck icon

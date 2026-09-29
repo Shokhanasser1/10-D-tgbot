@@ -1,6 +1,7 @@
 # Spec 5: Telegram notifications
 
-Status: **designed, approved section by section by the owner (2026-09-29), not implemented.**
+Status: **implemented** (2026-09-29), after the owner approved the design section by section. §11 lists
+where the build refined it.
 
 ## 1. Problem
 
@@ -145,3 +146,19 @@ Frontend: `requestWriteAccess` is called after checkout only when writing is not
 
 Admin history screen, per-user opt-out, quiet hours, message editing (one message per event, not a live
 status message), notifications for catalog changes or low stock, channels other than Telegram.
+
+## 11. Implementation notes
+
+- Migration `d7e2f3a4b5c6`; model `app/models/notification.py`, status enum `NotificationStatus`.
+- Modules: `notification_templates` (texts, money and plural item counts), `notification_service`
+  (`enqueue`, `web_app_button`), `notification_events` (one function per event), `notification_sender`
+  (`classify`, `backoff`, `TelegramClient`, `lease_due`, `record`, `send_batch`, `cleanup`, `run_sender`).
+  `app.main.background_tasks` starts the sweeper and the sender.
+- Dedupe keys for courier actions (claim, pickup, back in pool) carry a random suffix, because the same
+  order can legitimately be claimed, released and claimed again; delivery, payment, expiry, cancellation
+  and refund keys name the fact, so replays insert nothing.
+- `force_release` also skips the courier the order was taken from (the spec only named the releasing
+  courier for `release`).
+- Recipients without a `telegram_users` row get English.
+- Frontend: `requestWriteAccessIfNeeded()` in `shared/telegram/webApp.ts`, called when checkout succeeds;
+  it only asks inside Telegram, when `allows_write_to_pm` is explicitly false and the client supports it (6.9+).

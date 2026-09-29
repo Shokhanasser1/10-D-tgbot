@@ -9,7 +9,7 @@ from app.models.order import Order
 from app.models.payment import Payment
 from app.models.shipment import Shipment
 from app.schemas.orders import OrderDetailOut, OrderItemOut, OrderListItemOut
-from app.services import order_admin_service, stock_service
+from app.services import notification_events, order_admin_service, stock_service
 
 
 async def _get_order_with_payment(db: AsyncSession, order_id: int) -> Order:
@@ -71,6 +71,7 @@ async def mark_order_paid(db: AsyncSession, order_id: int) -> None:
             .execution_options(synchronize_session=False)
         )
 
+    await notification_events.order_paid(db, order_id)
     await db.commit()
 
 
