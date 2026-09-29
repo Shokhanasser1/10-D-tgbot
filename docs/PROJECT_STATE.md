@@ -1,6 +1,6 @@
 # Project state (handoff)
 
-Snapshot: 2026-09-29 (after Spec 6, payments in Uzbekistan), branch `main`, **no git remote, nothing pushed**.
+Snapshot: 2026-09-29 (after Spec 6, payments in Uzbekistan), branch `main`, pushed to the **public** repository https://github.com/Shokhanasser1/10-D-tgbot (CI green).
 Working tree was clean at the time of writing. Written for another engineer or AI picking this up cold.
 
 ## 1. What this is
@@ -279,7 +279,8 @@ What remains:
 2. Stripe: subscribe the webhook endpoint to `refund.created|updated|failed` and run a test-mode refund.
 3. Before real traffic: set `MAP_TILE_URL`/`MAP_ATTRIBUTION` for a proper tile provider; strong `INTERNAL_API_TOKEN`,
    `ADMIN_SESSION_SECRET` and `POSTGRES_PASSWORD`; serve over HTTPS; back up the `media` volume with the database.
-4. Push: there is no remote yet. Decide where the repository lives before CI can run.
+4. Students run the project **without Docker**: [`ZAPUSK_BEZ_DOCKER.md`](../ZAPUSK_BEZ_DOCKER.md) (native PostgreSQL,
+   `scripts.create_databases`). Keep that path working: the demo seed and `backend/.env.example` defaults are part of it.
 5. Not asked for, but likely next: a notification history block in the admin order page, deleting variants, an audit log beyond "who cancelled", charts in the summary.
 
 ## 11. Assumptions the product owner has not explicitly confirmed
