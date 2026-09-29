@@ -3,6 +3,8 @@ import type { Coordinates, DeliveryAddress } from '../../shared/types'
 export type OrderStatus =
   'pending_payment' | 'paid' | 'processing' | 'shipped' | 'delivered' | 'cancelled'
 
+export type RefundStatus = 'pending' | 'succeeded' | 'failed'
+
 export type ShipmentStatus = 'processing' | 'assigned' | 'shipped' | 'delivered'
 
 export interface OrderListItem {
@@ -33,6 +35,11 @@ export interface OrderDetail {
   items: OrderItem[]
   payment_status: string | null
   shipment_status: ShipmentStatus | null
+  refund_status: RefundStatus | null
+  /** Stock is held until then; null for orders placed before reservations existed. */
+  reserved_until: string | null
+  /** `payment_expired`, `payment_setup_failed`, or free text an admin typed. */
+  cancel_reason: string | null
 }
 
 export interface TrackingLocation {

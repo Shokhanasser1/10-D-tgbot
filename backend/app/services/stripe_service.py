@@ -32,3 +32,18 @@ async def create_refund(
     return await stripe.Refund.create_async(
         payment_intent=payment_intent_id, metadata=metadata, idempotency_key=idempotency_key
     )
+
+
+async def cancel_payment_intent(payment_intent_id: str) -> bool:
+    """Make sure the PaymentIntent can no longer be paid.
+
+    True when it is cancelled (now or already). False when Stripe refuses because the payment
+    already went through or is being processed: the success webhook will settle the order.
+    Network and API errors propagate so the caller can try again later.
+    """
+    try:
+        intent = await stripe.PaymentIntent.cancel_async(payment_intent_id)
+    except stripe.InvalidRequestError:
+        # Stripe refuses to cancel a finished intent, including an already cancelled one.
+        intent = await stripe.PaymentIntent.retrieve_async(payment_intent_id)
+    return intent.status == "canceled"

@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -8,6 +8,8 @@ from app.core.exceptions import ConflictError, NotFoundError
 from app.core.i18n import translations_for
 from app.models.cart import Cart, CartItem
 from app.models.enums import CartStatus, ProductStatus
+from app.models.order import Order, OrderItem
+from app.models.product import Product
 from app.models.product_image import ProductImage
 from app.models.variant import Variant
 from app.schemas.cart import CartItemOut, CartOut
@@ -21,6 +23,48 @@ async def get_or_create_active_cart(db: AsyncSession, telegram_id: int) -> Cart:
         db.add(cart)
         await db.flush()
     return cart
+
+
+async def restore_order_items(db: AsyncSession, order_id: int) -> None:
+    """Put an unpaid order's items back into its customer's active cart (without committing).
+
+    Quantities add onto lines already there for the same variant. Products that are no longer
+    for sale are skipped. The price is the current one, as for anything added to the cart.
+    """
+    telegram_id = await db.scalar(select(Order.telegram_id).where(Order.id == order_id))
+    if telegram_id is None:
+        return
+    lines = (
+        await db.execute(
+            select(Variant.id, Variant.price, func.sum(OrderItem.qty))
+            .join(OrderItem, OrderItem.variant_id == Variant.id)
+            .join(Product, Product.id == Variant.product_id)
+            .where(OrderItem.order_id == order_id, Product.status == ProductStatus.active)
+            .group_by(Variant.id, Variant.price)
+            .order_by(Variant.id)
+        )
+    ).all()
+    if not lines:
+        return
+
+    cart = await get_or_create_active_cart(db, telegram_id)
+    existing = {
+        item.variant_id: item
+        for item in (
+            await db.execute(select(CartItem).where(CartItem.cart_id == cart.id))
+        ).scalars()
+    }
+    for variant_id, price, qty in lines:
+        item = existing.get(variant_id)
+        if item is None:
+            db.add(
+                CartItem(
+                    cart_id=cart.id, variant_id=variant_id, qty=int(qty), unit_price_snapshot=price
+                )
+            )
+        else:
+            item.qty += int(qty)
+    await db.flush()
 
 
 async def _get_active_variant(db: AsyncSession, variant_id: int) -> Variant:

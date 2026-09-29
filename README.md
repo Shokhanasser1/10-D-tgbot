@@ -91,6 +91,16 @@ In production, point a Stripe webhook endpoint at `https://<your-domain>/api/web
 and subscribe it to `payment_intent.succeeded` and `payment_intent.payment_failed`. Test card:
 `4242 4242 4242 4242`.
 
+### Stock reservation
+
+Checkout takes the ordered quantities off `stock_qty` straight away, so two customers can never
+both pay for the last unit: the second one gets "Some items just sold out" and keeps their cart.
+The hold lasts `RESERVATION_TTL_MINUTES` (15). A background task in the API
+(every `RESERVATION_SWEEP_SECONDS`, 60) expires unpaid orders past their hold: it cancels the
+Stripe PaymentIntent, marks the order `cancelled` with reason `payment_expired`, puts the stock back
+and returns the items to the customer's cart. A payment that still arrives for an expired order is
+refunded in full automatically, so the Stripe webhook also needs `refund.*` events (see "Admin panel").
+
 ## Couriers & tracking
 
 Couriers use the same Mini App: once a Telegram account is registered as a courier, a truck icon

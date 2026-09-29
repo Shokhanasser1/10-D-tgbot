@@ -1,3 +1,5 @@
+import asyncio
+import contextlib
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -9,16 +11,29 @@ from app.api.router import api_router
 from app.config import get_settings
 from app.core.exceptions import register_exception_handlers
 from app.db.session import async_session_factory
-from app.services import admin_service
+from app.services import admin_service, reservation_service
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    ids = get_settings().admin_bootstrap_ids
+    settings = get_settings()
+    ids = settings.admin_bootstrap_ids
     if ids:
         async with async_session_factory() as session:
             await admin_service.bootstrap_owners(session, ids)
+
+    sweeper = None
+    if settings.reservation_sweep_seconds > 0:
+        sweeper = asyncio.create_task(
+            reservation_service.run_sweeper(
+                async_session_factory, settings.reservation_sweep_seconds
+            )
+        )
     yield
+    if sweeper is not None:
+        sweeper.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await sweeper
 
 
 def create_app() -> FastAPI:

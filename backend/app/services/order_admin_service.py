@@ -233,6 +233,7 @@ async def get_order(db: AsyncSession, order_id: int) -> OrderAdminDetailOut:
             else None
         ),
         stock_shortfall=order.stock_shortfall,
+        reserved_until=order.reserved_until,
         cancelled_at=order.cancelled_at,
         cancelled_by=order.cancelled_by,
         cancel_reason=order.cancel_reason,
@@ -344,7 +345,7 @@ async def cancel_order(
     await db.commit()
 
     if payment_intent is not None:
-        await _refund(db, order_id, payment_intent, f"refund-order-{order_id}")
+        await refund_payment(db, order_id, payment_intent, f"refund-order-{order_id}")
     return await get_order(db, order_id)
 
 
@@ -365,7 +366,8 @@ async def retry_refund(db: AsyncSession, order_id: int) -> OrderAdminDetailOut:
     # A new key: Stripe replays a stored error for a reused key for 24 h, which would make the
     # retry pointless. Paying back twice is still impossible, since Stripe caps refunds at the
     # charged amount.
-    await _refund(db, order_id, payment_intent, f"refund-order-{order_id}-retry-{uuid4().hex}")
+    key = f"refund-order-{order_id}-retry-{uuid4().hex}"
+    await refund_payment(db, order_id, payment_intent, key)
     return await get_order(db, order_id)
 
 
@@ -377,7 +379,8 @@ def _refund_status(stripe_status: str | None) -> RefundStatus:
     return RefundStatus.pending
 
 
-async def _refund(db: AsyncSession, order_id: int, payment_intent: str, key: str) -> None:
+async def refund_payment(db: AsyncSession, order_id: int, payment_intent: str, key: str) -> None:
+    """Ask Stripe for a full refund and record the outcome (refund_status must be pending)."""
     try:
         refund = await stripe_service.create_refund(
             payment_intent, idempotency_key=key, metadata={"order_id": str(order_id)}

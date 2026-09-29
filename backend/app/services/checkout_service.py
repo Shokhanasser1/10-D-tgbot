@@ -1,10 +1,12 @@
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.exceptions import BadRequestError, ConflictError
+from app.config import get_settings
+from app.core.exceptions import BadRequestError
 from app.core.i18n import translations_for
 from app.core.money import from_minor_units
 from app.core.pricing import calculate_shipping_cost
@@ -14,7 +16,7 @@ from app.models.order import Order, OrderItem
 from app.models.payment import Payment
 from app.models.variant import Variant
 from app.schemas.checkout import CheckoutResponse, DeliveryAddressIn
-from app.services import stripe_service
+from app.services import reservation_service, stock_service, stripe_service
 
 
 async def create_order_from_cart(
@@ -42,16 +44,13 @@ async def create_order_from_cart(
     if not cart_items:
         raise BadRequestError("Cart is empty")
 
-    for item in cart_items:
-        if item.variant.stock_qty < item.qty:
-            raise ConflictError(f"Insufficient stock for variant {item.variant.sku}")
-
     product_ids = [item.variant.product_id for item in cart_items]
     names = await translations_for(db, "product", product_ids, ["name"], locale, fallback_locale)
 
     subtotal = sum((item.variant.price * item.qty for item in cart_items), Decimal("0"))
     shipping_cost = calculate_shipping_cost(subtotal)
     total = subtotal + shipping_cost
+    reserved_until = datetime.now(UTC) + timedelta(minutes=get_settings().reservation_ttl_minutes)
 
     order = Order(
         telegram_id=telegram_id,
@@ -61,6 +60,7 @@ async def create_order_from_cart(
         shipping_cost=shipping_cost,
         total=total,
         delivery_address=address.model_dump(),
+        reserved_until=reserved_until,
     )
     db.add(order)
     await db.flush()
@@ -78,23 +78,58 @@ async def create_order_from_cart(
             )
         )
 
-    intent = await stripe_service.create_payment_intent(
-        total, currency, metadata={"order_id": str(order.id)}
-    )
+    # Step 1: hold the stock and close the cart. Commit before calling Stripe so no variant row
+    # stays locked during a network call.
+    await db.flush()
+    order_id = order.id
+    await stock_service.reserve(db, order_id)  # rolls back and raises 409 on a short line
+    cart.status = CartStatus.checked_out
+    await db.commit()
+
+    # Step 2: the PaymentIntent. If Stripe fails, undo the hold so the customer keeps their cart.
+    try:
+        intent = await stripe_service.create_payment_intent(
+            total, currency, metadata={"order_id": str(order_id)}
+        )
+    except Exception:
+        await _undo_reservation(db, order_id)
+        raise
+
+    # Step 3: record the payment. If the process dies before this, the order has no payment
+    # row and the sweeper expires it like any other.
     db.add(
         Payment(
-            order_id=order.id,
+            order_id=order_id,
             stripe_payment_intent_id=intent.id,
             status=PaymentStatus.requires_payment_method,
             amount=from_minor_units(intent.amount),
             currency=currency,
         )
     )
-
-    cart.status = CartStatus.checked_out
-
     await db.commit()
 
     return CheckoutResponse(
-        order_id=order.id, client_secret=intent.client_secret, total=total, currency=currency
+        order_id=order_id,
+        client_secret=intent.client_secret,
+        total=total,
+        currency=currency,
+        reserved_until=reserved_until,
     )
+
+
+async def _undo_reservation(db: AsyncSession, order_id: int) -> None:
+    await db.rollback()
+    cancelled = await db.scalar(
+        update(Order)
+        .where(Order.id == order_id, Order.status == OrderStatus.pending_payment)
+        .values(
+            status=OrderStatus.cancelled,
+            cancelled_at=func.now(),
+            cancel_reason=reservation_service.SETUP_FAILED_REASON,
+        )
+        .returning(Order.id)
+        .execution_options(synchronize_session=False)
+    )
+    if cancelled is not None:
+        await reservation_service.release_unpaid_order(db, order_id)
+    await db.commit()

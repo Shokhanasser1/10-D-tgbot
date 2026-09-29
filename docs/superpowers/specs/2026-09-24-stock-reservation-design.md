@@ -1,8 +1,8 @@
 # Spec 4: Stock reservation at checkout
 
-Status: **designed, not implemented.** The owner approved the decisions in §2 and approach A in §3.
-Sections §4–§9 are the design drafted from those decisions; the owner has not reviewed them section by
-section yet, so confirm them before writing the implementation plan.
+Status: **implemented** (2026-09-29). The owner approved §2 and approach A in §3, then asked to
+finish the product to an MVP, which was taken as approval of §4–§9. §12 lists where the build
+refined this design.
 
 ## 1. Problem
 
@@ -133,3 +133,22 @@ Frontend: 409 handling on checkout, the pending-payment deadline, the expired st
 
 Holding stock while items sit in the cart; partial fulfilment; per-product TTL; notifying the customer in
 Telegram about expiry; admin cancel of `pending_payment` orders (the sweeper covers them).
+
+## 12. Implementation notes
+
+- Migration `c4f1a2b3d5e6` adds `orders.reserved_until` plus a partial index
+  `ix_orders_pending_reserved_until` (`WHERE status = 'pending_payment'`) for the sweeper.
+- `stock_service.reserve` does the guarded UPDATE per variant; `reservation_service` holds
+  `expire_order`, `sweep_once`, `run_sweeper` and `release_unpaid_order` (stock back, payment
+  `canceled`, items back to the cart), which checkout's Stripe-failure path reuses.
+- `expire_order` checks that the order is still due **before** calling Stripe, so a PaymentIntent is
+  never cancelled for an order that was paid or is not overdue.
+- `stripe_service.cancel_payment_intent` returns True when the intent is cancelled (now or already),
+  False when Stripe refuses because it succeeded/is processing; network errors propagate.
+- `CheckoutResponse` also returns `reserved_until`, so the payment step shows "pay before HH:MM".
+- The customer's order detail gained `refund_status` as well, and shows refunds of admin
+  cancellations too. The admin panel translates the system reasons `payment_expired` and
+  `payment_setup_failed` instead of showing the codes.
+- `order_admin_service._refund` became public as `refund_payment` (reused for late payments).
+- `RESERVATION_SWEEP_SECONDS=0` turns the sweeper off in a process (the tests do not start it:
+  httpx's ASGI transport does not run the lifespan).

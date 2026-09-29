@@ -111,6 +111,9 @@ export const orderDetail: OrderDetail = {
   ],
   payment_status: 'succeeded',
   shipment_status: 'processing',
+  refund_status: null,
+  reserved_until: '2026-09-22T10:15:00Z',
+  cancel_reason: null,
 }
 
 export const courierProfile: CourierProfile = {

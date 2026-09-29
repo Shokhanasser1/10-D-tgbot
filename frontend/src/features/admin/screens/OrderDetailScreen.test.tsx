@@ -128,4 +128,19 @@ describe('OrderDetailScreen', () => {
       expect(backend.writes()[0]).toMatchObject({ method: 'POST', path: '/orders/42/refund' }),
     )
   })
+
+  it('translates the reason of an order the system cancelled', async () => {
+    stubAdminBackend()
+    serve(
+      adminOrder({
+        status: 'cancelled',
+        can_cancel: false,
+        cancel_reason: 'payment_expired',
+        cancelled_at: '2026-09-24T12:00:00Z',
+      }),
+    )
+    renderOrder()
+
+    expect(await screen.findByText('Cancelled: not paid in time')).toBeInTheDocument()
+  })
 })

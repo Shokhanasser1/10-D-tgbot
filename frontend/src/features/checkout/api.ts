@@ -6,6 +6,8 @@ export interface CheckoutResponse {
   client_secret: string
   total: string
   currency: string
+  /** Pay before this or the order expires and the items go back to the cart. */
+  reserved_until: string
 }
 
 export function postCheckout(address: DeliveryAddress): Promise<CheckoutResponse> {

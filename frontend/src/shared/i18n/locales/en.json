@@ -50,7 +50,10 @@
       "locationFailed": "Couldn't get your location. Tap the map instead.",
       "removePin": "Remove pin",
       "pinPlaced": "Pin placed on the map."
-    }
+    },
+    "soldOut": "Some items just sold out. Check your cart and try again.",
+    "backToCart": "Back to cart",
+    "payBy": "We hold your items until {{time}}. Please pay before then."
   },
   "orders": {
     "title": "My orders",
@@ -65,6 +68,17 @@
       "shipped": "Shipped",
       "delivered": "Delivered",
       "cancelled": "Cancelled"
+    },
+    "reservation": {
+      "pending": "We hold your items until {{time}}. If payment doesn't arrive by then, the order is cancelled and the items go back to your cart.",
+      "expired": "Payment time ran out. Your items are back in the cart.",
+      "setupFailed": "Payment couldn't be started. Your items are back in the cart.",
+      "openCart": "Open cart"
+    },
+    "refund": {
+      "pending": "Your payment is being refunded.",
+      "succeeded": "Your payment has been refunded.",
+      "failed": "We couldn't refund your payment automatically. The shop will contact you."
     }
   },
   "courier": {
@@ -313,7 +327,11 @@
       "cancelTitle": "Cancel order #{{id}}?",
       "cancelMessage": "The customer gets {{total}} back in full and the items return to stock. This can't be undone.",
       "reason": "Reason (seen by other admins)",
-      "cancelConfirm": "Cancel order"
+      "cancelConfirm": "Cancel order",
+      "systemReason": {
+        "payment_expired": "not paid in time",
+        "payment_setup_failed": "payment could not be started"
+      }
     },
     "couriers": {
       "tabs": {

@@ -8,11 +8,13 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
     false,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -28,6 +30,14 @@ if TYPE_CHECKING:
 
 class Order(Base):
     __tablename__ = "orders"
+    # The expiry sweeper looks only at unpaid orders past their hold.
+    __table_args__ = (
+        Index(
+            "ix_orders_pending_reserved_until",
+            "reserved_until",
+            postgresql_where=text("status = 'pending_payment'"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     telegram_id: Mapped[int] = mapped_column(
@@ -50,6 +60,9 @@ class Order(Base):
     stock_shortfall: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=false()
     )
+    # Until when checkout holds the stock of an unpaid order. NULL: placed before reservations
+    # existed, so its stock is taken at payment instead (the legacy path in mark_order_paid).
+    reserved_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Admin telegram_id; null when cancelled through the internal token (scripts).
     cancelled_by: Mapped[int | None] = mapped_column(BigInteger, nullable=True)

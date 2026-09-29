@@ -8,6 +8,7 @@ import { API } from '../../../test/mocks/handlers'
 import { fireMapClick } from '../../../test/mocks/reactLeaflet'
 import { server } from '../../../test/mocks/server'
 import { renderScreen } from '../../../test/test-utils'
+import { formatClock } from '../../../shared/time/formatClock'
 import { CheckoutScreen } from './CheckoutScreen'
 
 const { confirmPayment } = vi.hoisted(() => ({ confirmPayment: vi.fn() }))
@@ -43,6 +44,7 @@ function stubCheckout(onRequest?: (body: unknown) => void) {
         client_secret: 'cs_test_secret',
         total: '24.99',
         currency: 'EUR',
+        reserved_until: '2026-09-22T10:15:00Z',
       })
     }),
   )
@@ -127,6 +129,46 @@ describe('CheckoutScreen', () => {
 
     expect(await screen.findByText('Something went wrong')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Street address')).toHaveValue('Alexanderplatz 1')
+  })
+
+  it('tells the customer how long the items are held on the payment step', async () => {
+    const user = userEvent.setup()
+    stubCheckout()
+    renderScreen(<CheckoutScreen />, routeOptions)
+
+    await fillAddress(user)
+    await user.click(screen.getByRole('button', { name: 'Continue to payment' }))
+
+    const time = formatClock('2026-09-22T10:15:00Z', 'en')
+    expect(
+      await screen.findByText(`We hold your items until ${time}. Please pay before then.`),
+    ).toBeInTheDocument()
+  })
+
+  it('sends the customer back to the cart when items sold out meanwhile', async () => {
+    const user = userEvent.setup()
+    server.use(
+      http.post(`${API}/checkout`, () =>
+        HttpResponse.json(
+          { detail: 'Insufficient stock for variant X', code: 'insufficient_stock' },
+          { status: 409 },
+        ),
+      ),
+    )
+    renderScreen(<CheckoutScreen />, {
+      ...routeOptions,
+      extraRoutes: [...routeOptions.extraRoutes, { path: '/cart', element: <div>cart page</div> }],
+    })
+
+    await fillAddress(user)
+    await user.click(screen.getByRole('button', { name: 'Continue to payment' }))
+
+    expect(
+      await screen.findByText('Some items just sold out. Check your cart and try again.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Something went wrong')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Back to cart' }))
+    expect(await screen.findByText('cart page')).toBeInTheDocument()
   })
 
   describe('delivery pin', () => {

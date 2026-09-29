@@ -43,6 +43,9 @@ services:
       ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET:?set ADMIN_SESSION_SECRET in .env to a long random string}
       SHOP_TIMEZONE: ${SHOP_TIMEZONE:-UTC}
       LOW_STOCK_THRESHOLD: ${LOW_STOCK_THRESHOLD:-5}
+      # Stock reservation: unpaid orders expire after the TTL and return their items to the cart.
+      RESERVATION_TTL_MINUTES: ${RESERVATION_TTL_MINUTES:-15}
+      RESERVATION_SWEEP_SECONDS: ${RESERVATION_SWEEP_SECONDS:-60}
       MEDIA_ROOT: /data/media
     volumes:
       - media:/data/media

@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 from typing import Self
 
@@ -33,3 +34,5 @@ class CheckoutResponse(BaseModel):
     client_secret: str
     total: Decimal
     currency: str
+    # Stock is held until then; an unpaid order is cancelled afterwards.
+    reserved_until: datetime

@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel
 
-from app.models.enums import OrderStatus, PaymentStatus, ShipmentStatus
+from app.models.enums import OrderStatus, PaymentStatus, RefundStatus, ShipmentStatus
 from app.schemas.checkout import DeliveryAddressIn
 
 
@@ -35,3 +35,9 @@ class OrderDetailOut(BaseModel):
     items: list[OrderItemOut]
     payment_status: PaymentStatus | None
     shipment_status: ShipmentStatus | None
+    refund_status: RefundStatus | None = None
+    # Pay by this time or the order expires (null for orders placed before reservations).
+    reserved_until: datetime | None = None
+    # Machine reason for a cancellation: payment_expired, payment_setup_failed, or free text
+    # an admin typed.
+    cancel_reason: str | None = None

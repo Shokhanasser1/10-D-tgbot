@@ -72,6 +72,7 @@ class OrderAdminDetailOut(BaseModel):
     payment: OrderAdminPaymentOut | None
     shipment: OrderAdminShipmentOut | None
     stock_shortfall: bool
+    reserved_until: datetime | None = None
     cancelled_at: datetime | None
     cancelled_by: int | None
     cancel_reason: str | None

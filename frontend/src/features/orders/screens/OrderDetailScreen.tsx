@@ -7,6 +7,7 @@ import { Price } from '../../../shared/ui/Price'
 import { QueryError } from '../../../shared/ui/QueryError'
 import { Skeleton } from '../../../shared/ui/Skeleton'
 import { OrderStatusBadge } from '../components/OrderStatusBadge'
+import { PaymentNotice } from '../components/PaymentNotice'
 import { TrackingCard } from '../components/TrackingCard'
 import { useOrder } from '../hooks'
 import styles from './OrderDetailScreen.module.css'
@@ -37,6 +38,8 @@ export function OrderDetailScreen() {
         <h1 className={styles.title}>#{order.id}</h1>
         <OrderStatusBadge status={order.status} />
       </div>
+
+      <PaymentNotice order={order} />
 
       <TrackingCard orderId={order.id} orderStatus={order.status} />
 

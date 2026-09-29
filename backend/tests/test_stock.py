@@ -1,5 +1,6 @@
 import itertools
 from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 from httpx import AsyncClient
@@ -146,15 +147,24 @@ async def test_selling_more_than_the_shelf_flags_a_shortfall(db_session: AsyncSe
     assert (order.status, order.stock_shortfall) == (OrderStatus.paid, True)
 
 
-async def test_late_payment_event_for_a_cancelled_order_changes_nothing(
-    db_session: AsyncSession, pay
+async def test_late_payment_event_for_a_cancelled_order_refunds_and_takes_no_stock(
+    db_session: AsyncSession, pay, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    refunds: list[str] = []
+
+    async def _refund(payment_intent_id: str, idempotency_key: str, metadata: dict):
+        refunds.append(idempotency_key)
+        return SimpleNamespace(id="re_late", status="pending")
+
+    monkeypatch.setattr(stripe_service, "create_refund", _refund)
     order_id, variants = await _pending_order(db_session, [("a", 2)], {"a": 5})
     order = await _order(db_session, order_id)
     order.status = OrderStatus.cancelled
     await db_session.commit()
 
     await pay(order_id)
+
+    assert refunds == [f"late-payment-{order_id}"]
 
     assert (await _order(db_session, order_id)).status == OrderStatus.cancelled
     assert await _stock(db_session, variants) == {"a": 5}

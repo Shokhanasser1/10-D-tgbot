@@ -50,7 +50,10 @@
       "locationFailed": "Joylashuvni aniqlab bo'lmadi. Xaritaga bosing.",
       "removePin": "Nuqtani olib tashlash",
       "pinPlaced": "Nuqta xaritada belgilandi."
-    }
+    },
+    "soldOut": "Ba'zi mahsulotlar hozirgina sotilib ketdi. Savatni tekshirib, qaytadan urinib ko'ring.",
+    "backToCart": "Savatga qaytish",
+    "payBy": "Mahsulotlarni siz uchun {{time}} gacha saqlaymiz. Shu vaqtgacha to'lang."
   },
   "orders": {
     "title": "Mening buyurtmalarim",
@@ -65,6 +68,17 @@
       "shipped": "Jo'natildi",
       "delivered": "Yetkazildi",
       "cancelled": "Bekor qilindi"
+    },
+    "reservation": {
+      "pending": "Mahsulotlarni siz uchun {{time}} gacha saqlaymiz. Shu vaqtgacha to'lov kelmasa, buyurtma bekor qilinadi va mahsulotlar savatga qaytadi.",
+      "expired": "To'lov vaqti tugadi. Mahsulotlar savatga qaytarildi.",
+      "setupFailed": "To'lovni boshlab bo'lmadi. Mahsulotlar savatga qaytarildi.",
+      "openCart": "Savatni ochish"
+    },
+    "refund": {
+      "pending": "To'lovingiz qaytarilmoqda.",
+      "succeeded": "To'lovingiz qaytarildi.",
+      "failed": "To'lovni avtomatik qaytarib bo'lmadi. Do'kon siz bilan bog'lanadi."
     }
   },
   "courier": {
@@ -313,7 +327,11 @@
       "cancelTitle": "№{{id}} buyurtma bekor qilinsinmi?",
       "cancelMessage": "Mijozga {{total}} to'liq qaytariladi, mahsulotlar omborga qaytadi. Buni ortga qaytarib bo'lmaydi.",
       "reason": "Sabab (boshqa adminlar ko'radi)",
-      "cancelConfirm": "Buyurtmani bekor qilish"
+      "cancelConfirm": "Buyurtmani bekor qilish",
+      "systemReason": {
+        "payment_expired": "o'z vaqtida to'lanmadi",
+        "payment_setup_failed": "to'lovni boshlab bo'lmadi"
+      }
     },
     "couriers": {
       "tabs": {

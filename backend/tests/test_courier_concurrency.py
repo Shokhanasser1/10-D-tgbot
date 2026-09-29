@@ -255,3 +255,71 @@ async def test_cancel_racing_a_claim_ends_in_exactly_one_of_them(
             None,
             OrderStatus.cancelled,
         )
+
+
+async def test_two_customers_checking_out_the_last_unit_produce_exactly_one_order(
+    sessions: SessionFactory, http: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from decimal import Decimal
+    from types import SimpleNamespace
+
+    from app.models.category import Category
+    from app.models.enums import ProductStatus
+    from app.models.product import Product
+    from app.models.variant import Variant
+
+    async def _intent(amount, currency, metadata):
+        return SimpleNamespace(id=f"pi_race_{metadata['order_id']}", amount=100, client_secret="s")
+
+    monkeypatch.setattr(stripe_service, "create_payment_intent", _intent)
+    address = {
+        "street": "Amir Temur 1",
+        "city": "Tashkent",
+        "postal_code": "100000",
+        "country": "UZ",
+        "phone": "+998901234567",
+    }
+
+    for round_no in range(10):
+        async with sessions() as session:
+            category = Category(slug=f"race-{round_no}", sort_order=0)
+            session.add(category)
+            await session.flush()
+            product = Product(
+                category_id=category.id,
+                base_sku=f"RACE-{round_no}",
+                base_price=Decimal("1.00"),
+                status=ProductStatus.active,
+            )
+            session.add(product)
+            await session.flush()
+            variant = Variant(
+                product_id=product.id, sku=f"RACE-{round_no}-V", price=Decimal("1"), stock_qty=1
+            )
+            session.add(variant)
+            await session.commit()
+            variant_id = variant.id
+
+        buyers = (851_000 + round_no * 2, 851_001 + round_no * 2)
+        for buyer in buyers:
+            async with sessions() as session:
+                await add_customer(session, buyer)
+            added = await http.post(
+                "/cart/items", json={"variant_id": variant_id, "qty": 1}, headers=tma_headers(buyer)
+            )
+            assert added.status_code in (200, 201)
+
+        responses = await asyncio.gather(
+            *(
+                http.post(
+                    "/checkout", json={"delivery_address": address}, headers=tma_headers(buyer)
+                )
+                for buyer in buyers
+            )
+        )
+
+        assert sorted(r.status_code for r in responses) == [200, 409]
+        async with sessions() as session:
+            assert (
+                await session.scalar(select(Variant.stock_qty).where(Variant.id == variant_id)) == 0
+            )

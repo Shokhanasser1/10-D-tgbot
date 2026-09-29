@@ -16,6 +16,8 @@ import { useAdminOrder, useOrderAction } from '../hooks'
 import type { AdminOrder, RefundStatus } from '../types'
 import styles from './OrderDetailScreen.module.css'
 
+const SYSTEM_REASONS = new Set(['payment_expired', 'payment_setup_failed'])
+
 const REFUND_TONE: Record<RefundStatus, 'neutral' | 'positive' | 'negative'> = {
   pending: 'neutral',
   succeeded: 'positive',
@@ -150,7 +152,12 @@ export function OrderDetailScreen() {
           <History order={order} />
           {order.cancel_reason && (
             <p className={styles.notes}>
-              {t('admin.orders.cancelReason', { reason: order.cancel_reason })}
+              {t('admin.orders.cancelReason', {
+                // Reasons the system sets are codes; an admin's own reason is shown as typed.
+                reason: SYSTEM_REASONS.has(order.cancel_reason)
+                  ? t(`admin.orders.systemReason.${order.cancel_reason}`)
+                  : order.cancel_reason,
+              })}
             </p>
           )}
         </Card>

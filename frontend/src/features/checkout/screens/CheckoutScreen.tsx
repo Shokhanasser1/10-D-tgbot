@@ -1,11 +1,14 @@
 import { Elements } from '@stripe/react-stripe-js'
 import { loadStripe } from '@stripe/stripe-js'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
+import { ApiError } from '../../../shared/api/client'
+import { formatClock } from '../../../shared/time/formatClock'
 import type { DeliveryAddress } from '../../../shared/types'
+import { PillButton } from '../../../shared/ui/PillButton'
 import { Skeleton } from '../../../shared/ui/Skeleton'
 import { useOrder } from '../../orders/hooks'
 import { postCheckout } from '../api'
@@ -17,12 +20,13 @@ const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as 
 
 type Step =
   | { name: 'address' }
-  | { name: 'payment'; orderId: number; clientSecret: string }
+  | { name: 'payment'; orderId: number; clientSecret: string; reservedUntil: string }
   | { name: 'confirming'; orderId: number }
 
 export function CheckoutScreen() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [step, setStep] = useState<Step>({ name: 'address' })
 
   const checkoutMutation = useMutation({
@@ -32,7 +36,16 @@ export function CheckoutScreen() {
         name: 'payment',
         orderId: response.order_id,
         clientSecret: response.client_secret,
+        reservedUntil: response.reserved_until,
       })
+    },
+    onError: (error) => {
+      if (isSoldOut(error)) {
+        // Someone else bought the last units: show the cart and catalog as they are now.
+        void queryClient.invalidateQueries({ queryKey: ['cart'] })
+        void queryClient.invalidateQueries({ queryKey: ['products'] })
+        void queryClient.invalidateQueries({ queryKey: ['product'] })
+      }
     },
   })
 
@@ -61,6 +74,9 @@ export function CheckoutScreen() {
   if (step.name === 'payment') {
     return (
       <div className={styles.screen}>
+        <p className={styles.deadline}>
+          {t('checkout.payBy', { time: formatClock(step.reservedUntil, i18n.language) })}
+        </p>
         <Elements stripe={stripePromise} options={{ clientSecret: step.clientSecret }}>
           <StripePaymentForm
             onPaid={() => setStep({ name: 'confirming', orderId: step.orderId })}
@@ -77,7 +93,25 @@ export function CheckoutScreen() {
         onSubmit={(address) => checkoutMutation.mutate(address)}
         isSubmitting={checkoutMutation.isPending}
       />
-      {checkoutMutation.isError && <p className={styles.error}>{t('common.error')}</p>}
+      {checkoutMutation.isError &&
+        (isSoldOut(checkoutMutation.error) ? (
+          <div className={styles.soldOut} role="alert">
+            <p className={styles.error}>{t('checkout.soldOut')}</p>
+            <PillButton variant="secondary" onClick={() => navigate('/cart')}>
+              {t('checkout.backToCart')}
+            </PillButton>
+          </div>
+        ) : (
+          <p className={styles.error}>{t('common.error')}</p>
+        ))}
     </div>
   )
+}
+
+function isSoldOut(error: unknown): boolean {
+  if (!(error instanceof ApiError) || error.status !== 409) return false
+  const detail = error.detail
+  return typeof detail === 'object' && detail !== null && 'code' in detail
+    ? (detail as { code: unknown }).code === 'insufficient_stock'
+    : false
 }

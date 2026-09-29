@@ -14,6 +14,8 @@ settings = get_settings()
 settings.telegram_bot_token = TEST_BOT_TOKEN
 settings.internal_api_token = "test-internal-token"
 settings.admin_session_secret = "test-admin-session-secret"
+# A local backend/.env may turn this off for plain-http development; tests expect the default.
+settings.admin_cookie_secure = True
 
 
 @pytest.fixture(scope="session")

@@ -56,6 +56,11 @@ class Settings(BaseSettings):
     shop_timezone: str = "UTC"
     low_stock_threshold: int = Field(default=5, ge=0)
 
+    # Stock reservation: how long checkout holds stock for an unpaid order, and how often the
+    # background sweeper expires overdue ones (0 turns the sweeper off in this process).
+    reservation_ttl_minutes: int = Field(default=15, ge=1)
+    reservation_sweep_seconds: int = Field(default=60, ge=0)
+
     @field_validator("telegram_webhook_secret")
     @classmethod
     def _validate_webhook_secret(cls, value: str) -> str:
