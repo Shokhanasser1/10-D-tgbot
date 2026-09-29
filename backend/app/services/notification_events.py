@@ -12,9 +12,10 @@ from uuid import uuid4
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.permissions import roles_with
 from app.models.admin import Admin
 from app.models.courier import Courier
-from app.models.enums import AdminRole, PaymentMethod
+from app.models.enums import PaymentMethod, Permission
 from app.models.order import Order, OrderItem
 from app.models.payment import Payment
 from app.models.telegram_user import TelegramUser
@@ -150,7 +151,7 @@ async def order_paid(db: AsyncSession, order_id: int) -> None:
     admins = list(
         await db.scalars(
             select(Admin.telegram_id).where(
-                Admin.is_active, Admin.role.in_((AdminRole.owner, AdminRole.dispatcher))
+                Admin.is_active, Admin.role.in_(roles_with(Permission.orders_cancel_unpaid))
             )
         )
     )
@@ -251,7 +252,9 @@ async def refund_failed(db: AsyncSession, order_id: int, ref: str) -> None:
     """`ref` names this failure: the Stripe refund ID, or the attempt's idempotency key."""
     owners = list(
         await db.scalars(
-            select(Admin.telegram_id).where(Admin.is_active, Admin.role == AdminRole.owner)
+            select(Admin.telegram_id).where(
+                Admin.is_active, Admin.role.in_(roles_with(Permission.refunds_manage))
+            )
         )
     )
     locales = await _locales(db, owners)
@@ -282,7 +285,9 @@ async def refund_manual_required(db: AsyncSession, order_id: int) -> None:
         return
     owners = list(
         await db.scalars(
-            select(Admin.telegram_id).where(Admin.is_active, Admin.role == AdminRole.owner)
+            select(Admin.telegram_id).where(
+                Admin.is_active, Admin.role.in_(roles_with(Permission.refunds_manage))
+            )
         )
     )
     locales = await _locales(db, owners)

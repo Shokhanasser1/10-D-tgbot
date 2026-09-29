@@ -3,17 +3,22 @@ from datetime import date
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import DISPATCH_ROLES, AdminPrincipal, require_admin
+from app.api.deps import (
+    AdminPrincipal,
+    check_permission,
+    get_admin_principal,
+    require_permission,
+)
 from app.db.session import get_db
-from app.models.enums import AdminRole, OrderStatus
+from app.models.enums import OrderStatus, Permission
 from app.schemas.order_admin import OrderAdminDetailOut, OrderAdminPage, OrderCancelIn
 from app.services import order_admin_service
 
 router = APIRouter(prefix="/internal", tags=["internal"])
 
-_dispatch = require_admin(*DISPATCH_ROLES)
-# Money leaves the shop only on an owner's word.
-_owner = require_admin(AdminRole.owner)
+_view = require_permission(Permission.orders_view)
+# Money leaves the shop only after the password was re-entered (Spec 7).
+_refunds = require_permission(Permission.refunds_manage)
 
 
 @router.get("/orders", response_model=OrderAdminPage)
@@ -26,7 +31,7 @@ async def list_orders(
     shortfall: bool | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
-    _: AdminPrincipal = Depends(_dispatch),
+    _: AdminPrincipal = Depends(_view),
     db: AsyncSession = Depends(get_db),
 ):
     return await order_admin_service.list_orders(
@@ -43,7 +48,7 @@ async def list_orders(
 
 @router.get("/orders/{order_id}", response_model=OrderAdminDetailOut)
 async def get_order(
-    order_id: int, _: AdminPrincipal = Depends(_dispatch), db: AsyncSession = Depends(get_db)
+    order_id: int, _: AdminPrincipal = Depends(_view), db: AsyncSession = Depends(get_db)
 ):
     return await order_admin_service.get_order(db, order_id)
 
@@ -52,9 +57,16 @@ async def get_order(
 async def cancel_order(
     order_id: int,
     data: OrderCancelIn,
-    principal: AdminPrincipal = Depends(_dispatch),
+    principal: AdminPrincipal = Depends(get_admin_principal),
     db: AsyncSession = Depends(get_db),
 ):
+    # Cancelling an order whose money was taken refunds it, so it needs the stronger permission.
+    check_permission(
+        principal,
+        Permission.orders_cancel_paid
+        if await order_admin_service.money_taken(db, order_id)
+        else Permission.orders_cancel_unpaid,
+    )
     return await order_admin_service.cancel_order(
         db, order_id, data.reason.strip(), principal.telegram_id
     )
@@ -62,14 +74,14 @@ async def cancel_order(
 
 @router.post("/orders/{order_id}/refund", response_model=OrderAdminDetailOut)
 async def retry_refund(
-    order_id: int, _: AdminPrincipal = Depends(_dispatch), db: AsyncSession = Depends(get_db)
+    order_id: int, _: AdminPrincipal = Depends(_refunds), db: AsyncSession = Depends(get_db)
 ):
     return await order_admin_service.retry_refund(db, order_id)
 
 
 @router.post("/orders/{order_id}/refund/confirm", response_model=OrderAdminDetailOut)
 async def confirm_manual_refund(
-    order_id: int, _: AdminPrincipal = Depends(_owner), db: AsyncSession = Depends(get_db)
+    order_id: int, _: AdminPrincipal = Depends(_refunds), db: AsyncSession = Depends(get_db)
 ):
     """An owner refunded a Click/Payme payment in the provider's cabinet (Spec 6 §5)."""
     return await order_admin_service.confirm_manual_refund(db, order_id)

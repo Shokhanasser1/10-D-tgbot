@@ -47,8 +47,24 @@ class ShipmentStatus(enum.StrEnum):
 
 class AdminRole(enum.StrEnum):
     owner = "owner"
+    manager = "manager"  # the owner's deputy: everything except admins and manual refunds
     catalog_manager = "catalog_manager"
     dispatcher = "dispatcher"
+    accountant = "accountant"  # money: summary, orders, refunds
+    viewer = "viewer"  # sees almost everything, changes nothing
+
+
+class Permission(enum.StrEnum):
+    summary_view = "summary.view"
+    catalog_view = "catalog.view"
+    catalog_edit = "catalog.edit"
+    orders_view = "orders.view"
+    orders_cancel_unpaid = "orders.cancel_unpaid"
+    orders_cancel_paid = "orders.cancel_paid"
+    refunds_manage = "refunds.manage"
+    couriers_view = "couriers.view"
+    couriers_manage = "couriers.manage"
+    admins_manage = "admins.manage"
 
 
 class RefundStatus(enum.StrEnum):

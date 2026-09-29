@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Boolean, DateTime, Enum, Integer, String, func, true
+from sqlalchemy import BigInteger, Boolean, DateTime, Enum, Integer, String, false, func, true
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -27,3 +27,26 @@ class Admin(Base):
     )
     # telegram_id of the owner who added them; null for admins created from the bootstrap list.
     created_by: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+
+    # Password sign-in (Spec 7). Null until the admin sets one in their profile.
+    login: Mapped[str | None] = mapped_column(String(32), unique=True, nullable=True)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Set by an owner's reset: the temporary password must be replaced before anything else.
+    must_change_password: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
+    )
+    # Part of every session cookie; bumping it signs out all of this admin's sessions.
+    session_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default="1"
+    )
+    failed_logins: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    password_changed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    @property
+    def has_password(self) -> bool:
+        return self.password_hash is not None

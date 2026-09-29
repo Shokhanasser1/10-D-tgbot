@@ -21,7 +21,7 @@ from app.models.payment import Payment
 from app.models.shipment import Shipment
 from app.models.variant import Variant
 from app.services import courier_state, stripe_service
-from tests.admin_factories import add_admin, admin_tma
+from tests.admin_factories import add_admin, admin_confirmed, admin_tma
 from tests.courier_factories import INTERNAL_HEADERS, add_courier, add_paid_order
 
 settings = get_settings()
@@ -202,11 +202,14 @@ async def test_orders_are_for_dispatch_roles(
 async def test_cancel_from_the_pool_refunds_and_restocks(
     client: AsyncClient, db_session: AsyncSession, fake_stripe: FakeStripe
 ) -> None:
-    await add_admin(db_session, 962_000, AdminRole.dispatcher)
+    # Money goes back, so it takes a role allowed to refund and a fresh password confirmation.
+    await add_admin(db_session, 962_000, AdminRole.accountant)
     order, shipment = await add_paid_order(db_session, customer_id=962_001, qty=2)
     stock_before = await _stock(db_session, order.id)
 
-    response = await _cancel(client, order.id, headers=admin_tma(962_000), reason="  Asked to  ")
+    response = await _cancel(
+        client, order.id, headers=admin_confirmed(962_000), reason="  Asked to  "
+    )
 
     assert response.status_code == 200, response.text
     body = response.json()

@@ -2,13 +2,39 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.models.enums import AdminRole
+from app.models.enums import AdminRole, Permission
 
 
 class AdminMeOut(BaseModel):
     telegram_id: int | None  # None when authenticated with the internal token
     display_name: str
     role: AdminRole
+    # What the admin UI may show; the API checks the same permissions on every call.
+    permissions: list[Permission] = []
+    login: str | None = None
+    has_password: bool = False
+    must_change_password: bool = False
+
+
+class PasswordLoginIn(BaseModel):
+    login: str = Field(min_length=1, max_length=64)
+    password: str = Field(min_length=1, max_length=200)
+
+
+class PasswordConfirmIn(BaseModel):
+    password: str = Field(min_length=1, max_length=200)
+
+
+class PasswordChangeIn(BaseModel):
+    login: str | None = Field(default=None, max_length=64)
+    current_password: str | None = Field(default=None, max_length=200)
+    new_password: str = Field(min_length=1, max_length=200)
+
+
+class PasswordResetOut(BaseModel):
+    login: str
+    # Shown once to the owner, who passes it on; the admin must change it at sign-in.
+    temporary_password: str
 
 
 class TelegramLoginIn(BaseModel):
@@ -56,3 +82,5 @@ class AdminOut(BaseModel):
     is_active: bool
     created_at: datetime
     created_by: int | None
+    login: str | None = None
+    has_password: bool = False

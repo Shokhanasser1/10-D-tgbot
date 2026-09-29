@@ -30,7 +30,11 @@ class ConflictError(Exception):
 
 
 class ForbiddenError(Exception):
-    """Raised by the service layer when the caller is authenticated but not allowed."""
+    """Raised when the caller is authenticated but not allowed. `code` as for ConflictError."""
+
+    def __init__(self, message: str = "", *, code: str | None = None) -> None:
+        super().__init__(message)
+        self.code = code
 
 
 class PaymentUnavailableError(Exception):
@@ -62,7 +66,10 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(ForbiddenError)
     async def _forbidden_handler(request: Request, exc: ForbiddenError) -> JSONResponse:
-        return JSONResponse(status_code=403, content={"detail": str(exc) or "Forbidden"})
+        content = {"detail": str(exc) or "Forbidden"}
+        if exc.code is not None:
+            content["code"] = exc.code
+        return JSONResponse(status_code=403, content=content)
 
     @app.exception_handler(BadRequestError)
     async def _bad_request_handler(request: Request, exc: BadRequestError) -> JSONResponse:

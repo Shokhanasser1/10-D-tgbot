@@ -263,6 +263,18 @@ async def get_order(db: AsyncSession, order_id: int) -> OrderAdminDetailOut:
     )
 
 
+async def money_taken(db: AsyncSession, order_id: int) -> bool:
+    """Whether cancelling this order means giving money back (cash is only taken on delivery)."""
+    row = (
+        await db.execute(select(Payment.method, Payment.status).where(Payment.order_id == order_id))
+    ).first()
+    return (
+        row is not None
+        and row.status == PaymentStatus.succeeded
+        and (row.method != PaymentMethod.cash)
+    )
+
+
 # --- cancellation and refund -----------------------------------------------------------------
 
 

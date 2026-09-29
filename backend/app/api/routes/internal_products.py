@@ -4,12 +4,12 @@ from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.datastructures import UploadFile as StarletteUploadFile
 
-from app.api.deps import CATALOG_ROLES, require_admin
+from app.api.deps import require_view_or_edit
 from app.config import get_settings
 from app.core.exceptions import BadRequestError
 from app.core.images import MAX_UPLOAD_BYTES
 from app.db.session import get_db
-from app.models.enums import ProductStatus
+from app.models.enums import Permission, ProductStatus
 from app.schemas.internal import (
     AttributeAdminListItem,
     AttributeAdminOut,
@@ -47,7 +47,9 @@ class _UploadFields(BaseModel):
 
 
 router = APIRouter(
-    prefix="/internal", tags=["internal"], dependencies=[Depends(require_admin(*CATALOG_ROLES))]
+    prefix="/internal",
+    tags=["internal"],
+    dependencies=[Depends(require_view_or_edit(Permission.catalog_view, Permission.catalog_edit))],
 )
 
 

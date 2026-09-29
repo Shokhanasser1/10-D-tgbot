@@ -2,7 +2,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.enums import AdminRole
-from tests.admin_factories import add_admin, admin_tma
+from tests.admin_factories import add_admin, admin_confirmed, admin_tma
 from tests.courier_factories import INTERNAL_HEADERS
 
 
@@ -12,7 +12,7 @@ async def test_owner_adds_an_admin(client: AsyncClient, db_session: AsyncSession
     response = await client.post(
         "/internal/admins",
         json={"telegram_id": 710_002, "role": "dispatcher", "display_name": "Jasur"},
-        headers=admin_tma(710_001),
+        headers=admin_confirmed(710_001),
     )
 
     assert response.status_code == 201
@@ -64,7 +64,7 @@ async def test_owner_changes_role_and_name(client: AsyncClient, db_session: Asyn
     response = await client.patch(
         f"/internal/admins/{target.id}",
         json={"role": "catalog_manager", "display_name": "Nodira"},
-        headers=admin_tma(710_007),
+        headers=admin_confirmed(710_007),
     )
 
     assert response.status_code == 200
@@ -77,7 +77,7 @@ async def test_cannot_deactivate_yourself(client: AsyncClient, db_session: Async
     me_id = (await add_admin(db_session, 710_010)).id
 
     response = await client.patch(
-        f"/internal/admins/{me_id}", json={"is_active": False}, headers=admin_tma(710_010)
+        f"/internal/admins/{me_id}", json={"is_active": False}, headers=admin_confirmed(710_010)
     )
 
     assert response.status_code == 409
@@ -107,7 +107,7 @@ async def test_one_of_two_owners_can_be_demoted(
     second = await add_admin(db_session, 710_013)
 
     response = await client.patch(
-        f"/internal/admins/{second.id}", json={"is_active": False}, headers=admin_tma(710_012)
+        f"/internal/admins/{second.id}", json={"is_active": False}, headers=admin_confirmed(710_012)
     )
 
     assert response.status_code == 200

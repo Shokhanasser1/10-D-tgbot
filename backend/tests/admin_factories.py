@@ -4,6 +4,7 @@ import time
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import admin_session
 from app.core.admin_session import sign_session
 from app.models.admin import Admin
 from app.models.enums import AdminRole
@@ -31,6 +32,16 @@ async def add_admin(
 
 def admin_tma(telegram_id: int) -> dict[str, str]:
     return {"Authorization": f"tma {make_init_data(telegram_id=telegram_id)}"}
+
+
+def admin_confirmed(telegram_id: int, *, version: int = 1) -> dict[str, str]:
+    """Mini App headers of an admin who re-entered their password a moment ago (Spec 7)."""
+    confirm = admin_session.sign(telegram_id, version, SESSION_SECRET, kind=admin_session.CONFIRM)
+    return {
+        **admin_tma(telegram_id),
+        "Cookie": f"admin_confirm={confirm}",
+        "X-Requested-With": "admin",
+    }
 
 
 def admin_cookie(telegram_id: int, *, csrf: bool = True, issued_at: float | None = None) -> dict:

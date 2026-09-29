@@ -55,8 +55,19 @@ def test_expired_session_is_rejected() -> None:
 
 
 def test_tampered_session_id_is_rejected() -> None:
-    _, issued, sig = sign_session(42, "s").split(".")
-    assert verify_session(f"43.{issued}.{sig}", "s", 60) is None
+    _, version, issued, sig = sign_session(42, "s").split(".")
+    assert verify_session(f"43.{version}.{issued}.{sig}", "s", 60) is None
+
+
+def test_a_confirmation_cookie_is_not_a_session() -> None:
+    from app.core import admin_session
+
+    confirm = admin_session.sign(42, 1, "s", kind=admin_session.CONFIRM)
+    assert verify_session(confirm, "s", 60) is None
+
+
+def test_an_old_three_part_session_is_rejected() -> None:
+    assert verify_session("42.1790000000.deadbeef", "s", 60) is None
 
 
 def test_no_secret_means_no_sessions() -> None:
@@ -74,11 +85,16 @@ async def test_login_sets_session_cookie_for_an_active_admin(
     response = await client.post("/internal/auth/telegram", json=login_payload(700_001))
 
     assert response.status_code == 200
-    assert response.json() == {
+    assert response.json() | {"permissions": None} == {
         "telegram_id": 700_001,
         "display_name": "Dilnoza",
         "role": "dispatcher",
+        "permissions": None,
+        "login": None,
+        "has_password": False,
+        "must_change_password": False,
     }
+    assert "orders.cancel_paid" not in response.json()["permissions"]
     cookie = response.headers["set-cookie"]
     assert cookie.startswith("admin_session=")
     for attribute in ("HttpOnly", "Secure", "SameSite=strict", "Path=/", "Max-Age=43200"):
@@ -173,11 +189,13 @@ async def test_me_with_mini_app_init_data(client: AsyncClient, db_session: Async
     response = await client.get("/internal/me", headers=admin_tma(700_010))
 
     assert response.status_code == 200
-    assert response.json() == {
-        "telegram_id": 700_010,
-        "display_name": "Kamola",
-        "role": "catalog_manager",
-    }
+    body = response.json()
+    assert (body["telegram_id"], body["display_name"], body["role"]) == (
+        700_010,
+        "Kamola",
+        "catalog_manager",
+    )
+    assert body["permissions"] == ["catalog.edit", "catalog.view"]
 
 
 async def test_me_with_session_cookie(client: AsyncClient, db_session: AsyncSession) -> None:
@@ -193,7 +211,9 @@ async def test_me_with_internal_token_is_an_owner(client: AsyncClient) -> None:
     response = await client.get("/internal/me", headers=INTERNAL_HEADERS)
 
     assert response.status_code == 200
-    assert response.json() == {"telegram_id": None, "display_name": "Internal", "role": "owner"}
+    body = response.json()
+    assert (body["telegram_id"], body["display_name"], body["role"]) == (None, "Internal", "owner")
+    assert "admins.manage" in body["permissions"]
 
 
 async def test_no_credentials_is_401(client: AsyncClient) -> None:
@@ -210,9 +230,7 @@ async def test_invalid_init_data_is_401(client: AsyncClient) -> None:
     assert response.status_code == 401
 
 
-async def test_expired_session_cookie_is_401(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_expired_session_cookie_is_401(client: AsyncClient, db_session: AsyncSession) -> None:
     await add_admin(db_session, 700_012)
     headers = admin_cookie(700_012, issued_at=time.time() - 13 * 3600)
 
