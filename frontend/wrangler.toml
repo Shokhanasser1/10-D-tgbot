@@ -1,0 +1,12 @@
+# Cloudflare Pages project for the Mini App. Deploy with `npm run deploy:pages`.
+# BACKEND_URL (the backend's public https origin) is set per project, not here:
+#   npx wrangler pages secret put BACKEND_URL
+name = "ecosmetics-shop"
+pages_build_output_dir = "./dist"
+compatibility_date = "2026-09-01"
+
+# Product photos when the backend runs with MEDIA_STORAGE=r2 (functions/media reads them).
+# Remove this block if the backend keeps photos on its own disk.
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "ecosmetics-media"

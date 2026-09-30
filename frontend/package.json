@@ -10,7 +10,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "format": "prettier --write .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:pages": "tsc -b && vite build --mode pages",
+    "deploy:pages": "npm run build:pages && wrangler pages deploy",
+    "tunnel": "node scripts/tunnel.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter-tight": "^5.3.0",
@@ -41,6 +44,7 @@
     "prettier": "^3.9.8",
     "typescript": "~6.0.2",
     "vite": "^8.3.0",
-    "vitest": "^5.0.1"
+    "vitest": "^5.0.1",
+    "wrangler": "^4.144.0"
   }
 }

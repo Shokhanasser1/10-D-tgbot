@@ -1,0 +1,8 @@
+# Cloudflare Pages: hashed build assets never change; index.html must be revalidated so a new
+# deploy is picked up immediately (same rules as nginx.conf).
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+/
+  Cache-Control: no-cache
+/*
+  X-Content-Type-Options: nosniff
