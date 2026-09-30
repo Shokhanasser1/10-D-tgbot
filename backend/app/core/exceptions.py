@@ -6,6 +6,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 
+from app.core.media_storage import MediaStorageError
+
 logger = logging.getLogger(__name__)
 
 
@@ -90,6 +92,14 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=502,
             content={"detail": "Payment provider unavailable", "code": "payment_unavailable"},
+        )
+
+    @app.exception_handler(MediaStorageError)
+    async def _media_storage_handler(request: Request, exc: MediaStorageError) -> JSONResponse:
+        logger.error("Photo storage failed on %s %s: %s", request.method, request.url.path, exc)
+        return JSONResponse(
+            status_code=502,
+            content={"detail": "Photo storage unavailable", "code": "media_unavailable"},
         )
 
     @app.exception_handler(RequestValidationError)

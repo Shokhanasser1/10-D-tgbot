@@ -6,6 +6,7 @@ usually carries the GPS position where it was taken.
 """
 
 import io
+import math
 import warnings
 
 from PIL import Image, ImageOps, UnidentifiedImageError
@@ -47,6 +48,12 @@ def to_webp(raw: bytes) -> bytes:
     try:
         _open(raw).verify()
         image = _open(raw)
+        # JPEGs can be decoded at 1/2, 1/4 or 1/8 scale: ask for the smallest one whose long side
+        # is still at least MAX_SIDE, so a phone photo never sits in memory at full size (free
+        # hosts give the API ~256 MB). Other formats ignore this.
+        scale = MAX_SIDE / max(image.size)
+        if scale < 1:
+            image.draft("RGB", (math.ceil(image.width * scale), math.ceil(image.height * scale)))
         image.load()
     except ImageRejectedError:
         raise

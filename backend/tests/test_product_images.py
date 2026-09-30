@@ -9,7 +9,9 @@ from PIL import Image
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
+from app.core import media_storage
 from app.core.images import MAX_SIDE, ImageRejectedError, to_webp
+from app.core.media_storage import MediaStorageError
 from app.models.category import Category
 from app.models.enums import AdminRole, ProductStatus
 from app.models.product import Product
@@ -186,6 +188,32 @@ async def test_oversized_upload_is_413(
     )
 
     assert response.status_code == 413
+
+
+async def test_unreachable_photo_storage_is_502_and_adds_no_image(
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    product_id, _ = await _product(db_session, "UP-R2")
+
+    class DownStorage:
+        def save(self, key: str, data: bytes) -> None:
+            raise MediaStorageError("R2 is down")
+
+        def remove(self, key: str) -> None:
+            pass
+
+    monkeypatch.setattr(media_storage, "from_settings", lambda _settings: DownStorage())
+
+    response = await client.post(
+        f"/internal/products/{product_id}/images",
+        files=_upload(_image_bytes()),
+        headers=INTERNAL_HEADERS,
+    )
+
+    assert response.status_code == 502
+    assert response.json()["code"] == "media_unavailable"
+    images = await client.get(f"/internal/products/{product_id}", headers=INTERNAL_HEADERS)
+    assert images.json()["images"] == []
 
 
 async def test_upload_without_a_file_is_400(client: AsyncClient, db_session: AsyncSession) -> None:

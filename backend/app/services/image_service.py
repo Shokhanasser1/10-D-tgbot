@@ -1,44 +1,27 @@
 import asyncio
-import logging
-from pathlib import Path
 from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
+from app.core import media_storage
 from app.core.exceptions import BadRequestError, NotFoundError
 from app.core.images import ImageRejectedError, to_webp
+from app.core.media_storage import MediaStorage
 from app.models.product import Product
 from app.models.product_image import ProductImage
 from app.models.variant import Variant
 from app.schemas.internal import ProductImageCreate, ProductImageOut, ProductImageUpdate
 
 settings = get_settings()
-logger = logging.getLogger(__name__)
 
 MEDIA_URL_PREFIX = "/media/"
 
 
-def _path_for(storage_key: str) -> Path:
-    root = Path(settings.media_root).resolve()
-    path = (root / storage_key).resolve()
-    if root not in path.parents:  # storage keys are ours, but never trust a path blindly
-        raise ValueError(f"storage key escapes MEDIA_ROOT: {storage_key!r}")
-    return path
-
-
-def _write(path: Path, data: bytes) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(data)
-
-
-def _remove(storage_key: str) -> None:
-    try:
-        _path_for(storage_key).unlink(missing_ok=True)
-    except (OSError, ValueError):
-        # The row is already gone; an orphaned file is harmless, a 500 here would not be.
-        logger.warning("could not remove media file %s", storage_key, exc_info=True)
+def _storage() -> MediaStorage:
+    # Built per call so settings patched in tests (media_root, media_storage) are honoured.
+    return media_storage.from_settings(settings)
 
 
 async def _check_target(db: AsyncSession, product_id: int, variant_id: int | None) -> None:
@@ -73,7 +56,9 @@ async def add_uploaded_image(
         raise BadRequestError(str(exc)) from exc
 
     storage_key = f"products/{uuid4().hex}.webp"
-    await asyncio.to_thread(_write, _path_for(storage_key), webp)
+    storage = _storage()
+    # A MediaStorageError (R2 unreachable) becomes a 502 media_unavailable in the handlers.
+    await asyncio.to_thread(storage.save, storage_key, webp)
 
     image = ProductImage(
         product_id=product_id,
@@ -87,7 +72,7 @@ async def add_uploaded_image(
         await db.commit()
     except Exception:
         await db.rollback()
-        await asyncio.to_thread(_remove, storage_key)
+        await asyncio.to_thread(storage.remove, storage_key)
         raise
     return ProductImageOut.model_validate(image)
 
@@ -116,4 +101,4 @@ async def delete_image(db: AsyncSession, image_id: int) -> None:
     await db.commit()
     # Only after the commit: a failed delete must not leave a row pointing at a missing file.
     if storage_key:
-        await asyncio.to_thread(_remove, storage_key)
+        await asyncio.to_thread(_storage().remove, storage_key)

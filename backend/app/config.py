@@ -1,9 +1,11 @@
 import re
 from functools import lru_cache
+from typing import Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import make_url
 
 # Telegram's setWebhook accepts a secret_token of 1-256 chars from this alphabet only.
 WEBHOOK_SECRET_PATTERN = re.compile(r"[A-Za-z0-9_-]{1,256}")
@@ -58,6 +60,13 @@ class Settings(BaseSettings):
     admin_login_rate_limit_per_minute: int = Field(default=10, ge=1)
 
     media_root: str = "/data/media"
+    # Product photos: "local" writes them under MEDIA_ROOT; "r2" puts them in a Cloudflare R2
+    # bucket (hosts without a persistent disk). R2 needs all four R2_* values (an R2 API token).
+    media_storage: Literal["local", "r2"] = "local"
+    r2_account_id: str = ""
+    r2_access_key_id: str = ""
+    r2_secret_access_key: str = ""
+    r2_bucket: str = ""
     shop_timezone: str = "UTC"
     low_stock_threshold: int = Field(default=5, ge=0)
 
@@ -80,6 +89,19 @@ class Settings(BaseSettings):
                 'python -c "import secrets; print(secrets.token_urlsafe(32))"'
             )
         return value
+
+    @field_validator("database_url")
+    @classmethod
+    def _asyncpg_ready_database_url(cls, value: str) -> str:
+        # Hosted Postgres (Supabase, Neon) hands out libpq URLs: postgresql://...?sslmode=require.
+        # asyncpg needs its driver name, takes ssl= instead of sslmode=, and has no channel_binding.
+        url = make_url(value)
+        if url.drivername in ("postgres", "postgresql"):
+            url = url.set(drivername="postgresql+asyncpg")
+        query = {k: v for k, v in url.query.items() if k not in ("sslmode", "channel_binding")}
+        if "sslmode" in url.query and "ssl" not in query:
+            query["ssl"] = url.query["sslmode"]
+        return url.set(query=query).render_as_string(hide_password=False)
 
     @field_validator("shop_timezone")
     @classmethod
@@ -105,6 +127,23 @@ class Settings(BaseSettings):
                 "ADMIN_SESSION_SECRET is required when ENV is not development; generate one with "
                 'python -c "import secrets; print(secrets.token_urlsafe(48))"'
             )
+        return self
+
+    @model_validator(mode="after")
+    def _require_r2_credentials(self) -> "Settings":
+        if self.media_storage == "r2":
+            missing = [
+                name.upper()
+                for name in (
+                    "r2_account_id",
+                    "r2_access_key_id",
+                    "r2_secret_access_key",
+                    "r2_bucket",
+                )
+                if not getattr(self, name)
+            ]
+            if missing:
+                raise ValueError(f"MEDIA_STORAGE=r2 needs {', '.join(missing)}")
         return self
 
     @property
