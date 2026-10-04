@@ -1,6 +1,6 @@
 # Spec 10: Orders per seller (stage C of the marketplace)
 
-Status: **designed and approved by the owner (2026-10-04), not implemented.**
+Status: **designed and approved by the owner (2026-10-04); implemented 2026-10-04, not deployed.**
 
 ## 1. Problem
 

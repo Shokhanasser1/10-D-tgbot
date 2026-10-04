@@ -267,10 +267,18 @@ truth.)
 **Sellers**: shop name, phone, the address couriers collect orders from, and the Telegram ID of
 the person who runs it, who gets an account with the *seller* role. A seller signs in like any
 admin and sees only **Catalog** (their own products; categories and attributes are shared and
-read-only) and **Profile**. Every product belongs to a seller: staff choose it when creating a
+read-only), **Orders** (their own, Spec 10) and **Profile**. Every product belongs to a seller: staff choose it when creating a
 product and can filter the list by it. Customers see the seller on each product, can list one
 seller's products, and a cart holds one seller's products at a time (adding another seller's
 asks to empty the cart). Deactivating a seller hides their products and locks their account.
+
+**Seller orders** (Spec 10). Every order belongs to its cart's seller. Once paid (or confirmed
+for cash), the seller's accounts get a Telegram message; the seller collects the items and
+presses **Ready for pickup** in their Orders. Only then does the order enter the courier pool,
+and the couriers' message and cards say where to collect it (shop name, address, phone). Owners,
+managers and dispatchers can also **Mark ready** from the order page (a slow seller, or your own
+shop). A seller sees items, goods total, payment method and status, never the customer's name,
+phone or address; cancelling and refunds stay with the platform.
 
 **Browser sign-in** uses the [Telegram Login Widget](https://core.telegram.org/widgets/login):
 
