@@ -1,6 +1,7 @@
 # Project state (handoff)
 
-Snapshot: 2026-09-29 (after Spec 6, payments in Uzbekistan), branch `main`, pushed to the **public** repository https://github.com/Shokhanasser1/10-D-tgbot (CI green).
+Snapshot: 2026-10-04 (after Spec 7 and the free production deploy, §1b), branch `main`, pushed to the **public** repository https://github.com/Shokhanasser1/10-D-tgbot.
+Sections 3–9 were last fully revised on 2026-09-29 (Spec 6); Spec 7 changes are summarised where they matter.
 Working tree was clean at the time of writing. Written for another engineer or AI picking this up cold.
 
 ## 1. What this is
@@ -17,8 +18,10 @@ niches through data (categories, attributes, translations), not code changes. Th
 | 4 Stock reservation | reserve `stock_qty` at checkout, 15-min hold, expiry sweeper, cart restore, refund of late payments | **done**, committed (`2100f11`) |
 | 5 Telegram notifications | outbox table + background sender; customers, couriers, owners/dispatchers | **done**, committed (`0dd7657`) |
 | 6 Payments in Uzbekistan | Click/Payme via Telegram Payments, cash on delivery, UZS; Stripe kept as an option | **done**, committed (`b6813c5`) |
+| 7 Admin roles + password sign-in | six roles (owner, manager, catalog_manager, dispatcher, accountant, viewer) mapped to permissions in `app/core/permissions.py`; login + password (scrypt, lockout after 5 tries), password re-entry within 15 min for money and admin management | **done**, committed (`123290e`, `daa805e`) |
+| Free hosting | Mini App on Cloudflare Pages, backend on JustRunMy.App, DB on Supabase, photos in R2 | **live** since 2026-10-04 (`fd8c75b`, `3ebf23b`, fixes after), see §1b |
 
-Designs are in `docs/superpowers/specs/`. Spec 2's §16, Spec 3's §14 and Spec 4's §12, Spec 5's §11 and Spec 6's §13 "Implementation notes" list
+Designs are in `docs/superpowers/specs/` (Spec 7: `2026-09-29-admin-roles-and-password-login-design.md`). Spec 2's §16, Spec 3's §14 and Spec 4's §12, Spec 5's §11 and Spec 6's §13 "Implementation notes" list
 where the build refined each design; read them before trusting the rest of those documents.
 `README.md` covers running, Stripe, the courier setup ("Couriers & tracking") and the admin panel
 ("Admin panel": first owner, roles, browser sign-in, refunds, photos).
@@ -37,12 +40,45 @@ The owner teaches students with this project, so explanations should say *why*, 
   the `pgdata` volume was created with it (changing it needs `ALTER USER`, see the launch guide §4.3).
 - `backend/.env` (dev, fake bot token) gained admin settings: owner 665823713, `ADMIN_COOKIE_SECURE=false`,
   `MEDIA_ROOT=./media`, `SHOP_TIMEZONE=Asia/Tashkent`.
-- Docker stack (`db`, `api`, `web`) was left **running** in production mode on :8080 (api on 127.0.0.1:8000).
-  Dev mode needs `docker compose stop api web` first (same port 8000).
+- Docker stack (`db`, `api`, `web`) is **stopped** (since 2026-10-01); production now runs on free hosting (§1b).
+  When started, it serves :8080 (api on 127.0.0.1:8000); dev mode needs `docker compose stop api web` first.
+- Gitignored deploy files in the root: `.env.justrunmy` (the backend's production variables; its `DATABASE_URL`
+  still has a password placeholder, the real one lives only in the JustRunMy panel) and `.env.r2` (R2 keys).
 - The owner pasted the real bot token into chat; they were advised to `/revoke` it in @BotFather and update
   root `.env`. Not yet confirmed done.
 - **Still manual (owner's accounts needed):** https tunnel + BotFather Menu Button, `/setdomain` for browser
   admin sign-in, Stripe test keys + webhook with `payment_intent.*` and `refund.created|updated|failed`.
+
+## 1b. Production on free hosting (live since 2026-10-04)
+
+Owner-facing guide in Russian: `docs/DEPLOY_FREE_RU.md`.
+
+- **Mini App**: Cloudflare Pages project `ecosmetics-shop`, https://ecosmetics-shop.pages.dev. Deploy with
+  `npm --prefix frontend run deploy:pages` (wrangler is logged in on this machine). The Pages Function
+  `frontend/functions/api/[[path]].ts` proxies `/api/*` to the `BACKEND_URL` Pages secret and **strips `/api`**
+  (FastAPI serves from `/`; nginx does the same in compose); it only swaps the path on a copy of `BACKEND_URL`,
+  so `/api//other.host` cannot reach another host (`proxy.test.ts`). `/media/*` is read from the R2 binding `MEDIA`.
+- **Backend**: JustRunMy.App app 66718, https://ecosmetics-api.k.onjrnm.vip (container from `backend/`, port 8000,
+  0.15 vCPU / 0.15 GB). Deployed by pushing `git subtree split --prefix backend` to the app's git remote (the push
+  URL with credentials is on the panel's Git Push page, not stored locally). Env vars are set in the panel.
+  Logs: panel → application → Diagnostics → Live container output (the owner cannot copy from it; ask for a screenshot).
+- **Database**: Supabase project `otzhnhdivutcpyralbch` (Frankfurt), session pooler
+  `aws-1-eu-central-1.pooler.supabase.com:5432`; migrations run on container start. Products and photos from the
+  local machine were **not** migrated, so the production catalog may be empty.
+- **Photos**: R2 bucket `ecosmetics-media` (`MEDIA_STORAGE=r2`).
+- **Bot**: webhook is `https://ecosmetics-shop.pages.dev/api/webhooks/telegram`, so moving the backend only needs a
+  new `BACKEND_URL` + `deploy:pages`.
+- **Keeping it alive (owner)**: JustRunMy stops free apps unless **Reset timer** is pressed every ~36 h; the free tier
+  **ends 2026-10-19** (then about $1/month, or move the backend, e.g. Render free + an external ping). Decide before then.
+- **What took it down on 2026-10-04**, for diagnosis next time: (1) the timer expired → the host answers plain-text
+  `404 page not found`; (2) `TELEGRAM_WEBHOOK_SECRET` pasted into the panel with a trailing `\n` → settings
+  validation crash → 502; other secrets may still carry a silent `\n` (offered, not done: strip whitespace in
+  `Settings`); (3) the Pages proxy forwarded `/api/...` unchanged → FastAPI 404 (fixed). A `530` on `/api/...`
+  means `BACKEND_URL` points at a dead `trycloudflare` quick tunnel.
+- **Production config gaps**: the panel has no `DEFAULT_CURRENCY`, `CASH_ON_DELIVERY_ENABLED` or
+  `TELEGRAM_PAYMENT_PROVIDER_TOKEN`, so it runs the EUR defaults and checkout shows "Payments are not set up".
+  Ask the owner before changing.
+- Auto mode blocks Claude from writing secrets (`wrangler pages secret put`); the owner runs it with `!` in the prompt.
 
 ## 2. Stack
 
@@ -54,7 +90,7 @@ The owner teaches students with this project, so explanations should say *why*, 
 - **Runtime** `docker-compose.yml`: `db` (Postgres), `api`, `web` (nginx serving the SPA and proxying
   `/api/` to the API, so the browser is same-origin and needs no CORS).
 - **Auth**: Telegram `initData`, verified server-side with HMAC (`Authorization: tma <initData>`).
-  No passwords. `/internal/*` (the admin API) accepts `X-Internal-Token` (scripts; acts as owner),
+  Customers and couriers have no passwords; admins also sign in with login + password (Spec 7). `/internal/*` (the admin API) accepts `X-Internal-Token` (scripts; acts as owner),
   initData of an active admin, or a signed `admin_session` cookie from the Telegram Login Widget.
 - **CI** `.github/workflows/ci.yml`: backend `ruff check app tests scripts` + `pytest --cov`;
   frontend `npm run lint`, `npm run build` (runs `tsc -b`, which also type-checks tests), `npm test`.
@@ -64,7 +100,7 @@ The owner teaches students with this project, so explanations should say *why*, 
 - Backend: **504 tests pass** (locally and inside the production image), ruff clean. Alembic head **`e8f9a0b1c2d3`**. The suite also
   passes inside the production image (Python 3.12, SQLAlchemy 2.1, stripe 11), which differs from the
   local Python 3.14 / SQLAlchemy 2.0 / stripe 15 set-up.
-- Frontend: **330 tests pass**, lint/prettier/`tsc`/build clean (one pre-existing oxlint warning in
+- Frontend: **348 tests pass** (2026-10-04, incl. the Pages proxy tests in `functions/`), lint/prettier/`tsc`/build clean (one pre-existing oxlint warning in
   `router.tsx`).
 - Manually verified against a real API + database over HTTP (whole courier flow), and in a real
   browser (map tiles, markers, pin tap, courier claim flow, live marker update).
@@ -129,6 +165,8 @@ Checkout: 409 `code=insufficient_stock` when a line cannot be reserved (nothing 
 `GET /orders/{id}` also returns `reserved_until`, `cancel_reason`, `refund_status`.
 
 Admin, `/internal/*` (roles O=owner, C=catalog_manager, D=dispatcher; the internal token counts as O).
+Spec 7 replaced these three roles with six roles and per-route permissions: `app/core/permissions.py` is the
+source of truth, and the role letters below show the Spec 6 state.
 No credentials is 401; wrong token, non-admin or wrong role is 403.
 - identity: `POST /internal/auth/telegram` (widget payload → cookie), `POST /internal/auth/logout`,
   `GET /internal/me` (any role); `GET/POST /internal/admins`, `PATCH /internal/admins/{id}` (O).
@@ -260,9 +298,14 @@ then open `http://127.0.0.1:5173/admin` (the mock initData signs you in; the wid
 
 ## 10. Open items and suggested next steps
 
-**Next session starts here:** Specs 1–6 are built; the code is at MVP with Uzbek payments. What is left needs the owner's
-accounts and decisions rather than code (see the list below). The owner asked on 2026-09-29 to "finish
-to an MVP"; that was taken as approval of Spec 4 §4–§9.
+**Next session starts here:** Specs 1–7 are built and the shop is live on free hosting (§1b). Nearest deadline:
+**decide where the backend lives before 2026-10-19**, when JustRunMy's free tier ends. Then: put real products into the
+production database, set the Uzbek payment config in the JustRunMy panel (below), and have the owner send `/start`
+to the bot and walk through an order. What is left needs the owner's accounts and decisions rather than code.
+The owner asked on 2026-09-29 to "finish to an MVP"; that was taken as approval of Spec 4 §4–§9.
+
+Offered on 2026-10-04, not accepted yet: make `Settings` strip leading/trailing whitespace from env values, so a
+pasted `\n` cannot break secrets silently (it also helps students who copy from Notepad).
 
 **Owner's switch-over to the Uzbek set-up (not done by us, their `.env` and data):** set `DEFAULT_CURRENCY=UZS`,
 `SHIPPING_FLAT_RATE=20000`, `FREE_SHIPPING_THRESHOLD=300000`, `CASH_ON_DELIVERY_ENABLED=true`, the Click or Payme
