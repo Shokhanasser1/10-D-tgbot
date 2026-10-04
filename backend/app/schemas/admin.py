@@ -85,5 +85,6 @@ class AdminOut(BaseModel):
     is_active: bool
     created_at: datetime
     created_by: int | None
+    seller_id: int | None = None  # set for seller accounts (Spec 9)
     login: str | None = None
     has_password: bool = False

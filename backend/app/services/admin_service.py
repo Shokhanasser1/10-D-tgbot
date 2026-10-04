@@ -14,6 +14,8 @@ from app.models.seller import Seller
 from app.schemas.admin import AdminCreate, AdminUpdate
 
 _DUPLICATE = "An admin with this Telegram ID already exists"
+# Seller accounts are created and tied to their seller in /internal/sellers (Spec 9 section 5).
+_SELLER_ROLE_FIXED = "Seller accounts are managed under Sellers"
 
 
 async def bootstrap_owners(db: AsyncSession, telegram_ids: Iterable[int]) -> None:
@@ -63,6 +65,8 @@ async def list_admins(db: AsyncSession) -> list[Admin]:
 
 
 async def create_admin(db: AsyncSession, data: AdminCreate, created_by: int | None) -> Admin:
+    if data.role == AdminRole.seller:
+        raise ConflictError(_SELLER_ROLE_FIXED, code="seller_role_fixed")
     if await db.scalar(select(Admin.id).where(Admin.telegram_id == data.telegram_id)):
         raise ConflictError(_DUPLICATE, code="already_exists")
 
@@ -106,6 +110,12 @@ async def update_admin(
         raise NotFoundError("Admin not found")
 
     changes = data.model_dump(exclude_unset=True)
+
+    if "role" in changes and (changes["role"] == AdminRole.seller) != (
+        admin.role == AdminRole.seller
+    ):
+        await db.rollback()
+        raise ConflictError(_SELLER_ROLE_FIXED, code="seller_role_fixed")
 
     if changes.get("is_active") is False and admin.telegram_id == actor_telegram_id:
         await db.rollback()
