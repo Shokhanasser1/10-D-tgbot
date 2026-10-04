@@ -16,19 +16,23 @@
   "catalog": {
     "all": "All",
     "searchPlaceholder": "Search products",
-    "empty": "No products found"
+    "empty": "No products found",
+    "sellerProducts": "Products of {{name}}",
+    "allSellers": "Show all products"
   },
   "product": {
     "addToCart": "Add to cart",
     "outOfStock": "Out of stock",
-    "addedToCart": "Added to cart"
+    "addedToCart": "Added to cart",
+    "seller": "Seller: {{name}}"
   },
   "cart": {
     "title": "Cart",
     "empty": "Your cart is empty",
     "emptyDescription": "Add products from the catalog to see them here.",
     "subtotal": "Subtotal",
-    "checkout": "Checkout"
+    "checkout": "Checkout",
+    "otherSeller": "Your cart has products from {{name}}. Empty it and add this product?"
   },
   "checkout": {
     "title": "Checkout",

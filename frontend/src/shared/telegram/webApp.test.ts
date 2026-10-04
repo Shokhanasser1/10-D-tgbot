@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  confirmDialog,
   getInitDataRaw,
   isTelegramEnv,
   openExternalLink,
@@ -134,5 +135,29 @@ describe('requestWriteAccessIfNeeded', () => {
     const request = stubUser(false, '')
     requestWriteAccessIfNeeded()
     expect(request).not.toHaveBeenCalled()
+  })
+})
+
+describe('confirmDialog', () => {
+  afterEach(() => {
+    delete window.Telegram
+    vi.restoreAllMocks()
+  })
+
+  it('asks through Telegram inside a Mini App', async () => {
+    const showConfirm = vi.fn((_message: string, callback: (ok: boolean) => void) => callback(true))
+    window.Telegram = {
+      WebApp: { initData: 'x', showConfirm },
+    } as unknown as Window['Telegram']
+
+    await expect(confirmDialog('Empty the cart?')).resolves.toBe(true)
+    expect(showConfirm).toHaveBeenCalledWith('Empty the cart?', expect.any(Function))
+  })
+
+  it('falls back to the browser outside Telegram', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+
+    await expect(confirmDialog('Empty the cart?')).resolves.toBe(false)
+    expect(confirm).toHaveBeenCalledWith('Empty the cart?')
   })
 })

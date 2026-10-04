@@ -6,9 +6,16 @@ export interface Category {
   name: string
 }
 
+/** Whose product it is (Spec 9). */
+export interface SellerBrief {
+  id: number
+  name: string
+}
+
 export interface ProductListItem {
   id: number
   category_id: number
+  seller: SellerBrief
   base_sku: string
   base_price: string
   name: string
@@ -27,6 +34,7 @@ export interface Variant {
 export interface ProductDetail {
   id: number
   category_id: number
+  seller: SellerBrief
   base_sku: string
   base_price: string
   name: string

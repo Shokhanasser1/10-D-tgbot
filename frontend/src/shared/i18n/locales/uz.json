@@ -16,19 +16,23 @@
   "catalog": {
     "all": "Barchasi",
     "searchPlaceholder": "Mahsulot qidirish",
-    "empty": "Mahsulot topilmadi"
+    "empty": "Mahsulot topilmadi",
+    "sellerProducts": "{{name}} mahsulotlari",
+    "allSellers": "Barcha mahsulotlarni ko'rsatish"
   },
   "product": {
     "addToCart": "Savatga qo'shish",
     "outOfStock": "Sotuvda yo'q",
-    "addedToCart": "Savatga qo'shildi"
+    "addedToCart": "Savatga qo'shildi",
+    "seller": "Sotuvchi: {{name}}"
   },
   "cart": {
     "title": "Savat",
     "empty": "Savat bo'sh",
     "emptyDescription": "Bu yerda ko'rish uchun katalogdan mahsulot qo'shing.",
     "subtotal": "Oraliq summa",
-    "checkout": "Buyurtma berish"
+    "checkout": "Buyurtma berish",
+    "otherSeller": "Savatda «{{name}}» sotuvchisining mahsulotlari bor. Savatni bo'shatib, bu mahsulotni qo'shaylikmi?"
   },
   "checkout": {
     "title": "Buyurtmani rasmiylashtirish",

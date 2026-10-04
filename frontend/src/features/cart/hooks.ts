@@ -12,8 +12,15 @@ export function useCart() {
 export function useAddCartItem() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ variantId, qty }: { variantId: number; qty: number }) =>
-      addCartItem(variantId, qty),
+    mutationFn: ({
+      variantId,
+      qty,
+      replaceCart = false,
+    }: {
+      variantId: number
+      qty: number
+      replaceCart?: boolean
+    }) => addCartItem(variantId, qty, replaceCart),
     onSuccess: (cart: Cart) => queryClient.setQueryData(CART_KEY, cart),
   })
 }

@@ -5,8 +5,10 @@ export function fetchCategories(): Promise<Category[]> {
   return apiFetch<Category[]>('/catalog/categories')
 }
 
-export function fetchProducts(categoryId?: number): Promise<ProductListItem[]> {
-  return apiFetch<ProductListItem[]>('/catalog/products', { params: { category: categoryId } })
+export function fetchProducts(categoryId?: number, sellerId?: number): Promise<ProductListItem[]> {
+  return apiFetch<ProductListItem[]>('/catalog/products', {
+    params: { category: categoryId, seller: sellerId },
+  })
 }
 
 export function fetchProduct(productId: number): Promise<ProductDetail> {

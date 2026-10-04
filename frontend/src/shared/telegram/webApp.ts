@@ -48,6 +48,7 @@ interface TelegramWebApp {
   isVersionAtLeast?: (version: string) => boolean
   requestWriteAccess?: (callback?: (granted: boolean) => void) => void
   openInvoice?: (url: string, callback?: (status: InvoiceStatus) => void) => void
+  showConfirm?: (message: string, callback: (ok: boolean) => void) => void
   disableVerticalSwipes?: () => void
   enableVerticalSwipes?: () => void
 }
@@ -135,4 +136,14 @@ export function openInvoice(url: string, onClose: (status: InvoiceStatus) => voi
     return
   }
   webApp.openInvoice(url, onClose)
+}
+
+/** A yes/no question: Telegram's own dialog inside a Mini App, the browser's outside. */
+export function confirmDialog(message: string): Promise<boolean> {
+  const webApp = getWebApp()
+  if (isTelegramEnv() && webApp?.showConfirm) {
+    const showConfirm = webApp.showConfirm
+    return new Promise((resolve) => showConfirm(message, resolve))
+  }
+  return Promise.resolve(window.confirm(message))
 }

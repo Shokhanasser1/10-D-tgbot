@@ -6,10 +6,10 @@ export function useCategories() {
   return useQuery({ queryKey: ['categories'], queryFn: fetchCategories })
 }
 
-export function useProducts(categoryId?: number) {
+export function useProducts(categoryId?: number, sellerId?: number) {
   return useQuery({
-    queryKey: ['products', categoryId],
-    queryFn: () => fetchProducts(categoryId),
+    queryKey: ['products', categoryId, sellerId],
+    queryFn: () => fetchProducts(categoryId, sellerId),
   })
 }
 

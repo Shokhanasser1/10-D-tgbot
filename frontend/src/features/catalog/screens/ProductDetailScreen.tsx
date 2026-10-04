@@ -4,11 +4,13 @@ import { useNavigate, useParams } from 'react-router-dom'
 
 import { DEFAULT_CURRENCY } from '../../../shared/constants'
 import { useMainButton } from '../../../shared/telegram/hooks'
+import { confirmDialog } from '../../../shared/telegram/webApp'
 import { ActionBar } from '../../../shared/ui/ActionBar'
 import { Price } from '../../../shared/ui/Price'
 import { QueryError } from '../../../shared/ui/QueryError'
 import { Skeleton } from '../../../shared/ui/Skeleton'
-import { useAddCartItem } from '../../cart/hooks'
+import { isOtherSellerConflict } from '../../cart/api'
+import { useAddCartItem, useCart } from '../../cart/hooks'
 import { ImageCarousel } from '../components/ImageCarousel'
 import { VariantPicker } from '../components/VariantPicker'
 import { useProduct } from '../hooks'
@@ -22,6 +24,7 @@ export function ProductDetailScreen() {
 
   const productQuery = useProduct(id)
   const addCartItem = useAddCartItem()
+  const cartQuery = useCart()
 
   const [pickedVariantId, setPickedVariantId] = useState<number | null>(null)
   const selectedVariantId = pickedVariantId ?? productQuery.data?.variants[0]?.id ?? null
@@ -33,11 +36,23 @@ export function ProductDetailScreen() {
 
   const handleAddToCart = useCallback(() => {
     if (!selectedVariant) return
+    const variantId = selectedVariant.id
+    const toCart = { onSuccess: () => navigate('/cart') }
     addCartItem.mutate(
-      { variantId: selectedVariant.id, qty: 1 },
-      { onSuccess: () => navigate('/cart') },
+      { variantId, qty: 1 },
+      {
+        ...toCart,
+        // A cart holds one seller's products (Spec 9): offer to start it over with this one.
+        onError: async (error) => {
+          if (!isOtherSellerConflict(error)) return
+          const name = cartQuery.data?.seller?.name ?? ''
+          if (await confirmDialog(t('cart.otherSeller', { name }))) {
+            addCartItem.mutate({ variantId, qty: 1, replaceCart: true }, toCart)
+          }
+        },
+      },
     )
-  }, [selectedVariant, addCartItem, navigate])
+  }, [selectedVariant, addCartItem, navigate, cartQuery.data, t])
 
   const outOfStock = !selectedVariant || selectedVariant.stock_qty <= 0
   const buttonLabel = outOfStock ? t('product.outOfStock') : t('product.addToCart')
@@ -74,6 +89,13 @@ export function ProductDetailScreen() {
 
       <div className={styles.info}>
         <h1 className={styles.name}>{product.name}</h1>
+        <button
+          type="button"
+          className={styles.seller}
+          onClick={() => navigate(`/?seller=${product.seller.id}`)}
+        >
+          {t('product.seller', { name: product.seller.name })}
+        </button>
         <Price amount={selectedVariant?.price ?? product.base_price} currency={DEFAULT_CURRENCY} />
       </div>
 

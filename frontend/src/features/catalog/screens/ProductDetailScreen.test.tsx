@@ -1,7 +1,8 @@
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it } from 'vitest'
+import { useLocation } from 'react-router-dom'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { cart, productDetail } from '../../../test/fixtures'
 import { API } from '../../../test/mocks/handlers'
@@ -79,5 +80,82 @@ describe('ProductDetailScreen', () => {
 
     expect(await screen.findByText('Something went wrong')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+  })
+})
+
+function Where() {
+  const location = useLocation()
+  return <div>at {location.pathname + location.search}</div>
+}
+
+describe('ProductDetailScreen: sellers (Spec 9)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('names the seller and opens their products', async () => {
+    const user = userEvent.setup()
+    renderScreen(<ProductDetailScreen />, {
+      ...routeOptions,
+      extraRoutes: [{ path: '/', element: <Where /> }],
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Seller: Lola Beauty' }))
+
+    expect(await screen.findByText('at /?seller=7')).toBeInTheDocument()
+  })
+
+  function conflictThenOk(posted: unknown[]) {
+    server.use(
+      http.get(`${API}/cart/items`, () =>
+        HttpResponse.json({ ...cart, seller: { id: 8, name: 'Anor' } }),
+      ),
+      http.post(`${API}/cart/items`, async ({ request }) => {
+        const body = (await request.json()) as { replace_cart?: boolean }
+        posted.push(body)
+        return body.replace_cart
+          ? HttpResponse.json(cart, { status: 201 })
+          : HttpResponse.json(
+              { detail: "The cart holds another seller's products", code: 'cart_other_seller' },
+              { status: 409 },
+            )
+      }),
+    )
+  }
+
+  it('offers to empty a cart of another seller, then adds the product', async () => {
+    const user = userEvent.setup()
+    const posted: unknown[] = []
+    conflictThenOk(posted)
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    renderScreen(<ProductDetailScreen />, routeOptions)
+    await screen.findByRole('heading', { name: 'Velvet Matte Lipstick' })
+
+    await user.click(screen.getByRole('button', { name: 'Add to cart' }))
+
+    expect(await screen.findByText('cart page')).toBeInTheDocument()
+    expect(confirm).toHaveBeenCalledWith(
+      'Your cart has products from Anor. Empty it and add this product?',
+    )
+    expect(posted).toEqual([
+      { variant_id: 11, qty: 1 },
+      { variant_id: 11, qty: 1, replace_cart: true },
+    ])
+  })
+
+  it('keeps the cart when the customer declines', async () => {
+    const user = userEvent.setup()
+    const posted: unknown[] = []
+    conflictThenOk(posted)
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    renderScreen(<ProductDetailScreen />, routeOptions)
+    await screen.findByRole('heading', { name: 'Velvet Matte Lipstick' })
+
+    await user.click(screen.getByRole('button', { name: 'Add to cart' }))
+
+    await waitFor(() => expect(posted).toHaveLength(1))
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(posted).toHaveLength(1)
+    expect(screen.queryByText('cart page')).not.toBeInTheDocument()
   })
 })

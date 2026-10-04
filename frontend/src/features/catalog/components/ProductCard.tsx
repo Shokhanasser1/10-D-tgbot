@@ -31,6 +31,7 @@ export function ProductCard({ product, currency }: ProductCardProps) {
         )}
       </div>
       <p className={styles.name}>{product.name}</p>
+      <p className={styles.seller}>{product.seller.name}</p>
       <Price amount={product.base_price} currency={currency} />
     </Card>
   )

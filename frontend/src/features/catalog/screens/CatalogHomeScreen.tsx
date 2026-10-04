@@ -1,6 +1,7 @@
-import { Search } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'react-router-dom'
 
 import { DEFAULT_CURRENCY } from '../../../shared/constants'
 import { CategoryPills } from '../components/CategoryPills'
@@ -13,8 +14,14 @@ export function CatalogHomeScreen() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null)
   const [query, setQuery] = useState('')
 
+  // `?seller=` comes from a product page's seller link (Spec 9).
+  const [searchParams, setSearchParams] = useSearchParams()
+  const sellerParam = Number(searchParams.get('seller'))
+  const sellerId = Number.isInteger(sellerParam) && sellerParam > 0 ? sellerParam : undefined
+
   const categoriesQuery = useCategories()
-  const productsQuery = useProducts(selectedCategoryId ?? undefined)
+  const productsQuery = useProducts(selectedCategoryId ?? undefined, sellerId)
+  const sellerName = productsQuery.data?.[0]?.seller.name
 
   const filteredProducts = useMemo(() => {
     const products = productsQuery.data ?? []
@@ -35,6 +42,20 @@ export function CatalogHomeScreen() {
           onChange={(event) => setQuery(event.target.value)}
         />
       </div>
+
+      {sellerId !== undefined && (
+        <div className={styles.sellerChip}>
+          <span>{t('catalog.sellerProducts', { name: sellerName ?? '…' })}</span>
+          <button
+            type="button"
+            className={styles.clearSeller}
+            aria-label={t('catalog.allSellers')}
+            onClick={() => setSearchParams({}, { replace: true })}
+          >
+            <X size={14} aria-hidden />
+          </button>
+        </div>
+      )}
 
       <CategoryPills
         categories={categoriesQuery.data ?? []}

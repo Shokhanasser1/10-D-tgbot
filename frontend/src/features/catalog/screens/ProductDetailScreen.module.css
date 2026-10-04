@@ -23,3 +23,16 @@
   color: var(--color-text-muted);
   line-height: 1.5;
 }
+
+/* Looks like a caption, acts as a link to the seller's other products. */
+.seller {
+  align-self: flex-start;
+  border: none;
+  padding: 0;
+  background: none;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  text-decoration: underline;
+  cursor: pointer;
+}

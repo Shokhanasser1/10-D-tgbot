@@ -65,3 +65,26 @@ describe('CatalogHomeScreen', () => {
     expect(await screen.findByText('Velvet Matte Lipstick')).toBeInTheDocument()
   })
 })
+
+describe('CatalogHomeScreen: sellers (Spec 9)', () => {
+  it("shows each product's seller", async () => {
+    renderScreen(<CatalogHomeScreen />)
+
+    expect(await screen.findByText('Lola Beauty')).toBeInTheDocument()
+    expect(screen.getByText('Anor')).toBeInTheDocument()
+  })
+
+  it("lists one seller's products and clears the filter", async () => {
+    const user = userEvent.setup()
+    renderScreen(<CatalogHomeScreen />, { route: '/?seller=8' })
+
+    expect(await screen.findByText('Products of Anor')).toBeInTheDocument()
+    expect(screen.getByText('Vitamin C Serum')).toBeInTheDocument()
+    expect(screen.queryByText('Velvet Matte Lipstick')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Show all products' }))
+
+    expect(await screen.findByText('Velvet Matte Lipstick')).toBeInTheDocument()
+    expect(screen.queryByText('Products of Anor')).not.toBeInTheDocument()
+  })
+})

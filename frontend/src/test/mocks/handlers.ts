@@ -17,10 +17,14 @@ export const API = 'http://api.test'
 export const handlers = [
   http.get(`${API}/catalog/categories`, () => HttpResponse.json(categories)),
   http.get(`${API}/catalog/products`, ({ request }) => {
-    const category = new URL(request.url).searchParams.get('category')
-    const visible = category
-      ? products.filter((product) => String(product.category_id) === category)
-      : products
+    const params = new URL(request.url).searchParams
+    const category = params.get('category')
+    const seller = params.get('seller')
+    const visible = products.filter(
+      (product) =>
+        (!category || String(product.category_id) === category) &&
+        (!seller || String(product.seller.id) === seller),
+    )
     return HttpResponse.json(visible)
   }),
   http.get(`${API}/catalog/products/:id`, () => HttpResponse.json(productDetail)),

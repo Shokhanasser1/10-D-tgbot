@@ -12,6 +12,7 @@ export const products: ProductListItem[] = [
   {
     id: 1,
     category_id: 1,
+    seller: { id: 7, name: 'Lola Beauty' },
     base_sku: 'LIP-VELVET',
     base_price: '19.99',
     name: 'Velvet Matte Lipstick',
@@ -20,6 +21,7 @@ export const products: ProductListItem[] = [
   {
     id: 2,
     category_id: 2,
+    seller: { id: 8, name: 'Anor' },
     base_sku: 'SERUM-VITC',
     base_price: '24.50',
     name: 'Vitamin C Serum',
@@ -30,6 +32,7 @@ export const products: ProductListItem[] = [
 export const productDetail: ProductDetail = {
   id: 1,
   category_id: 1,
+  seller: { id: 7, name: 'Lola Beauty' },
   base_sku: 'LIP-VELVET',
   base_price: '19.99',
   name: 'Velvet Matte Lipstick',
@@ -69,9 +72,10 @@ export const cart: Cart = {
     },
   ],
   subtotal: '39.98',
+  seller: { id: 7, name: 'Lola Beauty' },
 }
 
-export const emptyCart: Cart = { items: [], subtotal: '0.00' }
+export const emptyCart: Cart = { items: [], subtotal: '0.00', seller: null }
 
 export const orders: OrderListItem[] = [
   { id: 5001, status: 'paid', currency: 'EUR', total: '44.97', placed_at: '2026-09-22T10:00:00Z' },
