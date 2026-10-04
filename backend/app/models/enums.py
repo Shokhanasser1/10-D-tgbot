@@ -66,6 +66,8 @@ class Permission(enum.StrEnum):
     couriers_view = "couriers.view"
     couriers_manage = "couriers.manage"
     admins_manage = "admins.manage"
+    taxonomy_edit = "taxonomy.edit"  # categories and attributes, shared by all sellers
+    sellers_manage = "sellers.manage"
 
 
 class RefundStatus(enum.StrEnum):

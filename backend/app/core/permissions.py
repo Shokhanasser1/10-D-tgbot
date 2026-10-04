@@ -16,7 +16,7 @@ _VIEW_ALL = frozenset(
 ROLE_PERMISSIONS: dict[AdminRole, frozenset[Permission]] = {
     AdminRole.owner: frozenset(Permission),
     AdminRole.manager: frozenset(Permission) - {P.refunds_manage, P.admins_manage},
-    AdminRole.catalog_manager: frozenset({P.catalog_view, P.catalog_edit}),
+    AdminRole.catalog_manager: frozenset({P.catalog_view, P.catalog_edit, P.taxonomy_edit}),
     AdminRole.dispatcher: frozenset(
         {P.orders_view, P.orders_cancel_unpaid, P.couriers_view, P.couriers_manage}
     ),

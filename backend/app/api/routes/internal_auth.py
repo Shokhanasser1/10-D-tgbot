@@ -74,7 +74,8 @@ def _start_session(response: Response, admin: Admin) -> None:
     )
 
 
-def _me(admin: Admin) -> AdminMeOut:
+async def _me(db: AsyncSession, admin: Admin) -> AdminMeOut:
+    seller = await admin_service.seller_of(db, admin)
     return AdminMeOut(
         telegram_id=admin.telegram_id,
         display_name=admin.display_name,
@@ -83,6 +84,8 @@ def _me(admin: Admin) -> AdminMeOut:
         login=admin.login,
         has_password=admin.password_hash is not None,
         must_change_password=admin.must_change_password,
+        seller_id=seller.id if seller else None,
+        seller_name=seller.name if seller else None,
     )
 
 
@@ -103,8 +106,9 @@ async def login_with_telegram(
     admin = await admin_service.get_active_admin(db, telegram_id)
     if admin is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not an admin")
+    await admin_service.ensure_seller_active(db, admin)
     _start_session(response, admin)
-    return _me(admin)
+    return await _me(db, admin)
 
 
 @router.post("/auth/password", response_model=AdminMeOut)
@@ -119,8 +123,9 @@ async def login_with_password(
     admin = await admin_service.authenticate(db, data.login, data.password)
     if admin is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=_WRONG_CREDENTIALS)
+    await admin_service.ensure_seller_active(db, admin)
     _start_session(response, admin)
-    return _me(admin)
+    return await _me(db, admin)
 
 
 @router.post("/auth/confirm", status_code=status.HTTP_204_NO_CONTENT)
@@ -187,7 +192,7 @@ async def me(
     admin = await admin_service.get_active_admin(db, principal.telegram_id)
     if admin is None:  # deactivated between the dependency and here
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not an admin")
-    return _me(admin)
+    return await _me(db, admin)
 
 
 @router.post("/me/password", response_model=AdminMeOut)
@@ -212,4 +217,4 @@ async def change_my_password(
     # This browser stays signed in, with the new session version.
     if request.cookies.get(ADMIN_SESSION_COOKIE):
         _start_session(response, admin)
-    return _me(admin)
+    return await _me(db, admin)

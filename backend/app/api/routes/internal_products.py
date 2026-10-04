@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.datastructures import UploadFile as StarletteUploadFile
 
-from app.api.deps import require_view_or_edit
+from app.api.deps import require_permission, require_view_or_edit
 from app.config import get_settings
 from app.core.exceptions import BadRequestError
 from app.core.images import MAX_UPLOAD_BYTES
@@ -51,6 +51,10 @@ router = APIRouter(
     tags=["internal"],
     dependencies=[Depends(require_view_or_edit(Permission.catalog_view, Permission.catalog_edit))],
 )
+
+
+# Categories and attributes are shared by every seller: only platform staff change them.
+_taxonomy = [Depends(require_permission(Permission.taxonomy_edit))]
 
 
 def _locale(locale: str | None = Query(default=None)) -> str:
@@ -101,12 +105,17 @@ async def get_product(
     return product
 
 
-@router.post("/categories", response_model=CategoryAdminOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/categories",
+    response_model=CategoryAdminOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=_taxonomy,
+)
 async def create_category(data: CategoryCreate, db: AsyncSession = Depends(get_db)):
     return await catalog_admin_service.create_category(db, data)
 
 
-@router.patch("/categories/{category_id}", response_model=CategoryAdminOut)
+@router.patch("/categories/{category_id}", response_model=CategoryAdminOut, dependencies=_taxonomy)
 async def update_category(
     category_id: int, data: CategoryUpdate, db: AsyncSession = Depends(get_db)
 ):
@@ -116,12 +125,19 @@ async def update_category(
     return category
 
 
-@router.post("/attributes", response_model=AttributeAdminOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/attributes",
+    response_model=AttributeAdminOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=_taxonomy,
+)
 async def create_attribute(data: AttributeCreate, db: AsyncSession = Depends(get_db)):
     return await catalog_admin_service.create_attribute(db, data)
 
 
-@router.patch("/attributes/{attribute_id}", response_model=AttributeAdminOut)
+@router.patch(
+    "/attributes/{attribute_id}", response_model=AttributeAdminOut, dependencies=_taxonomy
+)
 async def update_attribute(
     attribute_id: int, data: AttributeUpdate, db: AsyncSession = Depends(get_db)
 ):

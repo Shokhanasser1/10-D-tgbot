@@ -14,6 +14,9 @@ class AdminMeOut(BaseModel):
     login: str | None = None
     has_password: bool = False
     must_change_password: bool = False
+    # Spec 9: set for seller accounts, whose panel shows the shop name.
+    seller_id: int | None = None
+    seller_name: str | None = None
 
 
 class PasswordLoginIn(BaseModel):

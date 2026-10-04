@@ -85,6 +85,8 @@ class AdminPrincipal:
     # Password re-entered recently (Spec 7 §5); always true for the internal token.
     confirmed: bool = False
     session_version: int = 1
+    # Spec 9: a seller's account reaches only that seller's catalog; None for platform staff.
+    seller_id: int | None = None
 
     def can(self, permission: Permission) -> bool:
         return permission in self.permissions
@@ -153,6 +155,7 @@ async def _resolve_admin(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not an admin")
     if session_version is not None and session_version != admin.session_version:
         raise _not_signed_in()  # signed out by a password change or reset
+    await admin_service.ensure_seller_active(db, admin)
 
     return AdminPrincipal(
         telegram_id=admin.telegram_id,
@@ -163,6 +166,7 @@ async def _resolve_admin(
         must_change_password=admin.must_change_password,
         confirmed=_confirmed(request, admin.telegram_id, admin.session_version),
         session_version=admin.session_version,
+        seller_id=admin.seller_id,
     )
 
 

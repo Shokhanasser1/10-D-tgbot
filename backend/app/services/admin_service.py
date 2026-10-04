@@ -10,6 +10,7 @@ from app.core import passwords
 from app.core.exceptions import BadRequestError, ConflictError, ForbiddenError, NotFoundError
 from app.models.admin import Admin
 from app.models.enums import AdminRole
+from app.models.seller import Seller
 from app.schemas.admin import AdminCreate, AdminUpdate
 
 _DUPLICATE = "An admin with this Telegram ID already exists"
@@ -41,6 +42,20 @@ async def get_active_admin(db: AsyncSession, telegram_id: int) -> Admin | None:
             .execution_options(populate_existing=True)
         )
     ).scalar_one_or_none()
+
+
+async def seller_of(db: AsyncSession, admin: Admin) -> Seller | None:
+    if admin.seller_id is None:
+        return None
+    return await db.get(Seller, admin.seller_id, populate_existing=True)
+
+
+async def ensure_seller_active(db: AsyncSession, admin: Admin) -> Seller | None:
+    """A seller's account works only while its seller is active (Spec 9 section 4)."""
+    seller = await seller_of(db, admin)
+    if seller is not None and not seller.is_active:
+        raise ForbiddenError("This seller is deactivated", code="seller_inactive")
+    return seller
 
 
 async def list_admins(db: AsyncSession) -> list[Admin]:

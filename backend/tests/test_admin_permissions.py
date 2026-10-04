@@ -61,7 +61,7 @@ ENDPOINTS: list[tuple[str, str, object, Permission]] = [
         "POST",
         "/internal/categories",
         lambda n: {"slug": f"perm-{n}", "sort_order": 0},
-        Permission.catalog_edit,
+        Permission.taxonomy_edit,
     ),
     ("GET", "/internal/orders", _no_body, Permission.orders_view),
     ("GET", "/internal/couriers", _no_body, Permission.couriers_view),
@@ -115,6 +115,14 @@ def test_the_matrix_matches_the_spec() -> None:
         P.refunds_manage,
     }
     assert CONFIRMATION_REQUIRED == {P.orders_cancel_paid, P.refunds_manage, P.admins_manage}
+    # Spec 9: categories and attributes are platform data; sellers are managed by the top two.
+    assert ROLE_PERMISSIONS[AdminRole.catalog_manager] == {
+        P.catalog_view,
+        P.catalog_edit,
+        P.taxonomy_edit,
+    }
+    assert {P.taxonomy_edit, P.sellers_manage} <= ROLE_PERMISSIONS[AdminRole.manager]
+    assert P.sellers_manage not in ROLE_PERMISSIONS[AdminRole.catalog_manager]
 
 
 # --- cancelling: paid vs unpaid --------------------------------------------------------------

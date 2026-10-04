@@ -93,6 +93,8 @@ async def test_login_sets_session_cookie_for_an_active_admin(
         "login": None,
         "has_password": False,
         "must_change_password": False,
+        "seller_id": None,
+        "seller_name": None,
     }
     assert "orders.cancel_paid" not in response.json()["permissions"]
     cookie = response.headers["set-cookie"]
@@ -195,7 +197,7 @@ async def test_me_with_mini_app_init_data(client: AsyncClient, db_session: Async
         "Kamola",
         "catalog_manager",
     )
-    assert body["permissions"] == ["catalog.edit", "catalog.view"]
+    assert body["permissions"] == ["catalog.edit", "catalog.view", "taxonomy.edit"]
 
 
 async def test_me_with_session_cookie(client: AsyncClient, db_session: AsyncSession) -> None:
