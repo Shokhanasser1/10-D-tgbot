@@ -31,7 +31,9 @@ async def add_item(
     user: TelegramUser = Depends(get_current_telegram_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await cart_service.add_item(db, user.telegram_id, data.variant_id, data.qty)
+    await cart_service.add_item(
+        db, user.telegram_id, data.variant_id, data.qty, replace_cart=data.replace_cart
+    )
     return await cart_service.get_cart(
         db, user.telegram_id, resolve_locale(locale, user), settings.default_locale
     )

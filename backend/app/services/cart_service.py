@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -13,6 +13,7 @@ from app.models.product import Product
 from app.models.product_image import ProductImage
 from app.models.variant import Variant
 from app.schemas.cart import CartItemOut, CartOut
+from app.schemas.catalog import SellerBrief
 
 
 async def get_or_create_active_cart(db: AsyncSession, telegram_id: int) -> Cart:
@@ -48,6 +49,11 @@ async def restore_order_items(db: AsyncSession, order_id: int) -> None:
         return
 
     cart = await get_or_create_active_cart(db, telegram_id)
+    # A cart holds one seller's products (Spec 9 section 6): if the customer has meanwhile
+    # filled it from another seller, this order's items cannot come back into it.
+    cart_seller = await _cart_seller_id(db, cart.id)
+    if cart_seller is not None and cart_seller != await _order_seller_id(db, order_id):
+        return
     existing = {
         item.variant_id: item
         for item in (
@@ -69,20 +75,58 @@ async def restore_order_items(db: AsyncSession, order_id: int) -> None:
 
 async def _get_active_variant(db: AsyncSession, variant_id: int) -> Variant:
     stmt = (
-        select(Variant).where(Variant.id == variant_id).options(selectinload(Variant.product))
+        select(Variant)
+        .where(Variant.id == variant_id)
+        .options(selectinload(Variant.product).selectinload(Product.seller))
     )
     variant = (await db.execute(stmt)).scalar_one_or_none()
-    if variant is None or variant.product.status != ProductStatus.active:
+    if (
+        variant is None
+        or variant.product.status != ProductStatus.active
+        or not variant.product.seller.is_active
+    ):
         raise NotFoundError("Variant not found")
     return variant
 
 
-async def add_item(db: AsyncSession, telegram_id: int, variant_id: int, qty: int) -> None:
+async def _cart_seller_id(db: AsyncSession, cart_id: int) -> int | None:
+    return await db.scalar(
+        select(Product.seller_id)
+        .join(Variant, Variant.product_id == Product.id)
+        .join(CartItem, CartItem.variant_id == Variant.id)
+        .where(CartItem.cart_id == cart_id)
+        .limit(1)
+    )
+
+
+async def _order_seller_id(db: AsyncSession, order_id: int) -> int | None:
+    return await db.scalar(
+        select(Product.seller_id)
+        .join(Variant, Variant.product_id == Product.id)
+        .join(OrderItem, OrderItem.variant_id == Variant.id)
+        .where(OrderItem.order_id == order_id)
+        .limit(1)
+    )
+
+
+async def add_item(
+    db: AsyncSession, telegram_id: int, variant_id: int, qty: int, *, replace_cart: bool = False
+) -> None:
     if qty <= 0:
         raise ConflictError("qty must be positive")
 
     variant = await _get_active_variant(db, variant_id)
     cart = await get_or_create_active_cart(db, telegram_id)
+
+    # One seller per cart (Spec 9 section 6): another seller's product only goes in once the
+    # customer agrees to empty the cart, and then in the same transaction.
+    cart_seller = await _cart_seller_id(db, cart.id)
+    if cart_seller is not None and cart_seller != variant.product.seller_id:
+        if not replace_cart:
+            raise ConflictError(
+                "The cart holds another seller's products", code="cart_other_seller"
+            )
+        await db.execute(delete(CartItem).where(CartItem.cart_id == cart.id))
 
     stmt = select(CartItem).where(CartItem.cart_id == cart.id, CartItem.variant_id == variant_id)
     item = (await db.execute(stmt)).scalar_one_or_none()
@@ -177,7 +221,11 @@ async def get_cart(
         select(CartItem)
         .join(Cart, Cart.id == CartItem.cart_id)
         .where(Cart.telegram_id == telegram_id, Cart.status == CartStatus.active)
-        .options(selectinload(CartItem.variant).selectinload(Variant.product))
+        .options(
+            selectinload(CartItem.variant)
+            .selectinload(Variant.product)
+            .selectinload(Product.seller)
+        )
     )
     items = (await db.execute(stmt)).scalars().all()
 
@@ -204,4 +252,9 @@ async def get_cart(
     ]
     subtotal = sum((item.line_total for item in out_items), Decimal("0"))
 
-    return CartOut(items=out_items, subtotal=subtotal)
+    seller = items[0].variant.product.seller if items else None
+    return CartOut(
+        items=out_items,
+        subtotal=subtotal,
+        seller=SellerBrief(id=seller.id, name=seller.name) if seller else None,
+    )

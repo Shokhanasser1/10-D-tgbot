@@ -30,7 +30,7 @@ from app.models.product import Product
 from app.models.shipment import Shipment
 from app.models.variant import Variant
 from app.services import reservation_service, stripe_service
-from tests.factories import default_seller_id, make_init_data
+from tests.factories import add_seller, default_seller_id, make_init_data
 
 ADDRESS = {
     "street": "Amir Temur 1",
@@ -513,3 +513,28 @@ async def test_cancel_payment_intent_lets_network_errors_through(
 
     with pytest.raises(stripe.APIConnectionError):
         await stripe_service.cancel_payment_intent("pi_x")
+
+
+async def test_expired_items_are_dropped_when_the_cart_holds_another_seller(
+    client: AsyncClient, db_session: AsyncSession, fake_stripe: FakeStripe
+) -> None:
+    """Spec 9 section 6: a cart holds one seller's products, so an expired order of another
+    seller cannot come back into it; its stock still does."""
+    ordered = await _variant(db_session, stock=5)
+    elsewhere = await _variant(db_session, stock=5)
+    other_shop = await add_seller(db_session, "Other shop")
+    await db_session.execute(
+        update(Product).where(Product.id == elsewhere.product_id).values(seller_id=other_shop.id)
+    )
+    await db_session.commit()
+    order_id = (await _checkout(client, 4208, [(ordered.id, 2)])).json()["order_id"]
+    added = await client.post(
+        "/cart/items", json={"variant_id": elsewhere.id, "qty": 1}, headers=_headers(4208)
+    )
+    assert added.status_code == 201
+    await _make_overdue(db_session, order_id)
+
+    assert await reservation_service.expire_order(db_session, order_id) is True
+
+    assert await _cart_lines(db_session, 4208) == {elsewhere.id: 1}
+    assert await _stock(db_session, ordered.id) == 5
