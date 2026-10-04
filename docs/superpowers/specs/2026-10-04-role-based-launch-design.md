@@ -52,9 +52,10 @@ opened at the bare root `/`.
   - `/internal/me` succeeded → replace the location with `/admin`;
   - else `/courier/me` returned a profile → replace with `/courier`;
   - else (both say "no role": 401/403 from `/internal/me`, `null` from `/courier/me`) → the shop.
-- A check that **fails** (network error, 5xx) counts as "no role" for that check. If neither check
-  has settled after **3 seconds**, the shop is shown. Once the shop is shown, a late answer never
-  redirects: nothing yanks a customer off the screen they are using. The role screens stay
+- A check that **fails** (network error, 5xx), or has not answered after **3 seconds**, counts as
+  "no role", and the decision is made from what is known: a courier whose admin check hangs still
+  reaches `/courier` after 3 s. Once the shop is shown, a late answer never redirects: nothing
+  yanks a customer off the screen they are using. The role screens stay
   reachable through the icons, which appear when the checks finish.
 - After the rule has run, navigating back to `/` (the **Shop** button, a deactivated courier
   being sent to `/`) just shows the shop.
