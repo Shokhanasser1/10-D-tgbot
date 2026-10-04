@@ -38,7 +38,11 @@ export function LaunchGate({ children, timeoutMs = LAUNCH_TIMEOUT_MS }: LaunchGa
   // A failed check is a plain "no": the shop still works, and the icons appear if it recovers.
   const isAdmin = adminQuery.isPending ? undefined : adminQuery.data === true
   const isCourier = courierQuery.isPending ? undefined : !!courierQuery.data
-  const next = deciding ? decideLaunch(isAdmin, isCourier, timedOut) : decision
+  // Once made, the decision is kept: a late answer must not move the user off the shop.
+  if (deciding) {
+    const next = decideLaunch(isAdmin, isCourier, timedOut)
+    if (next !== 'deciding') setDecision(next)
+  }
 
   useEffect(() => {
     if (!deciding) return
@@ -47,11 +51,9 @@ export function LaunchGate({ children, timeoutMs = LAUNCH_TIMEOUT_MS }: LaunchGa
   }, [deciding, timeoutMs])
 
   useEffect(() => {
-    if (!deciding || next === 'deciding') return
-    // Before navigating: coming back to `/` later must show the shop, not decide again.
-    finishLaunch()
-    setDecision(next)
-  }, [deciding, next])
+    // Coming back to `/` later (the Shop button) must show the shop, not decide again.
+    if (!deciding) finishLaunch()
+  }, [deciding])
 
   if (decision === 'admin') return <Navigate to="/admin" replace />
   if (decision === 'courier') return <Navigate to="/courier" replace />
