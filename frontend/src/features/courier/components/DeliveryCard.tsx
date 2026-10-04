@@ -8,6 +8,7 @@ import { PillButton } from '../../../shared/ui/PillButton'
 import type { CourierDelivery } from '../types'
 import styles from './DeliveryCard.module.css'
 import { mapsUrl, telHref } from './mapsUrl'
+import { pickupPlace } from './pickup'
 
 interface DeliveryCardProps {
   delivery: CourierDelivery
@@ -27,6 +28,7 @@ export function DeliveryCard({
   const { t, i18n } = useTranslation()
   const { address } = delivery
   const tel = telHref(address.phone)
+  const sellerTel = telHref(delivery.pickup.phone ?? '')
   const isOnTheWay = delivery.status === 'shipped'
 
   return (
@@ -38,6 +40,18 @@ export function DeliveryCard({
         </span>
       </div>
 
+      {/* Collect first (Spec 10): from the seller, before the customer's door. */}
+      <p className={styles.pickup}>
+        {t('courier.pickup', { place: pickupPlace(delivery.pickup) })}
+        {sellerTel && (
+          <>
+            {' · '}
+            <a className={styles.phone} href={sellerTel}>
+              {delivery.pickup.phone}
+            </a>
+          </>
+        )}
+      </p>
       <p className={styles.address}>
         {address.street}, {address.city} {address.postal_code}, {address.country}
       </p>

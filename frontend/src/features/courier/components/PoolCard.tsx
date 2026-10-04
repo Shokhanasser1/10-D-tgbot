@@ -6,6 +6,7 @@ import { PillButton } from '../../../shared/ui/PillButton'
 import { formatAgo, secondsSince } from '../../../shared/time/formatAgo'
 import { useNow } from '../../../shared/time/useNow'
 import type { PoolItem } from '../types'
+import { pickupPlace } from './pickup'
 import styles from './PoolCard.module.css'
 
 interface PoolCardProps {
@@ -30,6 +31,7 @@ export function PoolCard({ item, isBusy, onClaim }: PoolCardProps) {
         {item.street}, {item.city}
       </p>
       <p className={styles.meta}>{t('courier.pool.items', { count: item.item_count })}</p>
+      <p className={styles.meta}>{t('courier.pickup', { place: pickupPlace(item.pickup) })}</p>
       {item.cash_to_collect && (
         <p className={styles.meta}>
           {t('courier.cash', {

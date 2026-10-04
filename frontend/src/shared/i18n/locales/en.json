@@ -151,7 +151,8 @@
       "invalidState": "This delivery has changed. The list was refreshed.",
       "gone": "This delivery is no longer available."
     },
-    "cash": "Collect in cash: {{total}}"
+    "cash": "Collect in cash: {{total}}",
+    "pickup": "Pickup: {{place}}"
   },
   "time": {
     "secondsAgo": "{{n}} s ago",

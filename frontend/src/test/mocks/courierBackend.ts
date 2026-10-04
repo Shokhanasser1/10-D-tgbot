@@ -90,6 +90,7 @@ function deliveryFor(item: PoolItem): CourierDelivery {
     items: [{ name: 'Velvet Matte Lipstick', qty: item.item_count }],
     assigned_at: '2026-09-24T10:10:00Z',
     picked_up_at: null,
+    pickup: item.pickup,
   }
 }
 
@@ -101,5 +102,6 @@ function poolItemFor(delivery: CourierDelivery): PoolItem {
     street: delivery.address.street,
     item_count: delivery.items.length,
     placed_at: '2026-09-24T10:00:00Z',
+    pickup: delivery.pickup,
   }
 }

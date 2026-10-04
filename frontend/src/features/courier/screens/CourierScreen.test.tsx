@@ -407,3 +407,25 @@ describe('CourierScreen: tabs', () => {
     expect(screen.queryByText(poolItems[1].street, { exact: false })).not.toBeInTheDocument()
   })
 })
+
+describe('CourierScreen: pickup (Spec 10)', () => {
+  it('says where to collect each waiting order', async () => {
+    stubCourierBackend()
+    renderScreen(<CourierScreen />, poolRoute)
+
+    expect(await screen.findAllByText('Pickup: Lola Beauty, Tashkent, Chilonzor 5')).toHaveLength(2)
+  })
+
+  it("gives the seller's phone on a held delivery", async () => {
+    stubCourierBackend({ deliveries: [assignedDelivery] })
+    renderScreen(<CourierScreen />, mineRoute)
+
+    expect(
+      await screen.findByText(/Pickup: Lola Beauty, Tashkent, Chilonzor 5/),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '+998 90 111 22 33' })).toHaveAttribute(
+      'href',
+      'tel:+998901112233',
+    )
+  })
+})

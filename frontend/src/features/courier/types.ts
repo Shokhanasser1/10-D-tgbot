@@ -9,6 +9,13 @@ export interface CourierProfile {
   max_active_deliveries: number
 }
 
+/** Where the courier collects an order: the seller's shop (Spec 10). */
+export interface Pickup {
+  name: string
+  address: string | null
+  phone: string | null
+}
+
 /** A claimable order. Deliberately without phone, notes or coordinates. */
 export interface PoolItem {
   shipment_id: number
@@ -20,6 +27,7 @@ export interface PoolItem {
   /** Cash on delivery: what the courier collects. Null for orders paid online. */
   cash_to_collect?: string | null
   currency?: string
+  pickup: Pickup
 }
 
 export interface DeliveryLine {
@@ -49,6 +57,7 @@ export interface CourierDelivery {
   picked_up_at: string | null
   cash_to_collect?: string | null
   currency?: string
+  pickup: Pickup
 }
 
 export interface CourierDeliveries {

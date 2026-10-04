@@ -136,6 +136,7 @@ export const poolItems: PoolItem[] = [
     street: 'Alexanderplatz 1',
     item_count: 2,
     placed_at: '2026-09-24T10:00:00Z',
+    pickup: { name: 'Lola Beauty', address: 'Tashkent, Chilonzor 5', phone: '+998 90 111 22 33' },
   },
   {
     shipment_id: 502,
@@ -144,6 +145,7 @@ export const poolItems: PoolItem[] = [
     street: 'Kastanienallee 5',
     item_count: 1,
     placed_at: '2026-09-24T10:05:00Z',
+    pickup: { name: 'Lola Beauty', address: 'Tashkent, Chilonzor 5', phone: '+998 90 111 22 33' },
   },
 ]
 
@@ -163,6 +165,7 @@ export const assignedDelivery: CourierDelivery = {
   items: [{ name: 'Velvet Matte Lipstick', qty: 2 }],
   assigned_at: '2026-09-24T10:10:00Z',
   picked_up_at: null,
+  pickup: { name: 'Lola Beauty', address: 'Tashkent, Chilonzor 5', phone: '+998 90 111 22 33' },
 }
 
 export const shippedDelivery: CourierDelivery = {

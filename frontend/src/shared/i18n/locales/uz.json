@@ -151,7 +151,8 @@
       "invalidState": "Yetkazib berish o'zgardi. Ro'yxat yangilandi.",
       "gone": "Bu yetkazib berish endi mavjud emas."
     },
-    "cash": "Naqd olish: {{total}}"
+    "cash": "Naqd olish: {{total}}",
+    "pickup": "Olib ketish: {{place}}"
   },
   "time": {
     "secondsAgo": "{{n}} soniya oldin",
