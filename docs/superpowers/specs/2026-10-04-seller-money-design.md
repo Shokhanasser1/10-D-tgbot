@@ -1,6 +1,6 @@
 # Spec 11: Sellers' money (stage D of the marketplace)
 
-Status: **designed and approved by the owner (2026-10-04); implemented 2026-10-04, not deployed.**
+Status: **designed and approved by the owner (2026-10-04); implemented and deployed 2026-10-04.**
 
 ## 1. Problem
 

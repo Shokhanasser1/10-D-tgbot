@@ -20,9 +20,9 @@ niches through data (categories, attributes, translations), not code changes. Th
 | 6 Payments in Uzbekistan | Click/Payme via Telegram Payments, cash on delivery, UZS; Stripe kept as an option | **done**, committed (`b6813c5`) |
 | 7 Admin roles + password sign-in | six roles (owner, manager, catalog_manager, dispatcher, accountant, viewer) mapped to permissions in `app/core/permissions.py`; login + password (scrypt, lockout after 5 tries), password re-entry within 15 min for money and admin management | **done**, committed (`123290e`, `daa805e`) |
 | 8 Role-based launch | opening the bot sends admins to `/admin`, couriers to `/courier`, everyone else to the shop; Shop/Courier/Admin switch buttons; frontend only (`app/launch.ts`, `LaunchGate`, `CourierShell`). Stage A of the marketplace roadmap (B sellers, C multi-seller orders, D money) in the spec | **done**, committed (`c3ea1db`..`85c1220`) |
-| 9 Sellers and their products (marketplace stage B) | `sellers` table; every product has a seller (migration gives old products a "Main shop"); seller = admin role confined to its own products by `app/services/seller_scope.py` (another seller's rows answer 404); new permissions `taxonomy.edit`, `sellers.manage`; `/internal/sellers`; storefront shows and filters by seller; one seller per cart (`cart_other_seller`, `replace_cart`) | **done**, committed (`5ed4a4e`..`ab7390c`), **not deployed** |
-| 10 Orders per seller (marketplace stage C) | `orders.seller_id` (from the cart at checkout); `shipments.ready_at` (null = the seller is preparing): the pool and the claim only take ready shipments; `POST /internal/orders/{id}/ready` (`orders.prepare`: owner, manager, dispatcher, the order's seller); payment notifies the seller, ready notifies the couriers with the pickup; `/internal/seller/orders` without customer data; courier pool/deliveries carry `pickup` | **done**, committed (`9d44ff4`..`b586522`), **not deployed** |
-| 11 Sellers' money (marketplace stage D) | `sellers.commission_percent` (default 10) copied to `orders.commission_percent` at checkout; `seller_earnings` written once on delivery (`earnings_service`); `seller_payouts` recorded by hand (`payouts.manage`: owner, accountant, 🔒), never above the balance (`exceeds_balance`); ledgers for the platform (`/internal/sellers/{id}/ledger`) and the seller (`/internal/seller/earnings`) | **done**, committed (`fb42219`..`9b2ce32`), **not deployed** |
+| 9 Sellers and their products (marketplace stage B) | `sellers` table; every product has a seller (migration gives old products a "Main shop"); seller = admin role confined to its own products by `app/services/seller_scope.py` (another seller's rows answer 404); new permissions `taxonomy.edit`, `sellers.manage`; `/internal/sellers`; storefront shows and filters by seller; one seller per cart (`cart_other_seller`, `replace_cart`) | **done**, committed (`5ed4a4e`..`ab7390c`), **deployed 2026-10-04** |
+| 10 Orders per seller (marketplace stage C) | `orders.seller_id` (from the cart at checkout); `shipments.ready_at` (null = the seller is preparing): the pool and the claim only take ready shipments; `POST /internal/orders/{id}/ready` (`orders.prepare`: owner, manager, dispatcher, the order's seller); payment notifies the seller, ready notifies the couriers with the pickup; `/internal/seller/orders` without customer data; courier pool/deliveries carry `pickup` | **done**, committed (`9d44ff4`..`b586522`), **deployed 2026-10-04** |
+| 11 Sellers' money (marketplace stage D) | `sellers.commission_percent` (default 10) copied to `orders.commission_percent` at checkout; `seller_earnings` written once on delivery (`earnings_service`); `seller_payouts` recorded by hand (`payouts.manage`: owner, accountant, 🔒), never above the balance (`exceeds_balance`); ledgers for the platform (`/internal/sellers/{id}/ledger`) and the seller (`/internal/seller/earnings`) | **done**, committed (`fb42219`..`9b2ce32`), **deployed 2026-10-04** |
 | Free hosting | Mini App on Cloudflare Pages, backend on JustRunMy.App, DB on Supabase, photos in R2 | **live** since 2026-10-04 (`fd8c75b`, `3ebf23b`, fixes after), see §1b |
 
 Designs are in `docs/superpowers/specs/` (Spec 7: `2026-09-29-admin-roles-and-password-login-design.md`; Spec 8: `2026-10-04-role-based-launch-design.md`, Spec 9: `2026-10-04-sellers-and-products-design.md`, Spec 10: `2026-10-04-seller-orders-design.md`, Spec 11: `2026-10-04-seller-money-design.md`, plans in `docs/superpowers/plans/`). Spec 2's §16, Spec 3's §14 and Spec 4's §12, Spec 5's §11 and Spec 6's §13 "Implementation notes" list
@@ -63,7 +63,8 @@ Owner-facing guide in Russian: `docs/DEPLOY_FREE_RU.md`.
   (FastAPI serves from `/`; nginx does the same in compose); it only swaps the path on a copy of `BACKEND_URL`,
   so `/api//other.host` cannot reach another host (`proxy.test.ts`). `/media/*` is read from the R2 binding `MEDIA`.
 - **Backend**: JustRunMy.App app 66718, https://ecosmetics-api.k.onjrnm.vip (container from `backend/`, port 8000,
-  0.15 vCPU / 0.15 GB). Deployed by pushing `git subtree split --prefix backend` to the app's git remote (the push
+  0.15 vCPU / 0.15 GB). Deployed by pushing `git subtree split --prefix backend` to the app's git remote, branch **`deploy`**
+  (`git push "<URL>" <split>:deploy`; the panel shows the URL followed by ` HEAD:deploy`) (the push
   URL with credentials is on the panel's Git Push page, not stored locally). Env vars are set in the panel.
   Logs: panel → application → Diagnostics → Live container output (the owner cannot copy from it; ask for a screenshot).
 - **Database**: Supabase project `otzhnhdivutcpyralbch` (Frankfurt), session pooler
@@ -82,24 +83,12 @@ Owner-facing guide in Russian: `docs/DEPLOY_FREE_RU.md`.
 - **Production config gaps**: the panel has no `DEFAULT_CURRENCY`, `CASH_ON_DELIVERY_ENABLED` or
   `TELEGRAM_PAYMENT_PROVIDER_TOKEN`, so it runs the EUR defaults and checkout shows "Payments are not set up".
   Ask the owner before changing.
-- **Waiting to deploy (Specs 8 to 11), next session start here.** All code is on GitHub `main`
-  (`1c3e97e`); production still runs the pre-marketplace version (on 2026-10-04 `GET
-  /internal/seller/orders` answered 404 there). Order matters: **backend first**, the new frontend
-  breaks against the old API (courier cards read `pickup`, order rows read `seller_name`).
-  1. Backend: the local branch `deploy-backend` (`0d5116a`) is `git subtree split --prefix backend`
-     of `1c3e97e` (redo the split if `main` moved). Only the owner has the push URL (JustRunMy
-     panel → app 66718 → Git Push; it embeds credentials, never ask for it in chat): they run
-     `! git -C E:/Desktop/10-D-tgbot push "<URL>" deploy-backend:<branch the panel names>`.
-     On a non-fast-forward rejection, stop and ask before forcing.
-  2. Check: `https://ecosmetics-api.k.onjrnm.vip/health` → ok, and `/internal/seller/orders`
-     without credentials → **401** (new code; 404 = old). Migrations `a9b8c7d6e5f4`,
-     `b1c2d3e4f5a6`, `c2d3e4f5a6b7` run on container start; a crash loop shows in the panel's
-     Diagnostics (ask for a screenshot).
-  3. Frontend: `npm --prefix frontend run deploy:pages` (Claude may run it), then
-     `https://ecosmetics-shop.pages.dev/api/health` → ok.
-  4. Owner in Telegram: opening the bot lands in the admin panel; add a seller under **Sellers**
-     (production has no products, so no "Main shop" was created) before adding products.
-     Checkout still needs the payment config gap below closed.
+- **Marketplace deployed 2026-10-04 (Specs 8 to 11).** Backend: split `0d5116a` of `1c3e97e` pushed to
+  JustRunMy branch `deploy`; migrations up to `c2d3e4f5a6b7` ran on start (`/internal/seller/orders`
+  answers 401). Pages deployment `cbbf76cf`. Next for the owner: in Telegram, add a seller under
+  **Sellers** (production had no products, so no "Main shop" exists) before adding products; close
+  the payment config gap below before a real checkout. Next deploys: redo the split, then push it to
+  `deploy` (see the Backend bullet), backend before frontend whenever the API changes.
 - Auto mode blocks Claude from writing secrets (`wrangler pages secret put`); the owner runs it with `!` in the prompt.
 
 ## 2. Stack
