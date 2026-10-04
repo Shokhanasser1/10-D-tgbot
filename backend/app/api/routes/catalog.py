@@ -27,6 +27,7 @@ async def list_categories(
 @router.get("/products", response_model=list[ProductListItemOut])
 async def list_products(
     category: int | None = Query(default=None),
+    seller: int | None = Query(default=None),
     locale: str | None = Query(default=None),
     user: TelegramUser = Depends(get_current_telegram_user),
     db: AsyncSession = Depends(get_db),
@@ -36,6 +37,7 @@ async def list_products(
         resolve_locale(locale, user),
         settings.default_locale,
         category_id=category,
+        seller_id=seller,
     )
 
 

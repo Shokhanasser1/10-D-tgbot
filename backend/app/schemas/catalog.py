@@ -3,6 +3,13 @@ from decimal import Decimal
 from pydantic import BaseModel
 
 
+class SellerBrief(BaseModel):
+    """Whose product it is (Spec 9)."""
+
+    id: int
+    name: str
+
+
 class CategoryOut(BaseModel):
     id: int
     slug: str
@@ -23,6 +30,7 @@ class VariantOut(BaseModel):
 class ProductListItemOut(BaseModel):
     id: int
     category_id: int
+    seller: SellerBrief
     base_sku: str
     base_price: Decimal
     name: str
@@ -32,6 +40,7 @@ class ProductListItemOut(BaseModel):
 class ProductDetailOut(BaseModel):
     id: int
     category_id: int
+    seller: SellerBrief
     base_sku: str
     base_price: Decimal
     name: str

@@ -7,7 +7,14 @@ from app.models.category import Category
 from app.models.enums import ProductStatus
 from app.models.product import Product
 from app.models.product_image import ProductImage
-from app.schemas.catalog import CategoryOut, ProductDetailOut, ProductListItemOut, VariantOut
+from app.models.seller import Seller
+from app.schemas.catalog import (
+    CategoryOut,
+    ProductDetailOut,
+    ProductListItemOut,
+    SellerBrief,
+    VariantOut,
+)
 
 
 async def list_categories(db: AsyncSession, locale: str, fallback_locale: str) -> list[CategoryOut]:
@@ -35,11 +42,21 @@ async def list_products(
     fallback_locale: str,
     category_id: int | None = None,
     status: ProductStatus = ProductStatus.active,
+    seller_id: int | None = None,
 ) -> list[ProductListItemOut]:
-    stmt = select(Product).where(Product.status == status)
+    # A deactivated seller's products leave the shop with it (Spec 9 section 6).
+    stmt = (
+        select(Product, Seller)
+        .join(Seller, Seller.id == Product.seller_id)
+        .where(Product.status == status, Seller.is_active)
+    )
     if category_id is not None:
         stmt = stmt.where(Product.category_id == category_id)
-    products = (await db.execute(stmt)).scalars().all()
+    if seller_id is not None:
+        stmt = stmt.where(Product.seller_id == seller_id)
+    rows = (await db.execute(stmt)).tuples().all()
+    products = [product for product, _ in rows]
+    sellers = {product.id: seller for product, seller in rows}
 
     product_ids = [p.id for p in products]
     names = await translations_for(db, "product", product_ids, ["name"], locale, fallback_locale)
@@ -58,6 +75,7 @@ async def list_products(
         ProductListItemOut(
             id=p.id,
             category_id=p.category_id,
+            seller=SellerBrief(id=sellers[p.id].id, name=sellers[p.id].name),
             base_sku=p.base_sku,
             base_price=p.base_price,
             name=names.get((p.id, "name"), p.base_sku),
@@ -73,10 +91,14 @@ async def get_product(
     stmt = (
         select(Product)
         .where(Product.id == product_id)
-        .options(selectinload(Product.variants), selectinload(Product.images))
+        .options(
+            selectinload(Product.variants),
+            selectinload(Product.images),
+            selectinload(Product.seller),
+        )
     )
     product = (await db.execute(stmt)).scalar_one_or_none()
-    if product is None:
+    if product is None or not product.seller.is_active:
         return None
 
     texts = await translations_for(
@@ -94,6 +116,7 @@ async def get_product(
     return ProductDetailOut(
         id=product.id,
         category_id=product.category_id,
+        seller=SellerBrief(id=product.seller.id, name=product.seller.name),
         base_sku=product.base_sku,
         base_price=product.base_price,
         name=texts.get((product.id, "name"), product.base_sku),
