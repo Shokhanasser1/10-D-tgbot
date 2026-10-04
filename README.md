@@ -260,6 +260,17 @@ existing accounts, so removing an ID later demotes nobody. Everyone else is adde
 
 The API enforces this on every request, and re-reads the admin's role each time, so a
 deactivation or role change applies at once. There is always at least one active owner.
+(Spec 7 replaced these three roles with six; `backend/app/core/permissions.py` is the source of
+truth.)
+
+**Sellers** (Spec 9). The platform hosts many shops. An owner or manager adds a seller under
+**Sellers**: shop name, phone, the address couriers collect orders from, and the Telegram ID of
+the person who runs it, who gets an account with the *seller* role. A seller signs in like any
+admin and sees only **Catalog** (their own products; categories and attributes are shared and
+read-only) and **Profile**. Every product belongs to a seller: staff choose it when creating a
+product and can filter the list by it. Customers see the seller on each product, can list one
+seller's products, and a cart holds one seller's products at a time (adding another seller's
+asks to empty the cart). Deactivating a seller hides their products and locks their account.
 
 **Browser sign-in** uses the [Telegram Login Widget](https://core.telegram.org/widgets/login):
 
