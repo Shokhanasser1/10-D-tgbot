@@ -36,7 +36,7 @@ from app.services import (
 from app.services.notification_templates import money
 from tests.admin_factories import add_admin
 from tests.courier_factories import INTERNAL_HEADERS, add_courier, add_customer
-from tests.factories import make_init_data
+from tests.factories import default_seller_id, make_init_data
 
 ADDRESS = {
     "street": "Amir Temur 1",
@@ -89,6 +89,7 @@ async def _variant(db: AsyncSession, price: str = "89000", stock: int = 5) -> Va
     db.add(category)
     await db.flush()
     product = Product(
+        seller_id=await default_seller_id(db),
         category_id=category.id,
         base_sku=f"UZ-{n}",
         base_price=Decimal(price),

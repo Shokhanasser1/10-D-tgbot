@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import async_session_factory
 from app.models.enums import AttributeValueType, ProductStatus
 from app.models.product import Product
+from app.models.seller import Seller
 from app.schemas.internal import (
     AttributeCreate,
     CategoryCreate,
@@ -24,6 +25,13 @@ from app.services import catalog_admin_service, image_service
 
 async def seed_into(db: AsyncSession) -> None:
     """The demo catalog, written through the same services the admin API uses."""
+    # Every product belongs to a seller (Spec 9); the demo has a single shop.
+    shop = Seller(
+        name="Demo shop", phone="+998 90 000 00 00", pickup_address="Tashkent, Amir Temur 1"
+    )
+    db.add(shop)
+    await db.flush()
+
     lipstick_category = await catalog_admin_service.create_category(
         db, CategoryCreate(slug="lipstick", sort_order=0)
     )
@@ -38,6 +46,7 @@ async def seed_into(db: AsyncSession) -> None:
         db,
         ProductCreate(
             category_id=lipstick_category.id,
+            seller_id=shop.id,
             base_sku="LIP-VELVET",
             base_price="89000",
             status=ProductStatus.active,
@@ -92,6 +101,7 @@ async def seed_into(db: AsyncSession) -> None:
         db,
         ProductCreate(
             category_id=serum_category.id,
+            seller_id=shop.id,
             base_sku="SERUM-VITC",
             base_price="129000",
             status=ProductStatus.active,
@@ -140,7 +150,7 @@ async def seed() -> None:
             print("The catalog already has products; nothing to seed.")
             return
         await seed_into(db)
-    print("Seed complete: 2 categories, 2 products, 4 variants.")
+    print("Seed complete: 1 seller, 2 categories, 2 products, 4 variants.")
 
 
 if __name__ == "__main__":

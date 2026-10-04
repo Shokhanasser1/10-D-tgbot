@@ -30,7 +30,7 @@ from app.models.product import Product
 from app.models.shipment import Shipment
 from app.models.variant import Variant
 from app.services import reservation_service, stripe_service
-from tests.factories import make_init_data
+from tests.factories import default_seller_id, make_init_data
 
 ADDRESS = {
     "street": "Amir Temur 1",
@@ -92,7 +92,11 @@ async def _variant(
     db.add(category)
     await db.flush()
     product = Product(
-        category_id=category.id, base_sku=f"RES-{n}", base_price=Decimal(price), status=status
+        seller_id=await default_seller_id(db),
+        category_id=category.id,
+        base_sku=f"RES-{n}",
+        base_price=Decimal(price),
+        status=status,
     )
     db.add(product)
     await db.flush()

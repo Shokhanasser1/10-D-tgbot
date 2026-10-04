@@ -1,4 +1,7 @@
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from tests.factories import default_seller_id
 
 INTERNAL_HEADERS = {"X-Internal-Token": "test-internal-token"}
 
@@ -17,7 +20,9 @@ async def test_wrong_internal_token_is_rejected(client: AsyncClient) -> None:
     assert response.status_code == 403
 
 
-async def test_create_full_catalog_entity_chain(client: AsyncClient) -> None:
+async def test_create_full_catalog_entity_chain(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     category_resp = await client.post(
         "/internal/categories", json={"slug": "lipstick", "sort_order": 0}, headers=INTERNAL_HEADERS
     )
@@ -35,6 +40,7 @@ async def test_create_full_catalog_entity_chain(client: AsyncClient) -> None:
         "/internal/products",
         json={
             "category_id": category_id,
+            "seller_id": await default_seller_id(db_session),
             "base_sku": "LIP-100",
             "base_price": "19.99",
             "status": "active",
@@ -79,10 +85,17 @@ async def test_create_full_catalog_entity_chain(client: AsyncClient) -> None:
     assert translation_resp.json()["value"] == "Помада"
 
 
-async def test_create_product_with_nonexistent_category_is_rejected(client: AsyncClient) -> None:
+async def test_create_product_with_nonexistent_category_is_rejected(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     response = await client.post(
         "/internal/products",
-        json={"category_id": 999999, "base_sku": "X-1", "base_price": "1.00"},
+        json={
+            "category_id": 999999,
+            "seller_id": await default_seller_id(db_session),
+            "base_sku": "X-1",
+            "base_price": "1.00",
+        },
         headers=INTERNAL_HEADERS,
     )
     assert response.status_code == 400
@@ -95,7 +108,9 @@ async def test_update_nonexistent_product_returns_404(client: AsyncClient) -> No
     assert response.status_code == 404
 
 
-async def test_patch_endpoints_update_existing_entities(client: AsyncClient) -> None:
+async def test_patch_endpoints_update_existing_entities(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     category = (
         await client.post(
             "/internal/categories", json={"slug": "old-slug"}, headers=INTERNAL_HEADERS
@@ -111,7 +126,12 @@ async def test_patch_endpoints_update_existing_entities(client: AsyncClient) -> 
     product = (
         await client.post(
             "/internal/products",
-            json={"category_id": category["id"], "base_sku": "P-1", "base_price": "5.00"},
+            json={
+                "category_id": category["id"],
+                "seller_id": await default_seller_id(db_session),
+                "base_sku": "P-1",
+                "base_price": "5.00",
+            },
             headers=INTERNAL_HEADERS,
         )
     ).json()

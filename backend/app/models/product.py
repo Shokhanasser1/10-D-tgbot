@@ -11,6 +11,7 @@ from app.models.mixins import TimestampMixin
 if TYPE_CHECKING:
     from app.models.category import Category
     from app.models.product_image import ProductImage
+    from app.models.seller import Seller
     from app.models.variant import Variant
 
 
@@ -21,6 +22,9 @@ class Product(TimestampMixin, Base):
     category_id: Mapped[int] = mapped_column(
         ForeignKey("categories.id", ondelete="RESTRICT"), nullable=False
     )
+    seller_id: Mapped[int] = mapped_column(
+        ForeignKey("sellers.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
     base_sku: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
     base_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     status: Mapped[ProductStatus] = mapped_column(
@@ -30,6 +34,7 @@ class Product(TimestampMixin, Base):
     )
 
     category: Mapped["Category"] = relationship("Category", back_populates="products")
+    seller: Mapped["Seller"] = relationship("Seller")
     variants: Mapped[list["Variant"]] = relationship(
         "Variant", back_populates="product", cascade="all, delete-orphan"
     )

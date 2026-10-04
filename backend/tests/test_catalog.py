@@ -8,7 +8,7 @@ from app.models.enums import ProductStatus
 from app.models.product import Product
 from app.models.translation import Translation
 from app.models.variant import Variant
-from tests.factories import make_init_data
+from tests.factories import default_seller_id, make_init_data
 
 
 def _auth_headers(telegram_id: int) -> dict[str, str]:
@@ -23,12 +23,14 @@ async def test_list_products_only_returns_active(
     await db_session.flush()
 
     active = Product(
+        seller_id=await default_seller_id(db_session),
         category_id=category.id,
         base_sku="SER-ACTIVE",
         base_price=Decimal("10.00"),
         status=ProductStatus.active,
     )
     draft = Product(
+        seller_id=await default_seller_id(db_session),
         category_id=category.id,
         base_sku="SER-DRAFT",
         base_price=Decimal("10.00"),
@@ -53,12 +55,14 @@ async def test_list_products_filters_by_category(
     await db_session.flush()
 
     prod_a = Product(
+        seller_id=await default_seller_id(db_session),
         category_id=cat_a.id,
         base_sku="A-1",
         base_price=Decimal("5.00"),
         status=ProductStatus.active,
     )
     prod_b = Product(
+        seller_id=await default_seller_id(db_session),
         category_id=cat_b.id,
         base_sku="B-1",
         base_price=Decimal("5.00"),
@@ -82,6 +86,7 @@ async def test_locale_falls_back_to_default_when_translation_missing(
     await db_session.flush()
 
     product = Product(
+        seller_id=await default_seller_id(db_session),
         category_id=category.id,
         base_sku="TONER-1",
         base_price=Decimal("8.00"),
@@ -116,6 +121,7 @@ async def test_get_product_detail_includes_variants_and_translated_name(
     await db_session.flush()
 
     product = Product(
+        seller_id=await default_seller_id(db_session),
         category_id=category.id,
         base_sku="GLOSS-1",
         base_price=Decimal("12.00"),

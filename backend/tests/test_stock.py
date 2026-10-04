@@ -16,6 +16,7 @@ from app.models.shipment import Shipment
 from app.models.variant import Variant
 from app.services import stripe_service
 from tests.courier_factories import add_customer
+from tests.factories import default_seller_id
 
 _seq = itertools.count(1)
 
@@ -30,6 +31,7 @@ async def _pending_order(
     db.add(category)
     await db.flush()
     product = Product(
+        seller_id=await default_seller_id(db),
         category_id=category.id,
         base_sku=f"STOCK-{n}",
         base_price=Decimal("1.00"),

@@ -48,6 +48,8 @@ class AttributeAdminOut(BaseModel):
 
 class ProductCreate(BaseModel):
     category_id: int
+    # Required for platform staff; a seller's own products always go to that seller (Spec 9).
+    seller_id: int | None = None
     base_sku: str
     base_price: Decimal
     status: ProductStatus = ProductStatus.draft

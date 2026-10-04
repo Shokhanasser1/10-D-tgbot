@@ -8,7 +8,7 @@ from app.models.enums import ProductStatus
 from app.models.product import Product
 from app.models.product_image import ProductImage
 from app.models.variant import Variant
-from tests.factories import make_init_data
+from tests.factories import default_seller_id, make_init_data
 
 
 def _auth_headers(telegram_id: int) -> dict[str, str]:
@@ -20,6 +20,7 @@ async def _make_variant(db_session: AsyncSession, *, sku: str, price: str, stock
     db_session.add(category)
     await db_session.flush()
     product = Product(
+        seller_id=await default_seller_id(db_session),
         category_id=category.id,
         base_sku=f"PROD-{sku}",
         base_price=Decimal(price),

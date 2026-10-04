@@ -12,7 +12,7 @@ from app.models.order import Order
 from app.models.product import Product
 from app.models.variant import Variant
 from app.services import stripe_service
-from tests.factories import make_init_data
+from tests.factories import default_seller_id, make_init_data
 
 VALID_ADDRESS = {
     "street": "Alexanderplatz 1",
@@ -63,6 +63,7 @@ async def _make_variant(db_session: AsyncSession, *, sku: str, price: str, stock
     db_session.add(category)
     await db_session.flush()
     product = Product(
+        seller_id=await default_seller_id(db_session),
         category_id=category.id,
         base_sku=f"PROD-{sku}",
         base_price=Decimal(price),

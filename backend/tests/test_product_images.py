@@ -18,6 +18,7 @@ from app.models.product import Product
 from app.models.variant import Variant
 from tests.admin_factories import add_admin, admin_tma
 from tests.courier_factories import INTERNAL_HEADERS
+from tests.factories import default_seller_id
 
 settings = get_settings()
 
@@ -46,6 +47,7 @@ async def _product(db: AsyncSession, sku: str) -> tuple[int, int]:
     db.add(category)
     await db.flush()
     product = Product(
+        seller_id=await default_seller_id(db),
         category_id=category.id,
         base_sku=sku,
         base_price=Decimal("5.00"),

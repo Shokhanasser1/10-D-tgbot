@@ -4,7 +4,37 @@ import json
 import time
 from urllib.parse import urlencode
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.seller import Seller
+
 TEST_BOT_TOKEN = "123456:TEST-bot-token-for-unit-tests"
+DEFAULT_SELLER_NAME = "Test shop"
+
+
+async def add_seller(
+    db: AsyncSession,
+    name: str = "Seller",
+    *,
+    is_active: bool = True,
+    pickup_address: str | None = "Tashkent, Amir Temur 1",
+) -> Seller:
+    seller = Seller(name=name, is_active=is_active, pickup_address=pickup_address)
+    db.add(seller)
+    await db.flush()
+    return seller
+
+
+async def default_seller_id(db: AsyncSession) -> int:
+    """The seller of tests that do not care whose products they use (Spec 9: every product
+    has one). One per test: each test runs in its own rolled-back transaction."""
+    existing = await db.scalar(
+        select(Seller.id).where(Seller.name == DEFAULT_SELLER_NAME).order_by(Seller.id).limit(1)
+    )
+    if existing is not None:
+        return existing
+    return (await add_seller(db, DEFAULT_SELLER_NAME)).id
 
 
 def make_init_data(

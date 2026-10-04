@@ -185,3 +185,81 @@ async def test_admin_panel_downgrade_drops_cancelled_shipments(scratch_database:
         assert await conn.fetchval("SELECT to_regclass('admins')") is None
     finally:
         await conn.close()
+
+
+ADMIN_PASSWORDS_REVISION = "f1a2b3c4d5e6"  # the schema before sellers
+
+
+async def _insert_product(conn: asyncpg.Connection, sku: str) -> int:
+    category_id = await conn.fetchval(
+        "INSERT INTO categories (slug, sort_order) VALUES ($1, 0) RETURNING id", f"cat-{sku}"
+    )
+    return await conn.fetchval(
+        "INSERT INTO products (category_id, base_sku, base_price, status) "
+        "VALUES ($1, $2, 10, 'active') RETURNING id",
+        category_id,
+        sku,
+    )
+
+
+async def test_sellers_migration_gives_existing_products_a_main_shop(
+    scratch_database: str,
+) -> None:
+    old = await asyncio.to_thread(_alembic, scratch_database, "upgrade", ADMIN_PASSWORDS_REVISION)
+    assert old.returncode == 0, old.stderr
+
+    conn = await _connect_scratch()
+    try:
+        first = await _insert_product(conn, "OLD-1")
+        second = await _insert_product(conn, "OLD-2")
+    finally:
+        await conn.close()
+
+    up = await asyncio.to_thread(_alembic, scratch_database, "upgrade", "head")
+    assert up.returncode == 0, up.stderr
+
+    conn = await _connect_scratch()
+    try:
+        sellers = await conn.fetch("SELECT id, name, pickup_address, is_active FROM sellers")
+        assert [(s["name"], s["pickup_address"], s["is_active"]) for s in sellers] == [
+            ("Main shop", None, True)
+        ]
+        owners = await conn.fetch(
+            "SELECT seller_id FROM products WHERE id = ANY($1::int[])", [first, second]
+        )
+        assert {row["seller_id"] for row in owners} == {sellers[0]["id"]}
+
+        # A seller account, which the previous schema cannot represent.
+        await conn.execute(
+            "INSERT INTO admins (telegram_id, role, display_name, seller_id) "
+            "VALUES (5, 'seller', 'Lola', $1)",
+            sellers[0]["id"],
+        )
+    finally:
+        await conn.close()
+
+    down = await asyncio.to_thread(
+        _alembic, scratch_database, "downgrade", ADMIN_PASSWORDS_REVISION
+    )
+    assert down.returncode == 0, down.stderr
+
+    conn = await _connect_scratch()
+    try:
+        assert await conn.fetchval("SELECT count(*) FROM admins WHERE role = 'seller'") == 0
+        assert await conn.fetchval("SELECT count(*) FROM products") == 2
+        assert await conn.fetchval("SELECT to_regclass('sellers')") is None
+    finally:
+        await conn.close()
+
+
+async def test_sellers_migration_creates_no_shop_for_an_empty_catalog(
+    scratch_database: str,
+) -> None:
+    up = await asyncio.to_thread(_alembic, scratch_database, "upgrade", "head")
+    assert up.returncode == 0, up.stderr
+
+    conn = await _connect_scratch()
+    try:
+        assert await conn.fetchval("SELECT count(*) FROM sellers") == 0
+    finally:
+        await conn.close()

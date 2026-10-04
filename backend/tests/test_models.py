@@ -25,6 +25,7 @@ from app.models.enums import (
     ProductStatus,
     ShipmentStatus,
 )
+from tests.factories import default_seller_id
 
 
 async def test_full_entity_chain_round_trip(db_session: AsyncSession) -> None:
@@ -38,6 +39,7 @@ async def test_full_entity_chain_round_trip(db_session: AsyncSession) -> None:
     db_session.add(attribute)
 
     product = Product(
+        seller_id=await default_seller_id(db_session),
         category_id=category.id,
         base_sku="LIP-001",
         base_price=Decimal("19.99"),

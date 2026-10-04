@@ -52,6 +52,7 @@ class AdminRole(enum.StrEnum):
     dispatcher = "dispatcher"
     accountant = "accountant"  # money: summary, orders, refunds
     viewer = "viewer"  # sees almost everything, changes nothing
+    seller = "seller"  # one seller's own products only (Spec 9)
 
 
 class Permission(enum.StrEnum):

@@ -8,7 +8,7 @@ from app.core import admin_session
 from app.core.admin_session import sign_session
 from app.models.admin import Admin
 from app.models.enums import AdminRole
-from tests.factories import TEST_BOT_TOKEN, make_init_data
+from tests.factories import TEST_BOT_TOKEN, add_seller, make_init_data
 
 SESSION_SECRET = "test-admin-session-secret"
 
@@ -20,9 +20,17 @@ async def add_admin(
     *,
     display_name: str = "Admin",
     is_active: bool = True,
+    seller_id: int | None = None,
 ) -> Admin:
+    # A seller account always works for a seller (Spec 9); give it its own when none is named.
+    if role == AdminRole.seller and seller_id is None:
+        seller_id = (await add_seller(db, f"Shop of {telegram_id}")).id
     admin = Admin(
-        telegram_id=telegram_id, role=role, display_name=display_name, is_active=is_active
+        telegram_id=telegram_id,
+        role=role,
+        display_name=display_name,
+        is_active=is_active,
+        seller_id=seller_id,
     )
     db.add(admin)
     await db.commit()

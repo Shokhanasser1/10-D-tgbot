@@ -1,6 +1,18 @@
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Boolean, DateTime, Enum, Integer, String, false, func, true
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    String,
+    false,
+    func,
+    true,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -11,6 +23,10 @@ class Admin(Base):
     """A person allowed into the admin panel. Deactivated, never deleted."""
 
     __tablename__ = "admins"
+    __table_args__ = (
+        # A seller account works for exactly one seller; staff accounts for none (Spec 9 §3).
+        CheckConstraint("(role = 'seller') = (seller_id IS NOT NULL)", name="seller_role"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     # No FK to telegram_users, as with couriers: admins are added before their first login.
@@ -19,6 +35,9 @@ class Admin(Base):
         Enum(AdminRole, native_enum=False, length=20), nullable=False
     )
     display_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    seller_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sellers.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default=true()
     )

@@ -14,6 +14,7 @@ from app.models.product import Product
 from app.models.shipment import Shipment
 from app.services import stripe_service
 from tests.courier_factories import add_courier, add_paid_order
+from tests.factories import default_seller_id
 
 
 def _make_event(event_type: str, order_id: int, payment_intent_id: str = "pi_test_wh") -> dict:
@@ -41,7 +42,10 @@ async def _make_pending_order(db_session: AsyncSession, telegram_id: int) -> Ord
     db_session.add(category)
     await db_session.flush()
     product = Product(
-        category_id=category.id, base_sku=f"WH-{telegram_id}", base_price=Decimal("10.00")
+        seller_id=await default_seller_id(db_session),
+        category_id=category.id,
+        base_sku=f"WH-{telegram_id}",
+        base_price=Decimal("10.00"),
     )
     db_session.add(product)
 

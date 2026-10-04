@@ -29,6 +29,7 @@ from tests.courier_factories import (
     add_paid_order,
     tma_headers,
 )
+from tests.factories import default_seller_id
 
 SessionFactory = Callable[[], AsyncSession]
 
@@ -286,6 +287,7 @@ async def test_two_customers_checking_out_the_last_unit_produce_exactly_one_orde
             session.add(category)
             await session.flush()
             product = Product(
+                seller_id=await default_seller_id(session),
                 category_id=category.id,
                 base_sku=f"RACE-{round_no}",
                 base_price=Decimal("1.00"),

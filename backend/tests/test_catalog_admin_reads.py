@@ -13,6 +13,7 @@ from app.models.translation import Translation
 from app.models.variant import Variant
 from tests.admin_factories import add_admin, admin_tma
 from tests.courier_factories import INTERNAL_HEADERS
+from tests.factories import default_seller_id
 
 
 async def _catalog(db: AsyncSession, prefix: str) -> dict[str, int]:
@@ -20,12 +21,14 @@ async def _catalog(db: AsyncSession, prefix: str) -> dict[str, int]:
     db.add(category)
     await db.flush()
     lipstick = Product(
+        seller_id=await default_seller_id(db),
         category_id=category.id,
         base_sku=f"{prefix}-LIP",
         base_price=Decimal("20.00"),
         status=ProductStatus.active,
     )
     draft = Product(
+        seller_id=await default_seller_id(db),
         category_id=category.id,
         base_sku=f"{prefix}-GLOSS",
         base_price=Decimal("9.00"),

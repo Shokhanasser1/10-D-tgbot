@@ -12,7 +12,7 @@ from app.models.product import Product
 from app.models.shipment import Shipment
 from app.models.telegram_user import TelegramUser
 from app.models.variant import Variant
-from tests.factories import make_init_data
+from tests.factories import default_seller_id, make_init_data
 
 INTERNAL_HEADERS = {"X-Internal-Token": "test-internal-token"}
 
@@ -58,6 +58,7 @@ async def add_paid_order(
     db.add(category)
     await db.flush()
     product = Product(
+        seller_id=await default_seller_id(db),
         category_id=category.id,
         base_sku=f"COURIER-P-{n}",
         base_price=Decimal("10.00"),
