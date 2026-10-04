@@ -57,6 +57,7 @@ async def _make_pending_order(db_session: AsyncSession, telegram_id: int) -> Ord
     await db_session.flush()
 
     order = Order(
+        seller_id=await default_seller_id(db_session),
         telegram_id=telegram_id,
         status=OrderStatus.pending_payment,
         currency="EUR",

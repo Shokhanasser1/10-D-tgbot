@@ -16,8 +16,9 @@ if TYPE_CHECKING:
 class Shipment(TimestampMixin, Base):
     """Delivery of one order by the business's own couriers.
 
-    Created `processing` (in the courier pool) when payment is confirmed; the dispatch service
-    moves it through assigned -> shipped -> delivered and keeps Order.status in step.
+    Created `processing` when payment is confirmed; it enters the courier pool once its seller
+    has it ready (`ready_at`, Spec 10). The dispatch service moves it through assigned ->
+    shipped -> delivered and keeps Order.status in step.
     """
 
     __tablename__ = "shipments"
@@ -39,6 +40,8 @@ class Shipment(TimestampMixin, Base):
         ForeignKey("couriers.id", ondelete="RESTRICT"), nullable=True
     )
     tracking_status: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Null while the seller prepares the order; couriers only see ready ones (Spec 10).
+    ready_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     assigned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     picked_up_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

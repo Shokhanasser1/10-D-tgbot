@@ -1,4 +1,5 @@
 import itertools
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -49,16 +50,22 @@ async def add_paid_order(
     city: str = "Berlin",
     street: str = "Alexanderplatz 1",
     notes: str | None = "Ring twice",
+    ready: bool = True,
+    seller_id: int | None = None,
 ) -> tuple[Order, Shipment]:
-    """A paid order sitting in the courier pool, with the rows checkout and the webhook create."""
+    """A paid order sitting in the courier pool, with the rows checkout and the webhook create.
+
+    `ready=False` leaves it waiting for its seller (Spec 10) instead of in the pool.
+    """
     n = next(_sequence)
+    seller_id = seller_id if seller_id is not None else await default_seller_id(db)
     await add_customer(db, customer_id)
 
     category = Category(slug=f"courier-cat-{n}", sort_order=0)
     db.add(category)
     await db.flush()
     product = Product(
-        seller_id=await default_seller_id(db),
+        seller_id=seller_id,
         category_id=category.id,
         base_sku=f"COURIER-P-{n}",
         base_price=Decimal("10.00"),
@@ -84,6 +91,7 @@ async def add_paid_order(
 
     order = Order(
         telegram_id=customer_id,
+        seller_id=seller_id,
         status=OrderStatus.paid,
         currency="EUR",
         subtotal=Decimal("10.00") * qty,
@@ -111,7 +119,11 @@ async def add_paid_order(
             ),
         ]
     )
-    shipment = Shipment(order_id=order.id, status=ShipmentStatus.processing)
+    shipment = Shipment(
+        order_id=order.id,
+        status=ShipmentStatus.processing,
+        ready_at=datetime.now(UTC) if ready else None,
+    )
     db.add(shipment)
     await db.commit()
     await db.refresh(order)

@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import get_settings
-from app.core.exceptions import BadRequestError
+from app.core.exceptions import BadRequestError, ConflictError
 from app.core.i18n import translations_for
 from app.core.money import from_minor_units
 from app.core.pricing import calculate_shipping_cost
@@ -54,6 +54,11 @@ async def create_order_from_cart(
 
     if not cart_items:
         raise BadRequestError("Cart is empty")
+    # One seller per cart (Spec 9), so one per order (Spec 10); checked again here because the
+    # order's seller decides who prepares it.
+    sellers = {item.variant.product.seller_id for item in cart_items}
+    if len(sellers) != 1:
+        raise ConflictError("The cart holds several sellers' products", code="cart_other_seller")
 
     product_ids = [item.variant.product_id for item in cart_items]
     names = await translations_for(db, "product", product_ids, ["name"], locale, fallback_locale)
@@ -65,6 +70,7 @@ async def create_order_from_cart(
 
     order = Order(
         telegram_id=telegram_id,
+        seller_id=sellers.pop(),
         status=OrderStatus.pending_payment,
         currency=currency,
         subtotal=subtotal,

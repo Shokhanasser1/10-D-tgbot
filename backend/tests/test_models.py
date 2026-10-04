@@ -84,6 +84,7 @@ async def test_full_entity_chain_round_trip(db_session: AsyncSession) -> None:
     db_session.add(cart_item)
 
     order = Order(
+        seller_id=await default_seller_id(db_session),
         telegram_id=telegram_user.telegram_id,
         status=OrderStatus.pending_payment,
         currency="EUR",

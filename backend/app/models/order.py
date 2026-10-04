@@ -43,6 +43,10 @@ class Order(Base):
     telegram_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("telegram_users.telegram_id", ondelete="RESTRICT"), nullable=False
     )
+    # Whose products these are (Spec 10): one seller per cart, so one per order.
+    seller_id: Mapped[int] = mapped_column(
+        ForeignKey("sellers.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
     status: Mapped[OrderStatus] = mapped_column(
         Enum(OrderStatus, native_enum=False, length=20),
         nullable=False,

@@ -85,6 +85,21 @@ async def _insert_order(conn: asyncpg.Connection, telegram_id: int, status: str)
         "INSERT INTO telegram_users (telegram_id, locale) VALUES ($1, 'en') ON CONFLICT DO NOTHING",
         telegram_id,
     )
+    has_seller = await conn.fetchval(
+        "SELECT 1 FROM information_schema.columns "
+        "WHERE table_name = 'orders' AND column_name = 'seller_id'"
+    )
+    if has_seller:  # Spec 10: from then on every order belongs to a seller
+        seller_id = await conn.fetchval("INSERT INTO sellers (name) VALUES ('Shop') RETURNING id")
+        return await conn.fetchval(
+            "INSERT INTO orders (telegram_id, status, currency, subtotal, shipping_cost, total, "
+            "delivery_address, seller_id) VALUES ($1, $2, 'EUR', 10, 4.99, 14.99, $3::jsonb, $4) "
+            "RETURNING id",
+            telegram_id,
+            status,
+            json.dumps({"city": "Berlin", "notes": None}),
+            seller_id,
+        )
     return await conn.fetchval(
         "INSERT INTO orders (telegram_id, status, currency, subtotal, shipping_cost, total, "
         "delivery_address) VALUES ($1, $2, 'EUR', 10, 4.99, 14.99, $3::jsonb) RETURNING id",
@@ -261,5 +276,64 @@ async def test_sellers_migration_creates_no_shop_for_an_empty_catalog(
     conn = await _connect_scratch()
     try:
         assert await conn.fetchval("SELECT count(*) FROM sellers") == 0
+    finally:
+        await conn.close()
+
+
+SELLERS_REVISION = "a9b8c7d6e5f4"  # the schema before orders knew their seller
+
+
+async def test_seller_orders_migration_fills_seller_and_readiness(scratch_database: str) -> None:
+    old = await asyncio.to_thread(_alembic, scratch_database, "upgrade", SELLERS_REVISION)
+    assert old.returncode == 0, old.stderr
+
+    conn = await _connect_scratch()
+    try:
+        seller_id = await conn.fetchval("INSERT INTO sellers (name) VALUES ('Lola') RETURNING id")
+        category_id = await conn.fetchval(
+            "INSERT INTO categories (slug, sort_order) VALUES ('so-cat', 0) RETURNING id"
+        )
+        product_id = await conn.fetchval(
+            "INSERT INTO products (category_id, seller_id, base_sku, base_price, status) "
+            "VALUES ($1, $2, 'SO-1', 10, 'active') RETURNING id",
+            category_id,
+            seller_id,
+        )
+        variant_id = await conn.fetchval(
+            "INSERT INTO variants (product_id, sku, price, stock_qty, attribute_values) "
+            "VALUES ($1, 'SO-1-V', 10, 5, '{}'::jsonb) RETURNING id",
+            product_id,
+        )
+        order_id = await _insert_order(conn, 1, "paid")
+        await conn.execute(
+            "INSERT INTO order_items (order_id, variant_id, product_name_snapshot, qty, "
+            "unit_price_snapshot) VALUES ($1, $2, 'Lipstick', 1, 10)",
+            order_id,
+            variant_id,
+        )
+        no_items = await _insert_order(conn, 2, "paid")
+        await conn.execute(
+            "INSERT INTO shipments (order_id, status) VALUES ($1, 'processing')", order_id
+        )
+    finally:
+        await conn.close()
+
+    up = await asyncio.to_thread(_alembic, scratch_database, "upgrade", "head")
+    assert up.returncode == 0, up.stderr
+
+    conn = await _connect_scratch()
+    try:
+        assert await conn.fetchval("SELECT seller_id FROM orders WHERE id = $1", order_id) == (
+            seller_id
+        )
+        main_shop = await conn.fetchval("SELECT seller_id FROM orders WHERE id = $1", no_items)
+        assert await conn.fetchval("SELECT name FROM sellers WHERE id = $1", main_shop) == (
+            "Main shop"
+        )
+        # Orders already in the pool stay there.
+        row = await conn.fetchrow(
+            "SELECT ready_at, created_at FROM shipments WHERE order_id = $1", order_id
+        )
+        assert row["ready_at"] == row["created_at"]
     finally:
         await conn.close()

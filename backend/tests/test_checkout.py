@@ -3,6 +3,7 @@ from decimal import Decimal
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.money import to_minor_units
@@ -12,7 +13,7 @@ from app.models.order import Order
 from app.models.product import Product
 from app.models.variant import Variant
 from app.services import stripe_service
-from tests.factories import default_seller_id, make_init_data
+from tests.factories import add_seller, default_seller_id, make_init_data
 
 VALID_ADDRESS = {
     "street": "Alexanderplatz 1",
@@ -246,3 +247,25 @@ async def test_a_rejected_request_reports_where_and_why_but_never_echoes_the_inp
     (error,) = response.json()["detail"]
     assert set(error) == {"type", "loc", "msg"}
     assert error["loc"][-1] == "latitude"
+
+
+async def test_checkout_records_the_cart_seller(
+    client: AsyncClient, db_session: AsyncSession, fake_stripe: list[FakePaymentIntent]
+) -> None:
+    """Spec 10: an order knows its seller, taken from the cart's products."""
+    shop = await add_seller(db_session, "Lola Beauty")
+    variant = await _make_variant(db_session, sku="SELLER-ORDER", price="10.00", stock=5)
+    await db_session.execute(
+        update(Product).where(Product.id == variant.product_id).values(seller_id=shop.id)
+    )
+    await db_session.commit()
+    headers = _auth_headers(7_101)
+    await client.post("/cart/items", json={"variant_id": variant.id, "qty": 1}, headers=headers)
+
+    response = await client.post(
+        "/checkout", json={"delivery_address": VALID_ADDRESS}, headers=headers
+    )
+
+    assert response.status_code == 200, response.text
+    order = await db_session.get(Order, response.json()["order_id"], populate_existing=True)
+    assert order is not None and order.seller_id == shop.id

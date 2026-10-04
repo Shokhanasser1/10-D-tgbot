@@ -47,6 +47,7 @@ async def _pending_order(
     }
     db.add_all(variants.values())
     order = Order(
+        seller_id=await default_seller_id(db),
         telegram_id=950_000 + n,
         status=OrderStatus.pending_payment,
         currency="EUR",

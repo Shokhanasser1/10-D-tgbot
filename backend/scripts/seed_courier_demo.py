@@ -12,10 +12,19 @@ import sys
 import uuid
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.db.session import async_session_factory
-from app.models import Courier, Order, OrderItem, Payment, Shipment, TelegramUser, Variant
+from app.models import (
+    Courier,
+    Order,
+    OrderItem,
+    Payment,
+    Product,
+    Shipment,
+    TelegramUser,
+    Variant,
+)
 from app.models.enums import OrderStatus, PaymentStatus, ShipmentStatus
 
 
@@ -52,8 +61,12 @@ async def seed(
         if pin is not None:
             address["latitude"], address["longitude"] = pin
 
+        seller_id = await db.scalar(
+            select(Product.seller_id).where(Product.id == variant.product_id)
+        )
         order = Order(
             telegram_id=customer_telegram_id,
+            seller_id=seller_id,
             status=OrderStatus.paid,
             currency="EUR",
             subtotal=variant.price,
@@ -81,7 +94,10 @@ async def seed(
                 ),
             ]
         )
-        shipment = Shipment(order_id=order.id, status=ShipmentStatus.processing)
+        # Ready at once: the demo plays the seller too (Spec 10).
+        shipment = Shipment(
+            order_id=order.id, status=ShipmentStatus.processing, ready_at=func.now()
+        )
         db.add(shipment)
         await db.commit()
         return courier.id, order.id, shipment.id

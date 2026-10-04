@@ -7,12 +7,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Courier, CourierLocation, Order, Shipment, TelegramUser
 from app.models.enums import ACTIVE_SHIPMENT_STATUSES, OrderStatus, ShipmentStatus
+from tests.factories import default_seller_id
 
 
 async def _order(db: AsyncSession, telegram_id: int) -> Order:
     db.add(TelegramUser(telegram_id=telegram_id, locale="en"))
     await db.flush()
     order = Order(
+        seller_id=await default_seller_id(db),
         telegram_id=telegram_id,
         status=OrderStatus.paid,
         currency="EUR",
