@@ -82,10 +82,24 @@ Owner-facing guide in Russian: `docs/DEPLOY_FREE_RU.md`.
 - **Production config gaps**: the panel has no `DEFAULT_CURRENCY`, `CASH_ON_DELIVERY_ENABLED` or
   `TELEGRAM_PAYMENT_PROVIDER_TOKEN`, so it runs the EUR defaults and checkout shows "Payments are not set up".
   Ask the owner before changing.
-- **Waiting to deploy (Specs 8 to 11)**: the owner asked to finish the marketplace stages first and
-  deploy them together. Spec 9 needs the backend redeployed too (its migration runs on container
-  start). Production has no products, so the migration creates no "Main shop": add a seller under
-  **Sellers** before creating products.
+- **Waiting to deploy (Specs 8 to 11), next session start here.** All code is on GitHub `main`
+  (`1c3e97e`); production still runs the pre-marketplace version (on 2026-10-04 `GET
+  /internal/seller/orders` answered 404 there). Order matters: **backend first**, the new frontend
+  breaks against the old API (courier cards read `pickup`, order rows read `seller_name`).
+  1. Backend: the local branch `deploy-backend` (`0d5116a`) is `git subtree split --prefix backend`
+     of `1c3e97e` (redo the split if `main` moved). Only the owner has the push URL (JustRunMy
+     panel → app 66718 → Git Push; it embeds credentials, never ask for it in chat): they run
+     `! git -C E:/Desktop/10-D-tgbot push "<URL>" deploy-backend:<branch the panel names>`.
+     On a non-fast-forward rejection, stop and ask before forcing.
+  2. Check: `https://ecosmetics-api.k.onjrnm.vip/health` → ok, and `/internal/seller/orders`
+     without credentials → **401** (new code; 404 = old). Migrations `a9b8c7d6e5f4`,
+     `b1c2d3e4f5a6`, `c2d3e4f5a6b7` run on container start; a crash loop shows in the panel's
+     Diagnostics (ask for a screenshot).
+  3. Frontend: `npm --prefix frontend run deploy:pages` (Claude may run it), then
+     `https://ecosmetics-shop.pages.dev/api/health` → ok.
+  4. Owner in Telegram: opening the bot lands in the admin panel; add a seller under **Sellers**
+     (production has no products, so no "Main shop" was created) before adding products.
+     Checkout still needs the payment config gap below closed.
 - Auto mode blocks Claude from writing secrets (`wrangler pages secret put`); the owner runs it with `!` in the prompt.
 
 ## 2. Stack
