@@ -5,7 +5,8 @@
   "nav": {
     "catalog": "Katalog",
     "cart": "Savat",
-    "orders": "Buyurtmalar"
+    "orders": "Buyurtmalar",
+    "shop": "Do'kon"
   },
   "common": {
     "loading": "Yuklanmoqda…",

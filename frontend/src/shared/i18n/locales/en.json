@@ -5,7 +5,8 @@
   "nav": {
     "catalog": "Catalog",
     "cart": "Cart",
-    "orders": "Orders"
+    "orders": "Orders",
+    "shop": "Shop"
   },
   "common": {
     "loading": "Loading…",
