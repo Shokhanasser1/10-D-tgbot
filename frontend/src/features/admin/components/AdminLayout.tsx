@@ -1,5 +1,6 @@
 import {
   ClipboardList,
+  Handshake,
   LayoutDashboard,
   LogOut,
   type LucideIcon,
@@ -27,6 +28,7 @@ const ICONS: Record<AdminSection, LucideIcon> = {
   catalog: Package,
   orders: ClipboardList,
   couriers: Truck,
+  sellers: Handshake,
   admins: Users,
   profile: UserCog,
 }
@@ -69,7 +71,8 @@ export function AdminLayout({ me, children }: AdminLayoutProps) {
         <header className={styles.header}>
           <div className={styles.who}>
             <span className={styles.name}>{me.display_name}</span>
-            <span className={styles.role}>{t(`admin.roles.${me.role}`)}</span>
+            {/* A seller sees whose panel this is (Spec 9); staff see their role. */}
+            <span className={styles.role}>{me.seller_name ?? t(`admin.roles.${me.role}`)}</span>
           </div>
           {/* Spec 8 §5: the way back to the shop; not in the nav, which is full on phones. */}
           <IconButton aria-label={t('nav.shop')} onClick={() => navigate('/')}>

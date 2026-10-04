@@ -14,6 +14,7 @@ export const adminKeys = {
   orders: ['admin', 'orders'] as const,
   order: (id: number) => ['admin', 'order', id] as const,
   couriers: ['admin', 'couriers'] as const,
+  sellers: ['admin', 'sellers'] as const,
   shipments: ['admin', 'shipments'] as const,
   locations: ['admin', 'locations'] as const,
   summary: ['admin', 'summary'] as const,
@@ -106,6 +107,26 @@ export function useCatalogMutation<TArgs, TResult>(fn: (args: TArgs) => Promise<
       Promise.all(
         [adminKeys.products, ['admin', 'product'], adminKeys.categories, adminKeys.attributes].map(
           (queryKey) => queryClient.invalidateQueries({ queryKey }),
+        ),
+      ),
+  })
+}
+
+// --- sellers ---------------------------------------------------------------------------------
+
+export function useAdminSellers(enabled = true) {
+  return useQuery({ queryKey: adminKeys.sellers, queryFn: api.fetchSellers, enabled })
+}
+
+/** A seller write also changes what the catalog shows (names, hidden products). */
+export function useSellerMutation<TArgs, TResult>(fn: (args: TArgs) => Promise<TResult>) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () =>
+      Promise.all(
+        [adminKeys.sellers, adminKeys.products, adminKeys.admins].map((queryKey) =>
+          queryClient.invalidateQueries({ queryKey }),
         ),
       ),
   })

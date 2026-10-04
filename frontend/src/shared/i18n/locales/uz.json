@@ -182,7 +182,8 @@
       "orders": "Buyurtmalar",
       "couriers": "Kuryerlar",
       "admins": "Adminlar",
-      "profile": "Profil"
+      "profile": "Profil",
+      "sellers": "Sotuvchilar"
     },
     "roles": {
       "owner": "Egasi",
@@ -190,7 +191,8 @@
       "dispatcher": "Dispetcher",
       "manager": "Boshqaruvchi",
       "accountant": "Buxgalter",
-      "viewer": "Kuzatuvchi"
+      "viewer": "Kuzatuvchi",
+      "seller": "Sotuvchi"
     },
     "common": {
       "save": "Saqlash",
@@ -233,7 +235,8 @@
       "notFound": "Topilmadi. Ehtimol, allaqachon o'chirilgan.",
       "conflict": "Kimdir buni siz bilan bir vaqtda o'zgartirdi. Sahifani yangilab, qayta urinib ko'ring.",
       "tooLarge": "Fayl juda katta (ko'pi bilan 10 MB).",
-      "invalid": "Ba'zi maydonlar noto'g'ri to'ldirilgan."
+      "invalid": "Ba'zi maydonlar noto'g'ri to'ldirilgan.",
+      "sellerRoleFixed": "Sotuvchi akkauntlari «Sotuvchilar» bo'limida boshqariladi"
     },
     "summary": {
       "period": "Davr",
@@ -317,7 +320,10 @@
         "number": "Son",
         "boolean": "Ha / yo'q",
         "color": "Rang"
-      }
+      },
+      "seller": "Sotuvchi",
+      "allSellers": "Barcha sotuvchilar",
+      "chooseSeller": "Sotuvchini tanlang"
     },
     "orders": {
       "search": "Buyurtma raqami yoki Telegram ID",
@@ -426,7 +432,8 @@
       "copy": "Nusxalash",
       "done": "Tayyor",
       "hasPassword": "parol bor",
-      "noPassword": "parolsiz"
+      "noPassword": "parolsiz",
+      "sellerOf": "Sotuvchi · {{name}}"
     },
     "roleHints": {
       "owner": "hammasi, adminlar va qaytarishlar ham",
@@ -463,6 +470,25 @@
       "mismatch": "Parollar mos kelmadi.",
       "saved": "Saqlandi. Boshqa seanslaringiz yakunlandi.",
       "save": "Saqlash"
+    },
+    "sellers": {
+      "add": "Sotuvchi qo'shish",
+      "name": "Do'kon nomi",
+      "nameHint": "Xaridorlar uni har bir mahsulotda ko'radi",
+      "phone": "Telefon",
+      "pickupAddress": "Olib ketish manzili",
+      "pickupAddressHint": "Kuryerlar bu sotuvchining buyurtmalarini qayerdan olib ketadi",
+      "personName": "Sotuvchining ismi",
+      "personNameHint": "Panelga kirib mahsulotlarni yurituvchi shaxs",
+      "empty": "Hozircha sotuvchilar yo'q",
+      "products_one": "{{count}} ta mahsulot",
+      "products_other": "{{count}} ta mahsulot",
+      "inactive": "O'chirilgan",
+      "noAddress": "Olib ketish manzili ko'rsatilmagan",
+      "edit": "Tahrirlash",
+      "cancel": "Bekor qilish",
+      "deactivateTitle": "«{{name}}» o'chirilsinmi?",
+      "deactivateMessage": "Uning mahsulotlari do'kondan yo'qoladi va akkaunti qayta yoqmaguningizcha ishlamaydi."
     }
   }
 }

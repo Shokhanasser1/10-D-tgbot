@@ -5,14 +5,14 @@ import { Link } from 'react-router-dom'
 import { DEFAULT_CURRENCY } from '../../../shared/constants'
 import { EmptyState } from '../../../shared/ui/EmptyState'
 import { PillButton } from '../../../shared/ui/PillButton'
-import { useCan } from '../meContext'
+import { useCan, useIsSellerAccount } from '../meContext'
 import { QueryError } from '../../../shared/ui/QueryError'
 import { Skeleton } from '../../../shared/ui/Skeleton'
 import { PRODUCTS_PAGE_SIZE } from '../api'
 import { ProductStatusBadge } from '../components/catalog/ProductStatusBadge'
 import { Badge, PageHeader } from '../components/ui'
 import { formatMoney } from '../format'
-import { useAdminCategories, useAdminProducts } from '../hooks'
+import { useAdminCategories, useAdminProducts, useAdminSellers } from '../hooks'
 import type { ProductStatus } from '../types'
 import { inputClass } from '../components/inputClass'
 import styles from './ProductsScreen.module.css'
@@ -24,15 +24,20 @@ export function ProductsScreen() {
   const [q, setQ] = useState('')
   const [status, setStatus] = useState<ProductStatus | ''>('')
   const [categoryId, setCategoryId] = useState('')
+  const [sellerId, setSellerId] = useState('')
   const [offset, setOffset] = useState(0)
   const deferredQ = useDeferredValue(q)
 
   const categories = useAdminCategories()
   const canEdit = useCan('catalog.edit')
+  // A seller's list is theirs alone (Spec 9): no seller filter and no seller names.
+  const isSeller = useIsSellerAccount()
+  const sellers = useAdminSellers(!isSeller)
   const query = useAdminProducts({
     q: deferredQ.trim() || undefined,
     status: status || undefined,
     category_id: categoryId ? Number(categoryId) : undefined,
+    seller_id: sellerId ? Number(sellerId) : undefined,
     offset,
   })
   const page = query.data
@@ -98,6 +103,21 @@ export function ProductsScreen() {
             </option>
           ))}
         </select>
+        {!isSeller && (
+          <select
+            className={inputClass}
+            aria-label={t('admin.catalog.seller')}
+            value={sellerId}
+            onChange={(event) => resetting(setSellerId)(event.target.value)}
+          >
+            <option value="">{t('admin.catalog.allSellers')}</option>
+            {sellers.data?.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
       {query.isError && !page && <QueryError onRetry={() => query.refetch()} />}
@@ -118,6 +138,7 @@ export function ProductsScreen() {
                   <span className={styles.name}>{product.name}</span>
                   <span className={styles.muted}>
                     {product.base_sku} · {categoryName.get(product.category_id) ?? '—'}
+                    {!isSeller && ` · ${product.seller_name}`}
                   </span>
                 </span>
                 <span className={styles.meta}>

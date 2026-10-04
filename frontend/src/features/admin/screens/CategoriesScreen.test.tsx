@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest'
 
 import { stubAdminBackend } from '../../../test/mocks/adminBackend'
 import { renderScreen } from '../../../test/test-utils'
+import { adminMe } from '../../../test/adminFixtures'
+import { AdminMeProvider } from '../meContext'
 import { CategoriesScreen } from './CategoriesScreen'
 
 describe('CategoriesScreen', () => {
@@ -76,5 +78,19 @@ describe('CategoriesScreen', () => {
         value: 'Сыворотки',
       }),
     )
+  })
+})
+
+describe('CategoriesScreen: a seller (Spec 9)', () => {
+  it('is read-only without taxonomy.edit, even with catalog.edit', async () => {
+    stubAdminBackend('seller')
+    renderScreen(
+      <AdminMeProvider value={adminMe('seller')}>
+        <CategoriesScreen />
+      </AdminMeProvider>,
+    )
+
+    expect(await screen.findByText('View only: your role cannot change this.')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Add category' })[0]).toBeDisabled()
   })
 })

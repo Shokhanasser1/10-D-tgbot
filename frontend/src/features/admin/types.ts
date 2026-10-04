@@ -2,7 +2,7 @@ import type { OrderStatus } from '../orders/types'
 import type { DeliveryAddress } from '../../shared/types'
 
 export type AdminRole =
-  'owner' | 'manager' | 'catalog_manager' | 'dispatcher' | 'accountant' | 'viewer'
+  'owner' | 'manager' | 'catalog_manager' | 'dispatcher' | 'accountant' | 'viewer' | 'seller'
 
 export type Permission =
   | 'summary.view'
@@ -15,6 +15,8 @@ export type Permission =
   | 'couriers.view'
   | 'couriers.manage'
   | 'admins.manage'
+  | 'taxonomy.edit'
+  | 'sellers.manage'
 
 export interface AdminMe {
   /** Null only for the internal token, which the UI never uses. */
@@ -27,6 +29,9 @@ export interface AdminMe {
   has_password: boolean
   /** After an owner's reset: nothing but the profile until a new password is set. */
   must_change_password: boolean
+  /** Set for a seller's account (Spec 9): its panel holds only that seller's products. */
+  seller_id: number | null
+  seller_name: string | null
 }
 
 export interface PasswordReset {
@@ -56,6 +61,40 @@ export interface Admin {
   created_by: number | null
   login?: string | null
   has_password?: boolean
+  /** Seller accounts only; they are managed under Sellers. */
+  seller_id?: number | null
+}
+
+// --- sellers (Spec 9) ------------------------------------------------------------------------
+
+export interface SellerAccount {
+  id: number
+  telegram_id: number
+  display_name: string
+  is_active: boolean
+}
+
+export interface AdminSeller {
+  id: number
+  name: string
+  phone: string | null
+  pickup_address: string | null
+  is_active: boolean
+  /** Empty unless the admin may manage sellers. */
+  accounts: SellerAccount[]
+  product_count: number
+}
+
+export interface SellerInput {
+  name: string
+  phone: string | null
+  pickup_address: string
+  telegram_id: number
+  display_name: string
+}
+
+export type SellerUpdate = Partial<Pick<AdminSeller, 'name' | 'phone' | 'is_active'>> & {
+  pickup_address?: string
 }
 
 // --- catalog ---------------------------------------------------------------------------------
@@ -86,6 +125,8 @@ export interface AdminAttribute {
 export interface AdminProductListItem {
   id: number
   category_id: number
+  seller_id: number
+  seller_name: string
   base_sku: string
   base_price: string
   status: ProductStatus
@@ -121,6 +162,8 @@ export interface AdminImage {
 export interface AdminProduct {
   id: number
   category_id: number
+  seller_id: number
+  seller_name: string
   base_sku: string
   base_price: string
   status: ProductStatus
@@ -132,6 +175,8 @@ export interface AdminProduct {
 
 export interface ProductInput {
   category_id: number
+  /** Platform staff choose it; a seller's products are always their own (Spec 9). */
+  seller_id?: number
   base_sku: string
   base_price: string
   status: ProductStatus

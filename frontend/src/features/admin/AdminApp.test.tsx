@@ -45,6 +45,7 @@ describe('AdminApp', () => {
       'Catalog',
       'Orders',
       'Couriers',
+      'Sellers',
       'Admins',
       'Profile',
     ])
@@ -142,5 +143,23 @@ describe('AdminApp: switching to other screens', () => {
     await user.click(await screen.findByRole('button', { name: 'Courier' }))
 
     expect(await screen.findByText('courier page')).toBeInTheDocument()
+  })
+})
+
+describe('AdminApp: a seller (Spec 9)', () => {
+  it('gives a seller only the catalog and names the shop in the header', async () => {
+    stubAdminBackend('seller')
+    renderAdmin()
+
+    expect(await navLinks()).toEqual(['Catalog', 'Profile'])
+    expect(await screen.findByRole('heading', { name: 'Catalog' })).toBeInTheDocument()
+    expect(screen.getByText('Lola Beauty')).toBeInTheDocument()
+  })
+
+  it('opens the sellers section for an owner', async () => {
+    stubAdminBackend('owner')
+    renderAdmin('/admin/sellers')
+
+    expect(await screen.findByRole('heading', { name: 'Sellers' })).toBeInTheDocument()
   })
 })

@@ -2,7 +2,7 @@ import { type FormEvent, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { PillButton } from '../../../../shared/ui/PillButton'
-import type { AdminCategory, ProductInput, ProductStatus } from '../../types'
+import type { AdminCategory, AdminSeller, ProductInput, ProductStatus } from '../../types'
 import { ErrorNote, Field } from '../ui'
 import { inputClass } from '../inputClass'
 import styles from './catalog.module.css'
@@ -13,6 +13,8 @@ const STATUSES: ProductStatus[] = ['draft', 'active', 'archived']
 interface ProductBasicsFormProps {
   initial?: ProductInput
   categories: AdminCategory[]
+  /** Platform staff choose whose product it is; a seller's form leaves it out (Spec 9). */
+  sellers?: Pick<AdminSeller, 'id' | 'name'>[]
   submitLabel: string
   busy: boolean
   error: string | null
@@ -22,6 +24,7 @@ interface ProductBasicsFormProps {
 export function ProductBasicsForm({
   initial,
   categories,
+  sellers,
   submitLabel,
   busy,
   error,
@@ -30,6 +33,7 @@ export function ProductBasicsForm({
   const { t } = useTranslation()
   const [form, setForm] = useState({
     category_id: initial ? String(initial.category_id) : '',
+    seller_id: initial?.seller_id ? String(initial.seller_id) : '',
     base_sku: initial?.base_sku ?? '',
     base_price: initial?.base_price ?? '',
     status: initial?.status ?? ('draft' as ProductStatus),
@@ -49,6 +53,8 @@ export function ProductBasicsForm({
     setInvalid(null)
     onSubmit({
       category_id: Number(form.category_id),
+      // A seller's account may not send it at all: the API refuses a seller changing it.
+      ...(sellers ? { seller_id: Number(form.seller_id) } : {}),
       base_sku: form.base_sku.trim(),
       base_price: form.base_price.trim(),
       status: form.status,
@@ -78,6 +84,28 @@ export function ProductBasicsForm({
             </select>
           )}
         </Field>
+        {sellers && (
+          <Field label={t('admin.catalog.seller')}>
+            {(id) => (
+              <select
+                id={id}
+                required
+                className={inputClass}
+                value={form.seller_id}
+                onChange={(event) => set('seller_id', event.target.value)}
+              >
+                <option value="" disabled>
+                  {t('admin.catalog.chooseSeller')}
+                </option>
+                {sellers.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </Field>
+        )}
         <Field label={t('admin.catalog.status')}>
           {(id) => (
             <select

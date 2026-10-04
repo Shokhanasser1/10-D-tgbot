@@ -16,8 +16,10 @@ import {
   useAdminAttributes,
   useAdminCategories,
   useAdminProduct,
+  useAdminSellers,
   useCatalogMutation,
 } from '../hooks'
+import { useIsSellerAccount } from '../meContext'
 import type { ProductInput } from '../types'
 import layout from './ProductEditorScreen.module.css'
 import { EditGate } from '../components/EditGate'
@@ -31,10 +33,18 @@ function BackLink() {
   )
 }
 
+/** The seller list for platform staff; undefined for a seller, whose products are their own. */
+function useSellerChoices() {
+  const isSeller = useIsSellerAccount()
+  const sellers = useAdminSellers(!isSeller)
+  return { ready: isSeller || !!sellers.data, choices: isSeller ? undefined : sellers.data }
+}
+
 function NewProduct() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const categories = useAdminCategories()
+  const sellers = useSellerChoices()
   const create = useCatalogMutation(createProduct)
 
   return (
@@ -42,9 +52,10 @@ function NewProduct() {
       <BackLink />
       <PageHeader title={t('admin.catalog.newProduct')} />
       <Card>
-        {categories.data ? (
+        {categories.data && sellers.ready ? (
           <ProductBasicsForm
             categories={categories.data}
+            sellers={sellers.choices}
             submitLabel={t('admin.catalog.createAndContinue')}
             busy={create.isPending}
             error={create.error ? t(adminErrorKey(create.error)) : null}
@@ -71,11 +82,12 @@ function ExistingProduct({ productId }: { productId: number }) {
   const productQuery = useAdminProduct(productId)
   const categories = useAdminCategories()
   const attributes = useAdminAttributes()
+  const sellers = useSellerChoices()
   const update = useCatalogMutation((input: ProductInput) => updateProduct(productId, input))
 
   const product = productQuery.data
   if (productQuery.isError && !product) return <QueryError onRetry={() => productQuery.refetch()} />
-  if (!product || !categories.data || !attributes.data) {
+  if (!product || !categories.data || !attributes.data || !sellers.ready) {
     return (
       <div className={layout.screen}>
         <Skeleton height={320} />
@@ -95,6 +107,7 @@ function ExistingProduct({ productId }: { productId: number }) {
         <ProductBasicsForm
           initial={product}
           categories={categories.data}
+          sellers={sellers.choices}
           submitLabel={t('admin.common.save')}
           busy={update.isPending}
           error={update.error ? t(adminErrorKey(update.error)) : null}

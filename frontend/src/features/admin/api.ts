@@ -12,6 +12,7 @@ import type {
   AdminProduct,
   AdminProductListItem,
   AdminRole,
+  AdminSeller,
   AdminShipment,
   AdminVariant,
   AttributeValueType,
@@ -21,6 +22,8 @@ import type {
   PasswordReset,
   ProductInput,
   ProductStatus,
+  SellerInput,
+  SellerUpdate,
   StatsPeriod,
   Summary,
   TelegramLoginData,
@@ -65,6 +68,14 @@ export const updateAdmin = (
   body: Partial<Pick<Admin, 'role' | 'display_name' | 'is_active'>>,
 ) => admin<Admin>(`/admins/${id}`, { method: 'PATCH', body })
 
+// --- sellers ---------------------------------------------------------------------------------
+
+export const fetchSellers = () => admin<AdminSeller[]>('/sellers')
+export const createSeller = (body: SellerInput) =>
+  admin<AdminSeller>('/sellers', { method: 'POST', body })
+export const updateSeller = (id: number, body: SellerUpdate) =>
+  admin<AdminSeller>(`/sellers/${id}`, { method: 'PATCH', body })
+
 // --- catalog ---------------------------------------------------------------------------------
 
 export const fetchCategories = (locale: string) =>
@@ -88,6 +99,7 @@ export const updateAttribute = (
 export interface ProductFilters {
   status?: ProductStatus
   category_id?: number
+  seller_id?: number
   q?: string
   offset?: number
 }

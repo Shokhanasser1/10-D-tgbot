@@ -182,7 +182,8 @@
       "orders": "Orders",
       "couriers": "Couriers",
       "admins": "Admins",
-      "profile": "Profile"
+      "profile": "Profile",
+      "sellers": "Sellers"
     },
     "roles": {
       "owner": "Owner",
@@ -190,7 +191,8 @@
       "dispatcher": "Dispatcher",
       "manager": "Manager",
       "accountant": "Accountant",
-      "viewer": "Viewer"
+      "viewer": "Viewer",
+      "seller": "Seller"
     },
     "common": {
       "save": "Save",
@@ -233,7 +235,8 @@
       "notFound": "Not found. It may have been removed.",
       "conflict": "Someone changed this at the same time. Reload and try again.",
       "tooLarge": "The file is too large (10 MB maximum).",
-      "invalid": "Some fields are not filled in correctly."
+      "invalid": "Some fields are not filled in correctly.",
+      "sellerRoleFixed": "Seller accounts are managed under Sellers"
     },
     "summary": {
       "period": "Period",
@@ -317,7 +320,10 @@
         "number": "Number",
         "boolean": "Yes / no",
         "color": "Colour"
-      }
+      },
+      "seller": "Seller",
+      "allSellers": "All sellers",
+      "chooseSeller": "Choose a seller"
     },
     "orders": {
       "search": "Order number or Telegram ID",
@@ -426,7 +432,8 @@
       "copy": "Copy",
       "done": "Done",
       "hasPassword": "has a password",
-      "noPassword": "no password"
+      "noPassword": "no password",
+      "sellerOf": "Seller · {{name}}"
     },
     "roleHints": {
       "owner": "everything, including admins and refunds",
@@ -463,6 +470,25 @@
       "mismatch": "The passwords do not match.",
       "saved": "Saved. Other sessions of yours have been signed out.",
       "save": "Save"
+    },
+    "sellers": {
+      "add": "Add seller",
+      "name": "Shop name",
+      "nameHint": "Customers see it on every product",
+      "phone": "Phone",
+      "pickupAddress": "Pickup address",
+      "pickupAddressHint": "Where couriers collect this seller's orders",
+      "personName": "Seller's name",
+      "personNameHint": "The person who signs in to manage the products",
+      "empty": "No sellers yet",
+      "products_one": "{{count}} product",
+      "products_other": "{{count}} products",
+      "inactive": "Deactivated",
+      "noAddress": "No pickup address",
+      "edit": "Edit",
+      "cancel": "Cancel",
+      "deactivateTitle": "Deactivate {{name}}?",
+      "deactivateMessage": "Their products leave the shop and their account stops working until you turn them back on."
     }
   }
 }

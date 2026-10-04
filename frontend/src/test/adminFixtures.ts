@@ -9,6 +9,7 @@ import type {
   AdminProduct,
   AdminProductListItem,
   AdminRole,
+  AdminSeller,
   AdminShipment,
   Permission,
   CourierLocation,
@@ -28,6 +29,8 @@ export const PERMISSIONS_BY_ROLE: Record<AdminRole, Permission[]> = {
     'couriers.view',
     'couriers.manage',
     'admins.manage',
+    'taxonomy.edit',
+    'sellers.manage',
   ],
   manager: [
     'summary.view',
@@ -38,11 +41,14 @@ export const PERMISSIONS_BY_ROLE: Record<AdminRole, Permission[]> = {
     'orders.cancel_paid',
     'couriers.view',
     'couriers.manage',
+    'taxonomy.edit',
+    'sellers.manage',
   ],
-  catalog_manager: ['catalog.view', 'catalog.edit'],
+  catalog_manager: ['catalog.view', 'catalog.edit', 'taxonomy.edit'],
   dispatcher: ['orders.view', 'orders.cancel_unpaid', 'couriers.view', 'couriers.manage'],
   accountant: ['summary.view', 'orders.view', 'orders.cancel_paid', 'refunds.manage'],
   viewer: ['summary.view', 'catalog.view', 'orders.view', 'couriers.view'],
+  seller: ['catalog.view', 'catalog.edit'],
 }
 
 export function adminMe(role: AdminRole = 'owner', overrides: Partial<AdminMe> = {}): AdminMe {
@@ -54,6 +60,8 @@ export function adminMe(role: AdminRole = 'owner', overrides: Partial<AdminMe> =
     login: 'dilnoza',
     has_password: true,
     must_change_password: false,
+    seller_id: role === 'seller' ? 7 : null,
+    seller_name: role === 'seller' ? 'Lola Beauty' : null,
     ...overrides,
   }
 }
@@ -91,6 +99,8 @@ export const adminProductList: AdminProductListItem[] = [
   {
     id: 1,
     category_id: 1,
+    seller_id: 7,
+    seller_name: 'Lola Beauty',
     base_sku: 'LIP-VELVET',
     base_price: '19.99',
     status: 'active',
@@ -103,6 +113,8 @@ export const adminProductList: AdminProductListItem[] = [
   {
     id: 2,
     category_id: 2,
+    seller_id: 8,
+    seller_name: 'Anor',
     base_sku: 'SERUM-VITC',
     base_price: '24.50',
     status: 'draft',
@@ -117,6 +129,8 @@ export const adminProductList: AdminProductListItem[] = [
 export const adminProduct: AdminProduct = {
   id: 1,
   category_id: 1,
+  seller_id: 7,
+  seller_name: 'Lola Beauty',
   base_sku: 'LIP-VELVET',
   base_price: '19.99',
   status: 'active',
@@ -307,5 +321,26 @@ export const admins: Admin[] = [
     is_active: true,
     created_at: '2026-09-02T00:00:00Z',
     created_by: 500,
+  },
+]
+
+export const adminSellers: AdminSeller[] = [
+  {
+    id: 7,
+    name: 'Lola Beauty',
+    phone: '+998901112233',
+    pickup_address: 'Tashkent, Chilonzor 5',
+    is_active: true,
+    accounts: [{ id: 3, telegram_id: 502, display_name: 'Lola', is_active: true }],
+    product_count: 1,
+  },
+  {
+    id: 8,
+    name: 'Anor',
+    phone: null,
+    pickup_address: 'Yunusobod 1',
+    is_active: false,
+    accounts: [],
+    product_count: 0,
   },
 ]

@@ -1,6 +1,7 @@
 import type { AdminMe, Permission } from './types'
 
-export type AdminSection = 'summary' | 'catalog' | 'orders' | 'couriers' | 'admins' | 'profile'
+export type AdminSection =
+  'summary' | 'catalog' | 'orders' | 'couriers' | 'sellers' | 'admins' | 'profile'
 
 /** The permission that opens each section. Every admin has a profile. */
 const SECTION_PERMISSION: Record<Exclude<AdminSection, 'profile'>, Permission> = {
@@ -8,10 +9,18 @@ const SECTION_PERMISSION: Record<Exclude<AdminSection, 'profile'>, Permission> =
   catalog: 'catalog.view',
   orders: 'orders.view',
   couriers: 'couriers.view',
+  sellers: 'sellers.manage',
   admins: 'admins.manage',
 }
 
-const ORDER: readonly AdminSection[] = ['summary', 'catalog', 'orders', 'couriers', 'admins']
+const ORDER: readonly AdminSection[] = [
+  'summary',
+  'catalog',
+  'orders',
+  'couriers',
+  'sellers',
+  'admins',
+]
 
 /** Only decides what to show; the API enforces the same permissions on every call. */
 export function can(me: Pick<AdminMe, 'permissions'>, permission: Permission): boolean {

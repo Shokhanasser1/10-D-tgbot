@@ -19,6 +19,7 @@ import { OrderDetailScreen } from './screens/OrderDetailScreen'
 import { OrdersScreen } from './screens/OrdersScreen'
 import { ProductEditorScreen } from './screens/ProductEditorScreen'
 import { ProductsScreen } from './screens/ProductsScreen'
+import { SellersScreen } from './screens/SellersScreen'
 import { SummaryScreen } from './screens/SummaryScreen'
 
 /**
@@ -97,6 +98,7 @@ export function AdminApp() {
             </>
           )}
           {canOpen(me, 'couriers') && <Route path="couriers" element={<CouriersScreen />} />}
+          {canOpen(me, 'sellers') && <Route path="sellers" element={<SellersScreen />} />}
           {canOpen(me, 'admins') && (
             <Route path="admins" element={<AdminsScreen currentTelegramId={me.telegram_id} />} />
           )}

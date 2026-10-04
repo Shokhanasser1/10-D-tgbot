@@ -3,11 +3,12 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 
-import { adminProductList } from '../../../test/adminFixtures'
+import { adminMe, adminProductList } from '../../../test/adminFixtures'
 import { stubAdminBackend } from '../../../test/mocks/adminBackend'
 import { API } from '../../../test/mocks/handlers'
 import { server } from '../../../test/mocks/server'
 import { renderScreen } from '../../../test/test-utils'
+import { AdminMeProvider } from '../meContext'
 import { ProductsScreen } from './ProductsScreen'
 
 describe('ProductsScreen', () => {
@@ -73,5 +74,31 @@ describe('ProductsScreen', () => {
     renderScreen(<ProductsScreen />)
 
     expect(await screen.findByText('No products match.')).toBeInTheDocument()
+  })
+})
+
+describe('ProductsScreen: sellers (Spec 9)', () => {
+  it("shows staff each product's seller and filters by seller", async () => {
+    const backend = stubAdminBackend()
+    renderScreen(<ProductsScreen />)
+
+    const lipstick = await screen.findByRole('link', { name: /Velvet Matte Lipstick/ })
+    expect(lipstick).toHaveTextContent('Lola Beauty')
+    await userEvent.selectOptions(await screen.findByRole('combobox', { name: 'Seller' }), '8')
+
+    await waitFor(() => expect(backend.requests.at(-1)!.search.get('seller_id')).toBe('8'))
+  })
+
+  it('shows a seller neither the seller filter nor seller names', async () => {
+    stubAdminBackend('seller')
+    renderScreen(
+      <AdminMeProvider value={adminMe('seller')}>
+        <ProductsScreen />
+      </AdminMeProvider>,
+    )
+
+    const lipstick = await screen.findByRole('link', { name: /Velvet Matte Lipstick/ })
+    expect(lipstick).not.toHaveTextContent('Lola Beauty')
+    expect(screen.queryByRole('combobox', { name: 'Seller' })).not.toBeInTheDocument()
   })
 })

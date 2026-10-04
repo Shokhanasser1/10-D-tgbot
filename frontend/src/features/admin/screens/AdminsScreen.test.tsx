@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 
+import { admins } from '../../../test/adminFixtures'
 import { stubAdminBackend } from '../../../test/mocks/adminBackend'
 import { API } from '../../../test/mocks/handlers'
 import { server } from '../../../test/mocks/server'
@@ -75,5 +76,42 @@ describe('AdminsScreen', () => {
     )
 
     expect(await screen.findByRole('alert')).toHaveTextContent('at least one active owner')
+  })
+})
+
+describe('AdminsScreen: seller accounts (Spec 9)', () => {
+  it('names the seller instead of offering a role select', async () => {
+    stubAdminBackend()
+    server.use(
+      http.get(`${API}/internal/admins`, () =>
+        HttpResponse.json([
+          ...admins,
+          {
+            id: 3,
+            telegram_id: 502,
+            role: 'seller',
+            display_name: 'Lola',
+            is_active: true,
+            created_at: '2026-10-04T00:00:00Z',
+            created_by: 500,
+            seller_id: 7,
+          },
+        ]),
+      ),
+    )
+    renderAdmins()
+
+    const lola = (await screen.findByText('Lola')).closest('li')!
+    expect(await within(lola).findByText('Seller · Lola Beauty')).toBeInTheDocument()
+    expect(within(lola).queryByRole('combobox')).not.toBeInTheDocument()
+    expect(within(lola).getByRole('button', { name: 'Deactivate' })).toBeInTheDocument()
+  })
+
+  it('does not offer the seller role for a new admin', async () => {
+    stubAdminBackend()
+    renderAdmins()
+
+    const select = await screen.findByLabelText('Role')
+    expect(within(select).queryByRole('option', { name: 'Seller' })).not.toBeInTheDocument()
   })
 })

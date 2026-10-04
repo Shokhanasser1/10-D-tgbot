@@ -11,6 +11,7 @@ import {
   adminProduct,
   adminProductList,
   admins,
+  adminSellers,
   adminShipments,
   courierLocations,
   summary,
@@ -85,6 +86,7 @@ export function stubAdminBackend(role: AdminRole | 401 | 403 = 'owner') {
     http.get(`${I}/couriers/locations`, () => HttpResponse.json(courierLocations)),
     http.get(`${I}/shipments`, () => HttpResponse.json(adminShipments)),
     http.get(`${I}/admins`, () => HttpResponse.json(admins)),
+    http.get(`${I}/sellers`, () => HttpResponse.json(adminSellers)),
 
     http.post(`${I}/products`, async ({ request }) => {
       const body = (await record(request)) as object

@@ -10,13 +10,23 @@ describe('permissions', () => {
       'catalog',
       'orders',
       'couriers',
+      'sellers',
       'admins',
     ])
-    expect(sectionsFor(adminMe('manager'))).toEqual(['summary', 'catalog', 'orders', 'couriers'])
+    expect(sectionsFor(adminMe('manager'))).toEqual([
+      'summary',
+      'catalog',
+      'orders',
+      'couriers',
+      'sellers',
+    ])
     expect(sectionsFor(adminMe('catalog_manager'))).toEqual(['catalog'])
     expect(sectionsFor(adminMe('dispatcher'))).toEqual(['orders', 'couriers'])
     expect(sectionsFor(adminMe('accountant'))).toEqual(['summary', 'orders'])
     expect(sectionsFor(adminMe('viewer'))).toEqual(['summary', 'catalog', 'orders', 'couriers'])
+    // Spec 9: a seller works in the catalog only, and lands there.
+    expect(sectionsFor(adminMe('seller'))).toEqual(['catalog'])
+    expect(homeFor(adminMe('seller'))).toBe('catalog')
   })
 
   it('keeps admin management for owners and lets everyone open their profile', () => {

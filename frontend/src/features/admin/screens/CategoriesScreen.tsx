@@ -194,7 +194,7 @@ export function CategoriesScreen() {
         ← {t('admin.catalog.backToProducts')}
       </Link>
       <PageHeader title={t('admin.catalog.categoriesAndAttributes')} />
-      <EditGate permission="catalog.edit">
+      <EditGate permission="taxonomy.edit">
         <Card className={styles.section}>
           <h2 className={styles.sectionTitle}>{t('admin.catalog.categories')}</h2>
           {categories.data.map((category) => (

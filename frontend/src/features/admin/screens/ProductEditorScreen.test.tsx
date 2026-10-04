@@ -7,6 +7,8 @@ import { stubAdminBackend } from '../../../test/mocks/adminBackend'
 import { API } from '../../../test/mocks/handlers'
 import { server } from '../../../test/mocks/server'
 import { renderScreen } from '../../../test/test-utils'
+import { adminMe } from '../../../test/adminFixtures'
+import { AdminMeProvider } from '../meContext'
 import { ProductEditorScreen } from './ProductEditorScreen'
 
 function renderEditor() {
@@ -23,6 +25,7 @@ describe('ProductEditorScreen: new product', () => {
     })
 
     await userEvent.selectOptions(await screen.findByLabelText('Category'), '2')
+    await userEvent.selectOptions(await screen.findByLabelText('Seller'), '7')
     await userEvent.type(screen.getByLabelText('SKU'), ' SERUM-NEW ')
     await userEvent.type(screen.getByLabelText('Base price'), '12.5')
     await userEvent.click(screen.getByRole('button', { name: 'Create and continue' }))
@@ -31,7 +34,13 @@ describe('ProductEditorScreen: new product', () => {
     expect(backend.writes()[0]).toMatchObject({
       method: 'POST',
       path: '/products',
-      body: { category_id: 2, base_sku: 'SERUM-NEW', base_price: '12.5', status: 'draft' },
+      body: {
+        category_id: 2,
+        seller_id: 7,
+        base_sku: 'SERUM-NEW',
+        base_price: '12.5',
+        status: 'draft',
+      },
     })
   })
 
@@ -40,6 +49,7 @@ describe('ProductEditorScreen: new product', () => {
     renderScreen(<ProductEditorScreen productId={null} />)
 
     await userEvent.selectOptions(await screen.findByLabelText('Category'), '1')
+    await userEvent.selectOptions(await screen.findByLabelText('Seller'), '7')
     await userEvent.type(screen.getByLabelText('SKU'), 'X')
     await userEvent.type(screen.getByLabelText('Base price'), '12,50')
     await userEvent.click(screen.getByRole('button', { name: 'Create and continue' }))
@@ -58,6 +68,7 @@ describe('ProductEditorScreen: new product', () => {
     renderScreen(<ProductEditorScreen productId={null} />)
 
     await userEvent.selectOptions(await screen.findByLabelText('Category'), '1')
+    await userEvent.selectOptions(await screen.findByLabelText('Seller'), '7')
     await userEvent.type(screen.getByLabelText('SKU'), 'LIP-VELVET')
     await userEvent.type(screen.getByLabelText('Base price'), '1')
     await userEvent.click(screen.getByRole('button', { name: 'Create and continue' }))
@@ -205,5 +216,30 @@ describe('ProductEditorScreen: existing product', () => {
     await waitFor(() =>
       expect(backend.writes()[0]).toMatchObject({ method: 'DELETE', path: '/images/30' }),
     )
+  })
+})
+
+describe('ProductEditorScreen: a seller (Spec 9)', () => {
+  it("creates the product for the seller's own shop without asking whose it is", async () => {
+    const backend = stubAdminBackend('seller')
+    renderScreen(
+      <AdminMeProvider value={adminMe('seller')}>
+        <ProductEditorScreen productId={null} />
+      </AdminMeProvider>,
+      {
+        route: '/admin/catalog/new',
+        path: '/admin/catalog/new',
+        extraRoutes: [{ path: '/admin/catalog/products/:id', element: <p>editor opened</p> }],
+      },
+    )
+
+    await userEvent.selectOptions(await screen.findByLabelText('Category'), '2')
+    expect(screen.queryByLabelText('Seller')).not.toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText('SKU'), 'LOLA-NEW')
+    await userEvent.type(screen.getByLabelText('Base price'), '9')
+    await userEvent.click(screen.getByRole('button', { name: 'Create and continue' }))
+
+    expect(await screen.findByText('editor opened')).toBeInTheDocument()
+    expect(backend.writes()[0].body).not.toHaveProperty('seller_id')
   })
 })

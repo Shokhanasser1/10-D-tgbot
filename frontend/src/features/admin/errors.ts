@@ -11,6 +11,7 @@ const KEY_BY_CODE: Record<string, string> = {
   wrong_password: 'admin.password.wrongCurrent',
   login_taken: 'admin.password.loginTaken',
   self_reset: 'admin.password.selfReset',
+  seller_role_fixed: 'admin.errors.sellerRoleFixed',
 }
 
 function codeOf(detail: unknown): string | undefined {

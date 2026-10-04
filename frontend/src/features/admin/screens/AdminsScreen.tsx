@@ -8,7 +8,7 @@ import { Skeleton } from '../../../shared/ui/Skeleton'
 import { createAdmin, resetAdminPassword, updateAdmin } from '../api'
 import { Badge, ConfirmDialog, ErrorNote, Field, PageHeader } from '../components/ui'
 import { adminErrorKey } from '../errors'
-import { useAdmins, useAdminsMutation } from '../hooks'
+import { useAdminSellers, useAdmins, useAdminsMutation } from '../hooks'
 import type { Admin, AdminRole, PasswordReset } from '../types'
 import { inputClass } from '../components/inputClass'
 import styles from './CouriersScreen.module.css'
@@ -126,6 +126,9 @@ function AddAdminForm() {
 export function AdminsScreen({ currentTelegramId }: { currentTelegramId: number | null }) {
   const { t } = useTranslation()
   const query = useAdmins()
+  const hasSellerAccounts = !!query.data?.some((admin) => admin.role === 'seller')
+  const sellers = useAdminSellers(hasSellerAccounts)
+  const sellerName = new Map(sellers.data?.map((s) => [s.id, s.name]))
   const [toDeactivate, setToDeactivate] = useState<Admin | null>(null)
   const change = useAdminsMutation(
     ({ id, ...body }: { id: number } & Partial<Pick<Admin, 'role' | 'is_active'>>) =>
@@ -189,12 +192,21 @@ export function AdminsScreen({ currentTelegramId }: { currentTelegramId: number 
               </span>
               {!admin.is_active && <Badge tone="warning">{t('admin.admins.inactive')}</Badge>}
               <div>
-                <RoleSelect
-                  label={t('admin.admins.roleOf', { name: admin.display_name })}
-                  value={admin.role}
-                  disabled={change.isPending}
-                  onChange={(role) => change.mutate({ id: admin.id, role })}
-                />
+                {/* Seller accounts belong to their seller and are managed under Sellers. */}
+                {admin.role === 'seller' ? (
+                  <span className={styles.muted}>
+                    {t('admin.admins.sellerOf', {
+                      name: sellerName.get(admin.seller_id ?? 0) ?? '…',
+                    })}
+                  </span>
+                ) : (
+                  <RoleSelect
+                    label={t('admin.admins.roleOf', { name: admin.display_name })}
+                    value={admin.role}
+                    disabled={change.isPending}
+                    onChange={(role) => change.mutate({ id: admin.id, role })}
+                  />
+                )}
               </div>
               {admin.is_active && !isMe && (
                 <PillButton
