@@ -33,3 +33,6 @@ backend/media/
 
 # Playwright MCP screenshots
 .playwright-mcp/
+
+# Wrangler (Cloudflare CLI) local cache
+.wrangler/
