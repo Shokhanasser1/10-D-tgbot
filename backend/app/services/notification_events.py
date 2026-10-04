@@ -7,6 +7,7 @@ dedupe key naming that fact; courier actions happen once per request and may leg
 (claimed, released, claimed again), so their keys carry a unique suffix.
 """
 
+from decimal import Decimal
 from uuid import uuid4
 
 from sqlalchemy import func, select
@@ -223,6 +224,40 @@ async def _to_seller(db: AsyncSession, order_id: int) -> None:
 async def order_ready(db: AsyncSession, order_id: int) -> None:
     """The seller has the order ready: now it is the couriers' to take."""
     await _pool_message(db, order_id, "pool_new", f"pool_new:{order_id}")
+
+
+async def payout_recorded(
+    db: AsyncSession,
+    seller_id: int,
+    payout_id: int,
+    amount: Decimal,
+    currency: str,
+    balance: Decimal,
+) -> None:
+    """The platform recorded a payout: tell the seller's active accounts (Spec 11)."""
+    accounts = list(
+        await db.scalars(
+            select(Admin.telegram_id).where(Admin.is_active, Admin.seller_id == seller_id)
+        )
+    )
+    locales = await _locales(db, accounts)
+    for telegram_id in accounts:
+        locale = locales.get(telegram_id)
+        await notification_service.enqueue(
+            db,
+            chat_id=telegram_id,
+            kind="payout_recorded",
+            dedupe_key=f"payout_recorded:{payout_id}:{telegram_id}",
+            text=render(
+                "payout_recorded",
+                locale,
+                amount=money(amount, currency, locale),
+                balance=money(balance, currency, locale),
+            ),
+            reply_markup=notification_service.web_app_button(
+                render("button_money", locale), "admin/earnings"
+            ),
+        )
 
 
 # --- courier actions -------------------------------------------------------------------------

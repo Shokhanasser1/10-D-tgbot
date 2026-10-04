@@ -113,8 +113,16 @@ def test_the_matrix_matches_the_spec() -> None:
         P.orders_view,
         P.orders_cancel_paid,
         P.refunds_manage,
+        P.payouts_manage,  # Spec 11
     }
-    assert CONFIRMATION_REQUIRED == {P.orders_cancel_paid, P.refunds_manage, P.admins_manage}
+    assert CONFIRMATION_REQUIRED == {
+        P.orders_cancel_paid,
+        P.refunds_manage,
+        P.admins_manage,
+        P.payouts_manage,
+    }
+    # Spec 11: sellers' money is the owner's and the accountant's.
+    assert P.payouts_manage not in ROLE_PERMISSIONS[AdminRole.manager]
     # Spec 9: categories and attributes are platform data; sellers are managed by the top two.
     assert ROLE_PERMISSIONS[AdminRole.catalog_manager] == {
         P.catalog_view,

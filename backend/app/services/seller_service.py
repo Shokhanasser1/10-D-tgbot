@@ -12,12 +12,17 @@ from app.models.enums import AdminRole
 from app.models.product import Product
 from app.models.seller import Seller
 from app.schemas.seller import SellerAccountOut, SellerCreate, SellerOut, SellerUpdate
+from app.services import earnings_service
 
 _DUPLICATE = "An admin with this Telegram ID already exists"
 
 
 async def list_sellers(
-    db: AsyncSession, *, only_id: int | None = None, with_accounts: bool = True
+    db: AsyncSession,
+    *,
+    only_id: int | None = None,
+    with_accounts: bool = True,
+    with_balances: bool = False,
 ) -> list[SellerOut]:
     stmt = select(Seller).order_by(Seller.name, Seller.id).execution_options(populate_existing=True)
     if only_id is not None:
@@ -43,6 +48,7 @@ async def list_sellers(
             .group_by(Product.seller_id)
         )
         counts = dict(counted.tuples().all())
+    money = await earnings_service.balances(db, ids) if with_balances else {}
 
     return [
         SellerOut(
@@ -53,6 +59,8 @@ async def list_sellers(
             is_active=s.is_active,
             accounts=accounts[s.id],
             product_count=counts.get(s.id, 0),
+            commission_percent=s.commission_percent,
+            balances=money.get(s.id, []),
         )
         for s in sellers
     ]
@@ -69,7 +77,12 @@ async def create_seller(db: AsyncSession, data: SellerCreate, created_by: int | 
     if await db.scalar(select(Admin.id).where(Admin.telegram_id == data.telegram_id)):
         raise ConflictError(_DUPLICATE, code="already_exists")
 
-    seller = Seller(name=data.name, phone=data.phone, pickup_address=data.pickup_address)
+    seller = Seller(
+        name=data.name,
+        phone=data.phone,
+        pickup_address=data.pickup_address,
+        commission_percent=data.commission_percent,
+    )
     db.add(seller)
     await db.flush()
     db.add(

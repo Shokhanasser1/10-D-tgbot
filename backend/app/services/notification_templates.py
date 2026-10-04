@@ -35,6 +35,8 @@ TEMPLATES: dict[str, dict[str, str]] = {
             "New order #{order_id}: {items}. Collect it and press Ready, then a courier comes."
         ),
         "button_seller_order": "Open order",
+        "payout_recorded": "Payout recorded: {amount}. Balance: {balance}.",
+        "button_money": "Open my money",
         "order_cancelled_unpaid": "Order #{order_id} was cancelled by the shop: {reason}.",
         "refund_manual": (
             "Refund {total} for order #{order_id} by hand in the Click/Payme cabinet "
@@ -68,6 +70,8 @@ TEMPLATES: dict[str, dict[str, str]] = {
             "после этого приедет курьер."
         ),
         "button_seller_order": "Открыть заказ",
+        "payout_recorded": "Записана выплата: {amount}. Остаток к выплате: {balance}.",
+        "button_money": "Мои деньги",
         "order_cancelled_unpaid": "Магазин отменил заказ №{order_id}: {reason}.",
         "refund_manual": (
             "Верните {total} за заказ №{order_id} вручную в кабинете Click/Payme "
@@ -107,6 +111,8 @@ TEMPLATES: dict[str, dict[str, str]] = {
             "shundan keyin kuryer keladi."
         ),
         "button_seller_order": "Buyurtmani ochish",
+        "payout_recorded": "To'lov qayd etildi: {amount}. To'lanadigan qoldiq: {balance}.",
+        "button_money": "Mening pullarim",
         "order_cancelled_unpaid": "Do'kon №{order_id} buyurtmani bekor qildi: {reason}.",
         "refund_manual": (
             "№{order_id} buyurtma uchun {total} ni Click/Payme kabinetida qo'lda qaytaring "
