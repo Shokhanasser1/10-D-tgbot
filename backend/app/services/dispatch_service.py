@@ -30,7 +30,7 @@ from app.models.order import Order
 from app.models.payment import Payment
 from app.models.shipment import Shipment
 from app.schemas.courier import ShipmentActionOut
-from app.services import courier_state, notification_events
+from app.services import courier_state, earnings_service, notification_events
 
 settings = get_settings()
 
@@ -181,6 +181,8 @@ async def _transition(
             .values(status=PaymentStatus.succeeded)
             .execution_options(synchronize_session=False)
         )
+        # The seller's share is earned on delivery (Spec 11).
+        await earnings_service.record_earning(db, order_id)
         await notification_events.order_delivered(db, order_id)
     elif transition is _RELEASE:
         await notification_events.order_back_in_pool(

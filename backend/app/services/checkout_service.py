@@ -14,6 +14,7 @@ from app.models.cart import Cart, CartItem
 from app.models.enums import CartStatus, OrderStatus, PaymentMethod, PaymentStatus
 from app.models.order import Order, OrderItem
 from app.models.payment import Payment
+from app.models.seller import Seller
 from app.models.variant import Variant
 from app.schemas.checkout import CheckoutResponse, DeliveryAddressIn
 from app.services import (
@@ -68,9 +69,14 @@ async def create_order_from_cart(
     total = subtotal + shipping_cost
     reserved_until = datetime.now(UTC) + timedelta(minutes=get_settings().reservation_ttl_minutes)
 
+    seller_id = sellers.pop()
     order = Order(
         telegram_id=telegram_id,
-        seller_id=sellers.pop(),
+        seller_id=seller_id,
+        # The seller's rate today; a later change never alters this order (Spec 11).
+        commission_percent=await db.scalar(
+            select(Seller.commission_percent).where(Seller.id == seller_id)
+        ),
         status=OrderStatus.pending_payment,
         currency=currency,
         subtotal=subtotal,

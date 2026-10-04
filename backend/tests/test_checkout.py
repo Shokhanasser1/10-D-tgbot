@@ -269,3 +269,25 @@ async def test_checkout_records_the_cart_seller(
     assert response.status_code == 200, response.text
     order = await db_session.get(Order, response.json()["order_id"], populate_existing=True)
     assert order is not None and order.seller_id == shop.id
+
+
+async def test_checkout_copies_the_sellers_commission_rate(
+    client: AsyncClient, db_session: AsyncSession, fake_stripe: list[FakePaymentIntent]
+) -> None:
+    """Spec 11: the rate is fixed on the order, so a later change never alters it."""
+    shop = await add_seller(db_session, "Lola Beauty")
+    shop.commission_percent = Decimal("12.50")
+    variant = await _make_variant(db_session, sku="RATE-ORDER", price="10.00", stock=5)
+    await db_session.execute(
+        update(Product).where(Product.id == variant.product_id).values(seller_id=shop.id)
+    )
+    await db_session.commit()
+    headers = _auth_headers(7_102)
+    await client.post("/cart/items", json={"variant_id": variant.id, "qty": 1}, headers=headers)
+
+    response = await client.post(
+        "/checkout", json={"delivery_address": VALID_ADDRESS}, headers=headers
+    )
+
+    order = await db_session.get(Order, response.json()["order_id"], populate_existing=True)
+    assert order is not None and order.commission_percent == Decimal("12.50")

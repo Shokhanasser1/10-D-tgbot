@@ -2,6 +2,7 @@ import itertools
 from datetime import UTC, datetime
 from decimal import Decimal
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.category import Category
@@ -10,6 +11,7 @@ from app.models.enums import OrderStatus, PaymentStatus, ProductStatus, Shipment
 from app.models.order import Order, OrderItem
 from app.models.payment import Payment
 from app.models.product import Product
+from app.models.seller import Seller
 from app.models.shipment import Shipment
 from app.models.telegram_user import TelegramUser
 from app.models.variant import Variant
@@ -92,6 +94,9 @@ async def add_paid_order(
     order = Order(
         telegram_id=customer_id,
         seller_id=seller_id,
+        commission_percent=await db.scalar(
+            select(Seller.commission_percent).where(Seller.id == seller_id)
+        ),
         status=OrderStatus.paid,
         currency="EUR",
         subtotal=Decimal("10.00") * qty,

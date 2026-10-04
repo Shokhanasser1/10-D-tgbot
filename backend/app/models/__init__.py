@@ -10,6 +10,7 @@ from app.models.payment import Payment
 from app.models.product import Product
 from app.models.product_image import ProductImage
 from app.models.seller import Seller
+from app.models.seller_money import SellerEarning, SellerPayout
 from app.models.shipment import Shipment
 from app.models.telegram_user import TelegramUser
 from app.models.translation import Translation
@@ -31,6 +32,8 @@ __all__ = [
     "Product",
     "ProductImage",
     "Seller",
+    "SellerEarning",
+    "SellerPayout",
     "Shipment",
     "TelegramUser",
     "Translation",

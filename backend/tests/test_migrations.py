@@ -89,6 +89,21 @@ async def _insert_order(conn: asyncpg.Connection, telegram_id: int, status: str)
         "SELECT 1 FROM information_schema.columns "
         "WHERE table_name = 'orders' AND column_name = 'seller_id'"
     )
+    has_rate = await conn.fetchval(
+        "SELECT 1 FROM information_schema.columns "
+        "WHERE table_name = 'orders' AND column_name = 'commission_percent'"
+    )
+    if has_rate:  # Spec 11: the seller's rate is copied onto the order
+        seller_id = await conn.fetchval("INSERT INTO sellers (name) VALUES ('Shop') RETURNING id")
+        return await conn.fetchval(
+            "INSERT INTO orders (telegram_id, status, currency, subtotal, shipping_cost, total, "
+            "delivery_address, seller_id, commission_percent) "
+            "VALUES ($1, $2, 'EUR', 10, 4.99, 14.99, $3::jsonb, $4, 10) RETURNING id",
+            telegram_id,
+            status,
+            json.dumps({"city": "Berlin", "notes": None}),
+            seller_id,
+        )
     if has_seller:  # Spec 10: from then on every order belongs to a seller
         seller_id = await conn.fetchval("INSERT INTO sellers (name) VALUES ('Shop') RETURNING id")
         return await conn.fetchval(
@@ -335,5 +350,30 @@ async def test_seller_orders_migration_fills_seller_and_readiness(scratch_databa
             "SELECT ready_at, created_at FROM shipments WHERE order_id = $1", order_id
         )
         assert row["ready_at"] == row["created_at"]
+    finally:
+        await conn.close()
+
+
+SELLER_ORDERS_REVISION = "b1c2d3e4f5a6"  # the schema before commissions
+
+
+async def test_seller_money_migration_copies_rates_onto_orders(scratch_database: str) -> None:
+    old = await asyncio.to_thread(_alembic, scratch_database, "upgrade", SELLER_ORDERS_REVISION)
+    assert old.returncode == 0, old.stderr
+    conn = await _connect_scratch()
+    try:
+        order_id = await _insert_order(conn, 1, "paid")
+    finally:
+        await conn.close()
+
+    up = await asyncio.to_thread(_alembic, scratch_database, "upgrade", "head")
+    assert up.returncode == 0, up.stderr
+
+    conn = await _connect_scratch()
+    try:
+        rate = await conn.fetchval("SELECT commission_percent FROM orders WHERE id = $1", order_id)
+        assert str(rate) == "10.00"
+        assert await conn.fetchval("SELECT to_regclass('seller_earnings')") is not None
+        assert await conn.fetchval("SELECT to_regclass('seller_payouts')") is not None
     finally:
         await conn.close()

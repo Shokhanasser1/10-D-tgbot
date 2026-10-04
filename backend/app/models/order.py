@@ -47,6 +47,11 @@ class Order(Base):
     seller_id: Mapped[int] = mapped_column(
         ForeignKey("sellers.id", ondelete="RESTRICT"), nullable=False, index=True
     )
+    # The seller's rate on the day the order was placed (Spec 11). Checkout copies it; the
+    # default only serves rows made by hand (tests, demo seeds).
+    commission_percent: Mapped[Decimal] = mapped_column(
+        Numeric(5, 2), nullable=False, default=Decimal("10")
+    )
     status: Mapped[OrderStatus] = mapped_column(
         Enum(OrderStatus, native_enum=False, length=20),
         nullable=False,
