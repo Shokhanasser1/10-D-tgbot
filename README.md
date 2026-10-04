@@ -267,7 +267,7 @@ truth.)
 **Sellers**: shop name, phone, the address couriers collect orders from, and the Telegram ID of
 the person who runs it, who gets an account with the *seller* role. A seller signs in like any
 admin and sees only **Catalog** (their own products; categories and attributes are shared and
-read-only), **Orders** (their own, Spec 10) and **Profile**. Every product belongs to a seller: staff choose it when creating a
+read-only), **Orders** (their own, Spec 10), **Money** (Spec 11) and **Profile**. Every product belongs to a seller: staff choose it when creating a
 product and can filter the list by it. Customers see the seller on each product, can list one
 seller's products, and a cart holds one seller's products at a time (adding another seller's
 asks to empty the cart). Deactivating a seller hides their products and locks their account.
@@ -279,6 +279,14 @@ and the couriers' message and cards say where to collect it (shop name, address,
 managers and dispatchers can also **Mark ready** from the order page (a slow seller, or your own
 shop). A seller sees items, goods total, payment method and status, never the customer's name,
 phone or address; cancelling and refunds stay with the platform.
+
+**Sellers' money** (Spec 11). Customers pay the platform; each seller has a commission rate
+(default 10%, set under **Sellers**), copied onto every order at checkout and taken from the
+goods only (shipping is the platform's). When an order is delivered the seller earns
+`goods − commission`. You pay sellers yourself and record each payout on the seller's page under
+**Sellers** (owners and accountants; the password is asked again, as for refunds): a payout can
+never exceed what the seller is owed, and the seller gets a Telegram message. Sellers see their
+balance, earnings by order and payouts under **Money**.
 
 **Browser sign-in** uses the [Telegram Login Widget](https://core.telegram.org/widgets/login):
 

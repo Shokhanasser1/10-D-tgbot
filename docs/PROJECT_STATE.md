@@ -1,6 +1,6 @@
 # Project state (handoff)
 
-Snapshot: 2026-10-04 (after Spec 7, the free production deploy (§1b), Specs 8, 9 and 10), branch `main`, pushed to the **public** repository https://github.com/Shokhanasser1/10-D-tgbot.
+Snapshot: 2026-10-04 (after Spec 7, the free production deploy (§1b), Specs 8 to 11: the marketplace), branch `main`, pushed to the **public** repository https://github.com/Shokhanasser1/10-D-tgbot.
 Sections 3–9 were last fully revised on 2026-09-29 (Spec 6); Spec 7 changes are summarised where they matter.
 Working tree was clean at the time of writing. Written for another engineer or AI picking this up cold.
 
@@ -22,9 +22,10 @@ niches through data (categories, attributes, translations), not code changes. Th
 | 8 Role-based launch | opening the bot sends admins to `/admin`, couriers to `/courier`, everyone else to the shop; Shop/Courier/Admin switch buttons; frontend only (`app/launch.ts`, `LaunchGate`, `CourierShell`). Stage A of the marketplace roadmap (B sellers, C multi-seller orders, D money) in the spec | **done**, committed (`c3ea1db`..`85c1220`) |
 | 9 Sellers and their products (marketplace stage B) | `sellers` table; every product has a seller (migration gives old products a "Main shop"); seller = admin role confined to its own products by `app/services/seller_scope.py` (another seller's rows answer 404); new permissions `taxonomy.edit`, `sellers.manage`; `/internal/sellers`; storefront shows and filters by seller; one seller per cart (`cart_other_seller`, `replace_cart`) | **done**, committed (`5ed4a4e`..`ab7390c`), **not deployed** |
 | 10 Orders per seller (marketplace stage C) | `orders.seller_id` (from the cart at checkout); `shipments.ready_at` (null = the seller is preparing): the pool and the claim only take ready shipments; `POST /internal/orders/{id}/ready` (`orders.prepare`: owner, manager, dispatcher, the order's seller); payment notifies the seller, ready notifies the couriers with the pickup; `/internal/seller/orders` without customer data; courier pool/deliveries carry `pickup` | **done**, committed (`9d44ff4`..`b586522`), **not deployed** |
+| 11 Sellers' money (marketplace stage D) | `sellers.commission_percent` (default 10) copied to `orders.commission_percent` at checkout; `seller_earnings` written once on delivery (`earnings_service`); `seller_payouts` recorded by hand (`payouts.manage`: owner, accountant, 🔒), never above the balance (`exceeds_balance`); ledgers for the platform (`/internal/sellers/{id}/ledger`) and the seller (`/internal/seller/earnings`) | **done**, committed (`fb42219`..`9b2ce32`), **not deployed** |
 | Free hosting | Mini App on Cloudflare Pages, backend on JustRunMy.App, DB on Supabase, photos in R2 | **live** since 2026-10-04 (`fd8c75b`, `3ebf23b`, fixes after), see §1b |
 
-Designs are in `docs/superpowers/specs/` (Spec 7: `2026-09-29-admin-roles-and-password-login-design.md`; Spec 8: `2026-10-04-role-based-launch-design.md`, Spec 9: `2026-10-04-sellers-and-products-design.md`, Spec 10: `2026-10-04-seller-orders-design.md`, plans in `docs/superpowers/plans/`). Spec 2's §16, Spec 3's §14 and Spec 4's §12, Spec 5's §11 and Spec 6's §13 "Implementation notes" list
+Designs are in `docs/superpowers/specs/` (Spec 7: `2026-09-29-admin-roles-and-password-login-design.md`; Spec 8: `2026-10-04-role-based-launch-design.md`, Spec 9: `2026-10-04-sellers-and-products-design.md`, Spec 10: `2026-10-04-seller-orders-design.md`, Spec 11: `2026-10-04-seller-money-design.md`, plans in `docs/superpowers/plans/`). Spec 2's §16, Spec 3's §14 and Spec 4's §12, Spec 5's §11 and Spec 6's §13 "Implementation notes" list
 where the build refined each design; read them before trusting the rest of those documents.
 `README.md` covers running, Stripe, the courier setup ("Couriers & tracking") and the admin panel
 ("Admin panel": first owner, roles, browser sign-in, refunds, photos).
@@ -81,7 +82,7 @@ Owner-facing guide in Russian: `docs/DEPLOY_FREE_RU.md`.
 - **Production config gaps**: the panel has no `DEFAULT_CURRENCY`, `CASH_ON_DELIVERY_ENABLED` or
   `TELEGRAM_PAYMENT_PROVIDER_TOKEN`, so it runs the EUR defaults and checkout shows "Payments are not set up".
   Ask the owner before changing.
-- **Waiting to deploy (Specs 8, 9 and 10)**: the owner asked to finish the marketplace stages first and
+- **Waiting to deploy (Specs 8 to 11)**: the owner asked to finish the marketplace stages first and
   deploy them together. Spec 9 needs the backend redeployed too (its migration runs on container
   start). Production has no products, so the migration creates no "Main shop": add a seller under
   **Sellers** before creating products.
@@ -104,10 +105,10 @@ Owner-facing guide in Russian: `docs/DEPLOY_FREE_RU.md`.
 
 ## 3. Verified state
 
-- Backend: **676 tests pass** (2026-10-04, after Spec 10, against the compose `db` container), ruff clean. Alembic head **`b1c2d3e4f5a6`** (seller orders). Earlier: 504 tests passed locally and inside the production image. The suite also
+- Backend: **702 tests pass** (2026-10-04, after Spec 11, against the compose `db` container), ruff clean. Alembic head **`c2d3e4f5a6b7`** (seller money). Earlier: 504 tests passed locally and inside the production image. The suite also
   passes inside the production image (Python 3.12, SQLAlchemy 2.1, stripe 11), which differs from the
   local Python 3.14 / SQLAlchemy 2.0 / stripe 15 set-up.
-- Frontend: **405 tests pass** (2026-10-04, after Spec 10; incl. the Pages proxy tests in `functions/`), lint/prettier/`tsc`/build clean (one pre-existing oxlint warning in
+- Frontend: **411 tests pass** (2026-10-04, after Spec 11; incl. the Pages proxy tests in `functions/`), lint/prettier/`tsc`/build clean (one pre-existing oxlint warning in
   `router.tsx`).
 - Manually verified against a real API + database over HTTP (whole courier flow), and in a real
   browser (map tiles, markers, pin tap, courier claim flow, live marker update).
