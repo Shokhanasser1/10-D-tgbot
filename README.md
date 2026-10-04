@@ -156,8 +156,9 @@ To see what was sent: `docker compose exec db psql -U postgres -d storefront -c
 
 ## Couriers & tracking
 
-Couriers use the same Mini App: once a Telegram account is registered as a courier, a truck icon
-appears in the header. They take paid orders from a shared pool, mark them picked up and
+Couriers use the same Mini App: once a Telegram account is registered as a courier, opening the
+bot lands on the courier screen, whose top bar has a **Shop** button for shopping as a customer
+(the shop then shows a truck icon to come back). They take paid orders from a shared pool, mark them picked up and
 delivered, and share a **Live Location** in the bot chat. Customers see the courier's name on
 their order and, while it is out for delivery, the courier on a map.
 
@@ -195,7 +196,7 @@ run another process that polls this bot. With `TELEGRAM_WEBHOOK_SECRET` empty th
 off and answers 404. Telegram only sends the secret back in the
 `X-Telegram-Bot-Api-Secret-Token` header, and requests without it are rejected with 403.
 
-**3. The courier's day.** Open the truck icon → **Available** → *Take this order*. The order moves
+**3. The courier's day.** Open the bot → **Available** → *Take this order*. The order moves
 to **My deliveries** with the full address, phone, notes and a maps link. Under **My deliveries**
 a panel explains sharing the location: in the bot chat, paperclip → *Location* → *Share Live
 Location* → the longest duration. *Picked up* starts the customer-visible tracking; *Delivered*
@@ -239,8 +240,9 @@ first name and tell couriers their live location is shared this way.
 
 ## Admin panel
 
-The panel lives at `/admin` of the same app. Admins who open the Mini App see a gear icon in the
-top bar; in a desktop browser, go to `https://<your domain>/admin` and sign in with Telegram.
+The panel lives at `/admin` of the same app. Admins who open the bot land in the panel, even if
+they are also couriers; its header has **Shop** (and **Courier** for couriers), and the shop shows
+a gear icon to come back. In a desktop browser, go to `https://<your domain>/admin` and sign in with Telegram.
 
 **First owner.** Put your Telegram ID (ask @userinfobot) in `ADMIN_BOOTSTRAP_TELEGRAM_IDS` and
 restart the API: it creates an owner account for every listed ID that has none. It never changes

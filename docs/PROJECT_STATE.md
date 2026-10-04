@@ -1,6 +1,6 @@
 # Project state (handoff)
 
-Snapshot: 2026-10-04 (after Spec 7 and the free production deploy, §1b), branch `main`, pushed to the **public** repository https://github.com/Shokhanasser1/10-D-tgbot.
+Snapshot: 2026-10-04 (after Spec 7, the free production deploy (§1b) and Spec 8), branch `main`, pushed to the **public** repository https://github.com/Shokhanasser1/10-D-tgbot.
 Sections 3–9 were last fully revised on 2026-09-29 (Spec 6); Spec 7 changes are summarised where they matter.
 Working tree was clean at the time of writing. Written for another engineer or AI picking this up cold.
 
@@ -19,9 +19,10 @@ niches through data (categories, attributes, translations), not code changes. Th
 | 5 Telegram notifications | outbox table + background sender; customers, couriers, owners/dispatchers | **done**, committed (`0dd7657`) |
 | 6 Payments in Uzbekistan | Click/Payme via Telegram Payments, cash on delivery, UZS; Stripe kept as an option | **done**, committed (`b6813c5`) |
 | 7 Admin roles + password sign-in | six roles (owner, manager, catalog_manager, dispatcher, accountant, viewer) mapped to permissions in `app/core/permissions.py`; login + password (scrypt, lockout after 5 tries), password re-entry within 15 min for money and admin management | **done**, committed (`123290e`, `daa805e`) |
+| 8 Role-based launch | opening the bot sends admins to `/admin`, couriers to `/courier`, everyone else to the shop; Shop/Courier/Admin switch buttons; frontend only (`app/launch.ts`, `LaunchGate`, `CourierShell`). Stage A of the marketplace roadmap (B sellers, C multi-seller orders, D money) in the spec | **done**, committed (`c3ea1db`..`85c1220`) |
 | Free hosting | Mini App on Cloudflare Pages, backend on JustRunMy.App, DB on Supabase, photos in R2 | **live** since 2026-10-04 (`fd8c75b`, `3ebf23b`, fixes after), see §1b |
 
-Designs are in `docs/superpowers/specs/` (Spec 7: `2026-09-29-admin-roles-and-password-login-design.md`). Spec 2's §16, Spec 3's §14 and Spec 4's §12, Spec 5's §11 and Spec 6's §13 "Implementation notes" list
+Designs are in `docs/superpowers/specs/` (Spec 7: `2026-09-29-admin-roles-and-password-login-design.md`; Spec 8: `2026-10-04-role-based-launch-design.md`, plan in `docs/superpowers/plans/`). Spec 2's §16, Spec 3's §14 and Spec 4's §12, Spec 5's §11 and Spec 6's §13 "Implementation notes" list
 where the build refined each design; read them before trusting the rest of those documents.
 `README.md` covers running, Stripe, the courier setup ("Couriers & tracking") and the admin panel
 ("Admin panel": first owner, roles, browser sign-in, refunds, photos).
@@ -100,7 +101,7 @@ Owner-facing guide in Russian: `docs/DEPLOY_FREE_RU.md`.
 - Backend: **504 tests pass** (locally and inside the production image), ruff clean. Alembic head **`e8f9a0b1c2d3`**. The suite also
   passes inside the production image (Python 3.12, SQLAlchemy 2.1, stripe 11), which differs from the
   local Python 3.14 / SQLAlchemy 2.0 / stripe 15 set-up.
-- Frontend: **348 tests pass** (2026-10-04, incl. the Pages proxy tests in `functions/`), lint/prettier/`tsc`/build clean (one pre-existing oxlint warning in
+- Frontend: **376 tests pass** (2026-10-04, after Spec 8; incl. the Pages proxy tests in `functions/`), lint/prettier/`tsc`/build clean (one pre-existing oxlint warning in
   `router.tsx`).
 - Manually verified against a real API + database over HTTP (whole courier flow), and in a real
   browser (map tiles, markers, pin tap, courier claim flow, live marker update).

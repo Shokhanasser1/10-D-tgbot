@@ -1,6 +1,6 @@
 # Spec 8: Role-based launch (stage A of the marketplace)
 
-Status: **designed and approved by the owner (2026-10-04), not implemented.**
+Status: **designed and approved by the owner (2026-10-04); implemented 2026-10-04 (frontend only).**
 
 ## 1. Problem
 
