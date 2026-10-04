@@ -12,6 +12,7 @@ import {
   adminProductList,
   admins,
   adminSellers,
+  sellerLedger,
   sellerOrder,
   sellerOrderList,
   adminShipments,
@@ -89,6 +90,8 @@ export function stubAdminBackend(role: AdminRole | 401 | 403 = 'owner') {
     http.get(`${I}/shipments`, () => HttpResponse.json(adminShipments)),
     http.get(`${I}/admins`, () => HttpResponse.json(admins)),
     http.get(`${I}/sellers`, () => HttpResponse.json(adminSellers)),
+    http.get(`${I}/sellers/:id/ledger`, () => HttpResponse.json(sellerLedger)),
+    http.get(`${I}/seller/earnings`, () => HttpResponse.json(sellerLedger)),
     http.get(`${I}/seller/orders`, () =>
       HttpResponse.json({ items: sellerOrderList, total: sellerOrderList.length }),
     ),

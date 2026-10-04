@@ -11,6 +11,7 @@ import type {
   AdminRole,
   AdminSeller,
   AdminShipment,
+  Ledger,
   Permission,
   SellerOrder,
   SellerOrderListItem,
@@ -34,6 +35,7 @@ export const PERMISSIONS_BY_ROLE: Record<AdminRole, Permission[]> = {
     'taxonomy.edit',
     'sellers.manage',
     'orders.prepare',
+    'payouts.manage',
   ],
   manager: [
     'summary.view',
@@ -56,7 +58,13 @@ export const PERMISSIONS_BY_ROLE: Record<AdminRole, Permission[]> = {
     'couriers.view',
     'couriers.manage',
   ],
-  accountant: ['summary.view', 'orders.view', 'orders.cancel_paid', 'refunds.manage'],
+  accountant: [
+    'summary.view',
+    'orders.view',
+    'orders.cancel_paid',
+    'refunds.manage',
+    'payouts.manage',
+  ],
   viewer: ['summary.view', 'catalog.view', 'orders.view', 'couriers.view'],
   seller: ['catalog.view', 'catalog.edit', 'orders.prepare'],
 }
@@ -357,6 +365,8 @@ export const adminSellers: AdminSeller[] = [
     is_active: true,
     accounts: [{ id: 3, telegram_id: 502, display_name: 'Lola', is_active: true }],
     product_count: 1,
+    commission_percent: '10.00',
+    balances: [{ currency: 'EUR', earned: '27.00', paid_out: '0.00', balance: '27.00' }],
   },
   {
     id: 8,
@@ -366,6 +376,8 @@ export const adminSellers: AdminSeller[] = [
     is_active: false,
     accounts: [],
     product_count: 0,
+    commission_percent: '12.50',
+    balances: [],
   },
 ]
 
@@ -408,4 +420,37 @@ export function sellerOrder(overrides: Partial<SellerOrder> = {}): SellerOrder {
     ],
     ...overrides,
   }
+}
+
+export const sellerLedger: Ledger = {
+  balances: [{ currency: 'EUR', earned: '54.00', paid_out: '20.00', balance: '34.00' }],
+  earnings: [
+    {
+      order_id: 43,
+      earned_at: '2026-09-25T12:00:00Z',
+      currency: 'EUR',
+      goods_total: '30.00',
+      commission_percent: '10.00',
+      commission: '3.00',
+      amount: '27.00',
+    },
+    {
+      order_id: 42,
+      earned_at: '2026-09-24T12:00:00Z',
+      currency: 'EUR',
+      goods_total: '30.00',
+      commission_percent: '10.00',
+      commission: '3.00',
+      amount: '27.00',
+    },
+  ],
+  payouts: [
+    {
+      id: 1,
+      created_at: '2026-09-26T09:00:00Z',
+      currency: 'EUR',
+      amount: '20.00',
+      note: 'Card *1234',
+    },
+  ],
 }

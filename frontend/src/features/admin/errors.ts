@@ -12,6 +12,7 @@ const KEY_BY_CODE: Record<string, string> = {
   login_taken: 'admin.password.loginTaken',
   self_reset: 'admin.password.selfReset',
   seller_role_fixed: 'admin.errors.sellerRoleFixed',
+  exceeds_balance: 'admin.errors.exceedsBalance',
 }
 
 function codeOf(detail: unknown): string | undefined {

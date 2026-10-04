@@ -9,7 +9,7 @@ import { PasswordConfirmationHost } from './components/PasswordConfirmationHost'
 import { isStatus } from './errors'
 import { AdminMeProvider } from './meContext'
 import { adminKeys, useAdminMe } from './hooks'
-import { canOpen, homeFor } from './permissions'
+import { can, canOpen, homeFor } from './permissions'
 import { AdminsScreen } from './screens/AdminsScreen'
 import { LoginScreen, NoAccessScreen } from './screens/AuthScreens'
 import { CategoriesScreen } from './screens/CategoriesScreen'
@@ -20,6 +20,7 @@ import { OrdersScreen } from './screens/OrdersScreen'
 import { ProductEditorScreen } from './screens/ProductEditorScreen'
 import { ProductsScreen } from './screens/ProductsScreen'
 import { SellerOrderScreen, SellerOrdersScreen } from './screens/SellerOrdersScreen'
+import { SellerLedgerScreen, SellerMoneyScreen } from './screens/SellerMoneyScreens'
 import { SellersScreen } from './screens/SellersScreen'
 import { SummaryScreen } from './screens/SummaryScreen'
 
@@ -107,6 +108,10 @@ export function AdminApp() {
             ))}
           {canOpen(me, 'couriers') && <Route path="couriers" element={<CouriersScreen />} />}
           {canOpen(me, 'sellers') && <Route path="sellers" element={<SellersScreen />} />}
+          {canOpen(me, 'sellers') && can(me, 'payouts.manage') && (
+            <Route path="sellers/:sellerId" element={<SellerLedgerScreen />} />
+          )}
+          {canOpen(me, 'earnings') && <Route path="earnings" element={<SellerMoneyScreen />} />}
           {canOpen(me, 'admins') && (
             <Route path="admins" element={<AdminsScreen currentTelegramId={me.telegram_id} />} />
           )}

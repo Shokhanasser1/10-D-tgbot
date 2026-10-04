@@ -1,26 +1,7 @@
 import type { AdminMe, Permission } from './types'
 
 export type AdminSection =
-  'summary' | 'catalog' | 'orders' | 'couriers' | 'sellers' | 'admins' | 'profile'
-
-/** The permission that opens each section. Every admin has a profile. */
-const SECTION_PERMISSION: Record<Exclude<AdminSection, 'profile'>, Permission> = {
-  summary: 'summary.view',
-  catalog: 'catalog.view',
-  orders: 'orders.view',
-  couriers: 'couriers.view',
-  sellers: 'sellers.manage',
-  admins: 'admins.manage',
-}
-
-const ORDER: readonly AdminSection[] = [
-  'summary',
-  'catalog',
-  'orders',
-  'couriers',
-  'sellers',
-  'admins',
-]
+  'summary' | 'catalog' | 'orders' | 'earnings' | 'couriers' | 'sellers' | 'admins' | 'profile'
 
 type Who = Pick<AdminMe, 'permissions'> & Partial<Pick<AdminMe, 'seller_id'>>
 
@@ -29,14 +10,34 @@ export function can(me: Pick<AdminMe, 'permissions'>, permission: Permission): b
   return me.permissions.includes(permission)
 }
 
-function opens(me: Who, section: Exclude<AdminSection, 'profile'>): boolean {
+const isSeller = (me: Who) => me.seller_id != null
+
+/** What opens each section. Every admin has a profile. */
+const SECTION_RULE: Record<Exclude<AdminSection, 'profile'>, (me: Who) => boolean> = {
+  summary: (me) => can(me, 'summary.view'),
+  catalog: (me) => can(me, 'catalog.view'),
   // A seller's Orders are their own (Spec 10): opened by preparing orders, not the platform view.
-  if (section === 'orders' && me.seller_id != null) return can(me, 'orders.prepare')
-  return can(me, SECTION_PERMISSION[section])
+  orders: (me) => (isSeller(me) ? can(me, 'orders.prepare') : can(me, 'orders.view')),
+  // A seller's own money (Spec 11).
+  earnings: (me) => isSeller(me),
+  couriers: (me) => can(me, 'couriers.view'),
+  // Those who pay sellers out see the list too, read-only (Spec 11).
+  sellers: (me) => can(me, 'sellers.manage') || can(me, 'payouts.manage'),
+  admins: (me) => can(me, 'admins.manage'),
 }
 
+const ORDER: readonly Exclude<AdminSection, 'profile'>[] = [
+  'summary',
+  'catalog',
+  'orders',
+  'earnings',
+  'couriers',
+  'sellers',
+  'admins',
+]
+
 export function sectionsFor(me: Who): readonly AdminSection[] {
-  return ORDER.filter((section) => opens(me, section as Exclude<AdminSection, 'profile'>))
+  return ORDER.filter((section) => SECTION_RULE[section](me))
 }
 
 export function canOpen(me: Who, section: AdminSection): boolean {

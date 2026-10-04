@@ -17,6 +17,8 @@ export const adminKeys = {
   sellers: ['admin', 'sellers'] as const,
   sellerOrders: ['admin', 'seller-orders'] as const,
   sellerOrder: (id: number) => ['admin', 'seller-order', id] as const,
+  ledger: (sellerId: number) => ['admin', 'ledger', sellerId] as const,
+  myEarnings: ['admin', 'my-earnings'] as const,
   shipments: ['admin', 'shipments'] as const,
   locations: ['admin', 'locations'] as const,
   summary: ['admin', 'summary'] as const,
@@ -132,6 +134,32 @@ export function useSellerMutation<TArgs, TResult>(fn: (args: TArgs) => Promise<T
         ),
       ),
   })
+}
+
+// --- sellers' money (Spec 11) ----------------------------------------------------------------
+
+export function useSellerLedger(sellerId: number) {
+  return useQuery({
+    queryKey: adminKeys.ledger(sellerId),
+    queryFn: () => api.fetchLedger(sellerId),
+  })
+}
+
+export function useRecordPayout(sellerId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: Parameters<typeof api.recordPayout>[1]) => api.recordPayout(sellerId, body),
+    onSettled: () =>
+      Promise.all(
+        [adminKeys.ledger(sellerId), adminKeys.sellers].map((queryKey) =>
+          queryClient.invalidateQueries({ queryKey }),
+        ),
+      ),
+  })
+}
+
+export function useMyEarnings() {
+  return useQuery({ queryKey: adminKeys.myEarnings, queryFn: api.fetchMyEarnings })
 }
 
 // --- orders ----------------------------------------------------------------------------------

@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 
 import { Card } from '../../../shared/ui/Card'
 import { EmptyState } from '../../../shared/ui/EmptyState'
@@ -10,11 +11,42 @@ import { createSeller, updateSeller } from '../api'
 import { inputClass } from '../components/inputClass'
 import { Badge, ConfirmDialog, ErrorNote, Field, PageHeader } from '../components/ui'
 import { adminErrorKey } from '../errors'
+import { formatMoney, formatPercent } from '../format'
 import { useAdminSellers, useSellerMutation } from '../hooks'
+import { useCan } from '../meContext'
 import type { AdminSeller } from '../types'
 import styles from './SellersScreen.module.css'
 
-const EMPTY_FORM = { name: '', phone: '', pickupAddress: '', telegramId: '', personName: '' }
+const EMPTY_FORM = {
+  name: '',
+  phone: '',
+  pickupAddress: '',
+  telegramId: '',
+  personName: '',
+  commission: '10',
+}
+
+/** The platform's share of the goods, 0..100 (Spec 11). */
+function CommissionField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { t } = useTranslation()
+  return (
+    <Field label={t('admin.sellers.commission')} hint={t('admin.sellers.commissionHint')}>
+      {(id) => (
+        <input
+          id={id}
+          required
+          type="number"
+          min={0}
+          max={100}
+          step="0.01"
+          className={inputClass}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+        />
+      )}
+    </Field>
+  )
+}
 
 /** The seller and the person who will sign in for it, added together (Spec 9 §5). */
 function AddSellerForm() {
@@ -35,6 +67,7 @@ function AddSellerForm() {
         pickup_address: form.pickupAddress.trim(),
         telegram_id: Number(form.telegramId),
         display_name: form.personName.trim(),
+        commission_percent: form.commission.trim(),
       },
       { onSuccess: () => setForm(EMPTY_FORM) },
     )
@@ -105,6 +138,7 @@ function AddSellerForm() {
             />
           )}
         </Field>
+        <CommissionField value={form.commission} onChange={(v) => set('commission', v)} />
       </div>
       <ErrorNote message={add.error ? t(adminErrorKey(add.error)) : null} />
       <div className={styles.formActions}>
@@ -122,12 +156,14 @@ function EditSellerForm({ seller, onDone }: { seller: AdminSeller; onDone: () =>
     name: seller.name,
     phone: seller.phone ?? '',
     pickupAddress: seller.pickup_address ?? '',
+    commission: formatPercent(seller.commission_percent),
   })
   const save = useSellerMutation(() =>
     updateSeller(seller.id, {
       name: form.name.trim(),
       phone: form.phone.trim() || null,
       pickup_address: form.pickupAddress.trim(),
+      commission_percent: form.commission.trim(),
     }),
   )
 
@@ -175,6 +211,10 @@ function EditSellerForm({ seller, onDone }: { seller: AdminSeller; onDone: () =>
             />
           )}
         </Field>
+        <CommissionField
+          value={form.commission}
+          onChange={(v) => setForm({ ...form, commission: v })}
+        />
       </div>
       <ErrorNote message={save.error ? t(adminErrorKey(save.error)) : null} />
       <div className={styles.formActions}>
@@ -190,7 +230,10 @@ function EditSellerForm({ seller, onDone }: { seller: AdminSeller; onDone: () =>
 }
 
 export function SellersScreen() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  // An accountant opens this list for the money only (Spec 11).
+  const canManage = useCan('sellers.manage')
+  const canPayOut = useCan('payouts.manage')
   const query = useAdminSellers()
   const [editing, setEditing] = useState<number | null>(null)
   const [toDeactivate, setToDeactivate] = useState<AdminSeller | null>(null)
@@ -201,9 +244,11 @@ export function SellersScreen() {
   return (
     <div className={styles.screen}>
       <PageHeader title={t('admin.nav.sellers')} />
-      <Card>
-        <AddSellerForm />
-      </Card>
+      {canManage && (
+        <Card>
+          <AddSellerForm />
+        </Card>
+      )}
       {query.isError && !query.data && <QueryError onRetry={() => query.refetch()} />}
       {query.isLoading && <Skeleton height={160} />}
       {query.data?.length === 0 && <EmptyState title={t('admin.sellers.empty')} />}
@@ -221,17 +266,37 @@ export function SellersScreen() {
                   {account.display_name} · {account.telegram_id}
                 </span>
               ))}
+              <span className={styles.muted}>
+                {t('admin.sellers.commissionShort', {
+                  percent: formatPercent(seller.commission_percent),
+                })}
+                {seller.balances.map((b) => (
+                  <span key={b.currency}>
+                    {' · '}
+                    {t('admin.sellers.owed', {
+                      amount: formatMoney(b.balance, b.currency, i18n.language),
+                    })}
+                  </span>
+                ))}
+              </span>
             </span>
             <Badge>{t('admin.sellers.products', { count: seller.product_count })}</Badge>
             {!seller.is_active && <Badge tone="warning">{t('admin.sellers.inactive')}</Badge>}
-            <PillButton
-              variant="secondary"
-              className={styles.small}
-              onClick={() => setEditing(editing === seller.id ? null : seller.id)}
-            >
-              {t('admin.sellers.edit')}
-            </PillButton>
-            {seller.is_active ? (
+            {canPayOut && (
+              <Link to={`/admin/sellers/${seller.id}`} className={styles.small}>
+                {t('admin.sellers.openLedger')}
+              </Link>
+            )}
+            {canManage && (
+              <PillButton
+                variant="secondary"
+                className={styles.small}
+                onClick={() => setEditing(editing === seller.id ? null : seller.id)}
+              >
+                {t('admin.sellers.edit')}
+              </PillButton>
+            )}
+            {!canManage ? null : seller.is_active ? (
               <PillButton
                 variant="secondary"
                 className={styles.small}

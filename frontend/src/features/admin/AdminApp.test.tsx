@@ -151,7 +151,7 @@ describe('AdminApp: a seller (Spec 9)', () => {
     stubAdminBackend('seller')
     renderAdmin()
 
-    expect(await navLinks()).toEqual(['Catalog', 'Orders', 'Profile'])
+    expect(await navLinks()).toEqual(['Catalog', 'Orders', 'Money', 'Profile'])
     expect(await screen.findByRole('heading', { name: 'Catalog' })).toBeInTheDocument()
     expect(screen.getByText('Lola Beauty')).toBeInTheDocument()
   })

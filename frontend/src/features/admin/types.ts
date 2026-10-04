@@ -18,6 +18,7 @@ export type Permission =
   | 'taxonomy.edit'
   | 'sellers.manage'
   | 'orders.prepare'
+  | 'payouts.manage'
 
 export interface AdminMe {
   /** Null only for the internal token, which the UI never uses. */
@@ -84,6 +85,10 @@ export interface AdminSeller {
   /** Empty unless the admin may manage sellers. */
   accounts: SellerAccount[]
   product_count: number
+  /** The platform's share of the goods, e.g. "10.00" (Spec 11). */
+  commission_percent: string
+  /** Empty unless the admin handles payouts. */
+  balances: Balance[]
 }
 
 export interface SellerInput {
@@ -92,10 +97,52 @@ export interface SellerInput {
   pickup_address: string
   telegram_id: number
   display_name: string
+  commission_percent: string
 }
 
 export type SellerUpdate = Partial<Pick<AdminSeller, 'name' | 'phone' | 'is_active'>> & {
   pickup_address?: string
+  commission_percent?: string
+}
+
+// --- sellers' money (Spec 11) ----------------------------------------------------------------
+
+/** One currency: earned − paid out = balance, owed to the seller. */
+export interface Balance {
+  currency: string
+  earned: string
+  paid_out: string
+  balance: string
+}
+
+export interface Earning {
+  order_id: number
+  earned_at: string
+  currency: string
+  goods_total: string
+  commission_percent: string
+  commission: string
+  amount: string
+}
+
+export interface Payout {
+  id: number
+  created_at: string
+  currency: string
+  amount: string
+  note: string | null
+}
+
+export interface Ledger {
+  balances: Balance[]
+  earnings: Earning[]
+  payouts: Payout[]
+}
+
+export interface PayoutInput {
+  amount: string
+  currency: string
+  note: string | null
 }
 
 // --- catalog ---------------------------------------------------------------------------------

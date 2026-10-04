@@ -2,8 +2,10 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 
+import { adminMe } from '../../../test/adminFixtures'
 import { stubAdminBackend } from '../../../test/mocks/adminBackend'
 import { renderScreen } from '../../../test/test-utils'
+import { AdminMeProvider } from '../meContext'
 import { SellersScreen } from './SellersScreen'
 
 function renderSellers() {
@@ -93,5 +95,58 @@ describe('SellersScreen', () => {
         },
       }),
     )
+  })
+})
+
+describe('SellersScreen: money (Spec 11)', () => {
+  it("shows each seller's rate and what they are owed", async () => {
+    stubAdminBackend()
+    renderSellers()
+
+    const lola = (await screen.findByText('Lola Beauty')).closest('li')!
+    expect(lola).toHaveTextContent('Commission 10%')
+    expect(lola).toHaveTextContent('Owed: €27.00')
+    expect(screen.getByText('Anor').closest('li')!).toHaveTextContent('Commission 12.5%')
+  })
+
+  it('sets the rate of a new seller', async () => {
+    const backend = stubAdminBackend()
+    renderSellers()
+
+    await userEvent.type(await screen.findByLabelText('Shop name'), 'Zara')
+    await userEvent.type(screen.getByLabelText('Pickup address'), 'Yunusobod 4')
+    await userEvent.type(screen.getByLabelText('Telegram ID'), '777')
+    await userEvent.type(screen.getByLabelText("Seller's name"), 'Zara')
+    const rate = screen.getByLabelText('Commission, %')
+    await userEvent.clear(rate)
+    await userEvent.type(rate, '12.5')
+    await userEvent.click(screen.getByRole('button', { name: 'Add' }))
+
+    await waitFor(() =>
+      expect(backend.writes()[0]).toMatchObject({
+        method: 'POST',
+        path: '/sellers',
+        body: { commission_percent: '12.5' },
+      }),
+    )
+  })
+
+  it('gives an accountant the money, not the seller controls', async () => {
+    stubAdminBackend('accountant')
+    renderScreen(
+      <AdminMeProvider value={adminMe('accountant')}>
+        <SellersScreen />
+      </AdminMeProvider>,
+      { route: '/admin/sellers', path: '/admin/sellers' },
+    )
+
+    const lola = (await screen.findByText('Lola Beauty')).closest('li')!
+    expect(within(lola).getByRole('link', { name: 'Money' })).toHaveAttribute(
+      'href',
+      '/admin/sellers/7',
+    )
+    expect(screen.queryByRole('heading', { name: 'Add seller' })).not.toBeInTheDocument()
+    expect(within(lola).queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+    expect(within(lola).queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument()
   })
 })

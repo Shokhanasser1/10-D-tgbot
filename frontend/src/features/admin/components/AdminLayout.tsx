@@ -9,6 +9,7 @@ import {
   Truck,
   UserCog,
   Users,
+  Wallet,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -27,6 +28,7 @@ const ICONS: Record<AdminSection, LucideIcon> = {
   summary: LayoutDashboard,
   catalog: Package,
   orders: ClipboardList,
+  earnings: Wallet,
   couriers: Truck,
   sellers: Handshake,
   admins: Users,

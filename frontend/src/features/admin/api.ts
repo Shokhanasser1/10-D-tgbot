@@ -15,11 +15,14 @@ import type {
   AdminSeller,
   AdminShipment,
   AdminVariant,
+  Ledger,
   AttributeValueType,
   CourierLocation,
   OrderFilters,
   Page,
   PasswordReset,
+  Payout,
+  PayoutInput,
   ProductInput,
   ProductStatus,
   SellerInput,
@@ -77,6 +80,12 @@ export const createSeller = (body: SellerInput) =>
   admin<AdminSeller>('/sellers', { method: 'POST', body })
 export const updateSeller = (id: number, body: SellerUpdate) =>
   admin<AdminSeller>(`/sellers/${id}`, { method: 'PATCH', body })
+
+// Spec 11. A payout needs the password re-entered; `admin` asks for it when the API says so.
+export const fetchLedger = (sellerId: number) => admin<Ledger>(`/sellers/${sellerId}/ledger`)
+export const recordPayout = (sellerId: number, body: PayoutInput) =>
+  admin<Payout>(`/sellers/${sellerId}/payouts`, { method: 'POST', body })
+export const fetchMyEarnings = () => admin<Ledger>('/seller/earnings')
 
 // --- catalog ---------------------------------------------------------------------------------
 

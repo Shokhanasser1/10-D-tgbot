@@ -188,7 +188,8 @@
       "couriers": "Couriers",
       "admins": "Admins",
       "profile": "Profile",
-      "sellers": "Sellers"
+      "sellers": "Sellers",
+      "earnings": "Money"
     },
     "roles": {
       "owner": "Owner",
@@ -241,7 +242,8 @@
       "conflict": "Someone changed this at the same time. Reload and try again.",
       "tooLarge": "The file is too large (10 MB maximum).",
       "invalid": "Some fields are not filled in correctly.",
-      "sellerRoleFixed": "Seller accounts are managed under Sellers"
+      "sellerRoleFixed": "Seller accounts are managed under Sellers",
+      "exceedsBalance": "That is more than the seller is owed."
     },
     "summary": {
       "period": "Period",
@@ -496,7 +498,12 @@
       "edit": "Edit",
       "cancel": "Cancel",
       "deactivateTitle": "Deactivate {{name}}?",
-      "deactivateMessage": "Their products leave the shop and their account stops working until you turn them back on."
+      "deactivateMessage": "Their products leave the shop and their account stops working until you turn them back on.",
+      "commission": "Commission, %",
+      "commissionHint": "The platform's share of the goods; shipping is yours",
+      "commissionShort": "Commission {{percent}}%",
+      "owed": "Owed: {{amount}}",
+      "openLedger": "Money"
     },
     "sellerOrders": {
       "waiting": "Waiting for you",
@@ -508,6 +515,22 @@
       "items_other": "{{count}} items",
       "goodsTotal": "Goods total",
       "empty": "No orders yet"
+    },
+    "money": {
+      "earned": "Earned",
+      "paidOut": "Paid out",
+      "owed": "Owed",
+      "nothingYet": "Nothing earned yet: the share of an order is added when it is delivered.",
+      "earnings": "Earnings by order",
+      "payouts": "Payouts",
+      "noPayouts": "No payouts yet",
+      "earningLine": "Goods {{goods}} − {{percent}}% commission ({{commission}})",
+      "recordPayout": "Record payout",
+      "payoutHint": "Send the money yourself first, then record it here. The seller gets a message.",
+      "amount": "Amount",
+      "currency": "Currency",
+      "note": "Note (how it was paid)",
+      "recorded": "Payout recorded."
     }
   }
 }

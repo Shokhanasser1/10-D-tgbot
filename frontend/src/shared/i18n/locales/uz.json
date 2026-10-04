@@ -188,7 +188,8 @@
       "couriers": "Kuryerlar",
       "admins": "Adminlar",
       "profile": "Profil",
-      "sellers": "Sotuvchilar"
+      "sellers": "Sotuvchilar",
+      "earnings": "Pullar"
     },
     "roles": {
       "owner": "Egasi",
@@ -241,7 +242,8 @@
       "conflict": "Kimdir buni siz bilan bir vaqtda o'zgartirdi. Sahifani yangilab, qayta urinib ko'ring.",
       "tooLarge": "Fayl juda katta (ko'pi bilan 10 MB).",
       "invalid": "Ba'zi maydonlar noto'g'ri to'ldirilgan.",
-      "sellerRoleFixed": "Sotuvchi akkauntlari «Sotuvchilar» bo'limida boshqariladi"
+      "sellerRoleFixed": "Sotuvchi akkauntlari «Sotuvchilar» bo'limida boshqariladi",
+      "exceedsBalance": "Bu sotuvchiga to'lanadigan summadan ko'p."
     },
     "summary": {
       "period": "Davr",
@@ -496,7 +498,12 @@
       "edit": "Tahrirlash",
       "cancel": "Bekor qilish",
       "deactivateTitle": "«{{name}}» o'chirilsinmi?",
-      "deactivateMessage": "Uning mahsulotlari do'kondan yo'qoladi va akkaunti qayta yoqmaguningizcha ishlamaydi."
+      "deactivateMessage": "Uning mahsulotlari do'kondan yo'qoladi va akkaunti qayta yoqmaguningizcha ishlamaydi.",
+      "commission": "Komissiya, %",
+      "commissionHint": "Platformaning mahsulotlar summasidan ulushi; yetkazib berish sizniki",
+      "commissionShort": "Komissiya {{percent}}%",
+      "owed": "To'lanadi: {{amount}}",
+      "openLedger": "Pullar"
     },
     "sellerOrders": {
       "waiting": "Sizni kutmoqda",
@@ -508,6 +515,22 @@
       "items_other": "{{count}} ta mahsulot",
       "goodsTotal": "Mahsulotlar summasi",
       "empty": "Hozircha buyurtmalar yo'q"
+    },
+    "money": {
+      "earned": "Ishlab topildi",
+      "paidOut": "To'landi",
+      "owed": "To'lanadi",
+      "nothingYet": "Hozircha hech narsa ishlanmagan: buyurtma ulushi yetkazilgandan keyin qo'shiladi.",
+      "earnings": "Buyurtmalar bo'yicha hisob",
+      "payouts": "To'lovlar",
+      "noPayouts": "Hozircha to'lovlar yo'q",
+      "earningLine": "Mahsulotlar {{goods}} − {{percent}}% komissiya ({{commission}})",
+      "recordPayout": "To'lovni qayd etish",
+      "payoutHint": "Avval pulni o'zingiz o'tkazing, keyin bu yerda qayd eting. Sotuvchiga xabar boradi.",
+      "amount": "Summa",
+      "currency": "Valyuta",
+      "note": "Izoh (qanday to'langan)",
+      "recorded": "To'lov qayd etildi."
     }
   }
 }
