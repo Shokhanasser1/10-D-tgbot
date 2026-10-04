@@ -8,6 +8,8 @@ import { CourierScreen } from '../features/courier/screens/CourierScreen'
 import { OrderDetailScreen } from '../features/orders/screens/OrderDetailScreen'
 import { OrdersListScreen } from '../features/orders/screens/OrdersListScreen'
 import { AppShell } from './AppShell'
+import { CourierShell } from './CourierShell'
+import { LaunchGate } from './LaunchGate'
 
 function ProductDetailRoute() {
   // Remounts on navigation between products (same route element otherwise reuses local state).
@@ -23,8 +25,19 @@ export const router = createBrowserRouter([
       import('../features/admin/AdminApp').then((module) => ({ Component: module.AdminApp })),
   },
   {
+    // Its own shell too: a courier gets a way back to the shop, not the cart.
+    path: '/courier',
+    element: <CourierShell />,
+    children: [{ index: true, element: <CourierScreen /> }],
+  },
+  {
     path: '/',
-    element: <AppShell />,
+    // On a launch at `/`, sends admins and couriers to their screens first (Spec 8).
+    element: (
+      <LaunchGate>
+        <AppShell />
+      </LaunchGate>
+    ),
     children: [
       { index: true, element: <CatalogHomeScreen /> },
       { path: 'products/:productId', element: <ProductDetailRoute /> },
@@ -32,7 +45,6 @@ export const router = createBrowserRouter([
       { path: 'checkout', element: <CheckoutScreen /> },
       { path: 'orders', element: <OrdersListScreen /> },
       { path: 'orders/:orderId', element: <OrderDetailScreen /> },
-      { path: 'courier', element: <CourierScreen /> },
     ],
   },
 ])
