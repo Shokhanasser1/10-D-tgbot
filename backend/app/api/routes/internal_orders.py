@@ -35,6 +35,7 @@ async def list_orders(
     date_from: date | None = Query(default=None, alias="from"),
     date_to: date | None = Query(default=None, alias="to"),
     shortfall: bool | None = Query(default=None),
+    seller_id: int | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     _: AdminPrincipal = Depends(_view),
@@ -47,6 +48,7 @@ async def list_orders(
         date_from=date_from,
         date_to=date_to,
         shortfall=shortfall,
+        seller_id=seller_id,
         limit=limit,
         offset=offset,
     )

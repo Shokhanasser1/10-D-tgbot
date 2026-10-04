@@ -27,6 +27,7 @@ from app.models.enums import (
 )
 from app.models.order import Order, OrderItem
 from app.models.payment import Payment
+from app.models.seller import Seller
 from app.models.shipment import Shipment
 from app.models.telegram_user import TelegramUser
 from app.models.variant import Variant
@@ -37,6 +38,7 @@ from app.schemas.order_admin import (
     OrderAdminListItem,
     OrderAdminPage,
     OrderAdminPaymentOut,
+    OrderAdminSellerOut,
     OrderAdminShipmentOut,
 )
 from app.services import courier_state, notification_events, stock_service, stripe_service
@@ -64,7 +66,10 @@ def _filtered(
     date_from: date | None,
     date_to: date | None,
     shortfall: bool | None,
+    seller_id: int | None = None,
 ) -> Select:
+    if seller_id is not None:
+        stmt = stmt.where(Order.seller_id == seller_id)
     if statuses:
         stmt = stmt.where(Order.status.in_(statuses))
     if q and q.strip().isdigit():
@@ -89,12 +94,19 @@ async def list_orders(
     date_from: date | None = None,
     date_to: date | None = None,
     shortfall: bool | None = None,
+    seller_id: int | None = None,
     limit: int = 50,
     offset: int = 0,
 ) -> OrderAdminPage:
     total = await db.scalar(
         _filtered(
-            select(func.count()).select_from(Order), statuses, q, date_from, date_to, shortfall
+            select(func.count()).select_from(Order),
+            statuses,
+            q,
+            date_from,
+            date_to,
+            shortfall,
+            seller_id,
         )
     )
     rows = (
@@ -113,8 +125,12 @@ async def list_orders(
                     Shipment.status.label("shipment_status"),
                     Payment.refund_status,
                     Order.payment_method,
+                    Order.seller_id,
+                    Seller.name.label("seller_name"),
+                    Shipment.ready_at,
                 )
                 .join(TelegramUser, TelegramUser.telegram_id == Order.telegram_id)
+                .join(Seller, Seller.id == Order.seller_id)
                 .outerjoin(Shipment, Shipment.order_id == Order.id)
                 .outerjoin(Payment, Payment.order_id == Order.id),
                 statuses,
@@ -122,6 +138,7 @@ async def list_orders(
                 date_from,
                 date_to,
                 shortfall,
+                seller_id,
             )
             .order_by(Order.placed_at.desc(), Order.id.desc())
             .limit(limit)
@@ -143,6 +160,9 @@ async def list_orders(
                 stock_shortfall=r.stock_shortfall,
                 refund_status=r.refund_status,
                 payment_method=r.payment_method,
+                seller_id=r.seller_id,
+                seller_name=r.seller_name,
+                ready_at=r.ready_at,
             )
             for r in rows
         ],
@@ -192,11 +212,19 @@ async def get_order(db: AsyncSession, order_id: int) -> OrderAdminDetailOut:
                 Shipment.assigned_at,
                 Shipment.picked_up_at,
                 Shipment.delivered_at,
+                Shipment.ready_at,
             )
             .outerjoin(Courier, Courier.id == Shipment.courier_id)
             .where(Shipment.order_id == order_id)
         )
     ).first()
+    seller = (
+        await db.execute(
+            select(Seller.id, Seller.name, Seller.phone, Seller.pickup_address).where(
+                Seller.id == order.seller_id
+            )
+        )
+    ).one()
 
     return OrderAdminDetailOut(
         id=order.id,
@@ -246,6 +274,7 @@ async def get_order(db: AsyncSession, order_id: int) -> OrderAdminDetailOut:
                 assigned_at=shipment.assigned_at,
                 picked_up_at=shipment.picked_up_at,
                 delivered_at=shipment.delivered_at,
+                ready_at=shipment.ready_at,
             )
             if shipment
             else None
@@ -259,6 +288,15 @@ async def get_order(db: AsyncSession, order_id: int) -> OrderAdminDetailOut:
             order.status in CANCELLABLE_ORDER
             and shipment is not None
             and shipment.status in CANCELLABLE_SHIPMENT
+        ),
+        seller=OrderAdminSellerOut(
+            id=seller.id, name=seller.name, phone=seller.phone, pickup_address=seller.pickup_address
+        ),
+        can_mark_ready=(
+            order.status == OrderStatus.paid
+            and shipment is not None
+            and shipment.status == ShipmentStatus.processing
+            and shipment.ready_at is None
         ),
     )
 

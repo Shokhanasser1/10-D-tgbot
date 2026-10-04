@@ -7,12 +7,14 @@ from app.core.geo import destination_from_address
 from app.models.courier import Courier, CourierLocation
 from app.models.enums import ACTIVE_SHIPMENT_STATUSES, OrderStatus, PaymentMethod, ShipmentStatus
 from app.models.order import Order, OrderItem
+from app.models.seller import Seller
 from app.models.shipment import Shipment
 from app.schemas.courier import (
     CourierAddressOut,
     CourierDeliveriesOut,
     CourierDeliveryOut,
     DeliveryItemOut,
+    PickupOut,
     PoolItemOut,
 )
 
@@ -28,6 +30,10 @@ def _text(address: dict, key: str) -> str:
     return str(address.get(key) or "")
 
 
+def _pickup(row) -> PickupOut:
+    return PickupOut(name=row.seller_name, address=row.pickup_address, phone=row.seller_phone)
+
+
 async def get_pool(db: AsyncSession) -> list[PoolItemOut]:
     rows = (
         await db.execute(
@@ -39,8 +45,12 @@ async def get_pool(db: AsyncSession) -> list[PoolItemOut]:
                 Order.payment_method,
                 Order.total,
                 Order.currency,
+                Seller.name.label("seller_name"),
+                Seller.pickup_address,
+                Seller.phone.label("seller_phone"),
             )
             .join(Order, Order.id == Shipment.order_id)
+            .join(Seller, Seller.id == Order.seller_id)
             .where(
                 Shipment.status == ShipmentStatus.processing,
                 Shipment.courier_id.is_(None),
@@ -76,6 +86,7 @@ async def get_pool(db: AsyncSession) -> list[PoolItemOut]:
             placed_at=row.placed_at,
             cash_to_collect=_cash(row.payment_method, row.total),
             currency=row.currency,
+            pickup=_pickup(row),
         )
         for row in rows
     ]
@@ -96,8 +107,12 @@ async def get_deliveries(db: AsyncSession, courier: Courier) -> CourierDeliverie
                 Order.payment_method,
                 Order.total,
                 Order.currency,
+                Seller.name.label("seller_name"),
+                Seller.pickup_address,
+                Seller.phone.label("seller_phone"),
             )
             .join(Order, Order.id == Shipment.order_id)
+            .join(Seller, Seller.id == Order.seller_id)
             .where(
                 Shipment.courier_id == courier.id,
                 Shipment.status.in_(ACTIVE_SHIPMENT_STATUSES),
@@ -145,6 +160,7 @@ async def get_deliveries(db: AsyncSession, courier: Courier) -> CourierDeliverie
                 picked_up_at=row.picked_up_at,
                 cash_to_collect=_cash(row.payment_method, row.total),
                 currency=row.currency,
+                pickup=_pickup(row),
             )
             for row in rows
         ],

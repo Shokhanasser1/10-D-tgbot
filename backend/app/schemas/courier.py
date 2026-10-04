@@ -14,6 +14,14 @@ class CourierProfileOut(BaseModel):
     max_active_deliveries: int
 
 
+class PickupOut(BaseModel):
+    """Where the courier collects the order: the seller's shop (Spec 10)."""
+
+    name: str
+    address: str | None
+    phone: str | None
+
+
 class PoolItemOut(BaseModel):
     """A claimable order. Deliberately just enough to decide: no phone, notes or coordinates."""
 
@@ -26,6 +34,7 @@ class PoolItemOut(BaseModel):
     # Cash on delivery: what the courier collects. Null for orders paid online.
     cash_to_collect: Decimal | None = None
     currency: str = "EUR"
+    pickup: PickupOut
 
 
 class DeliveryItemOut(BaseModel):
@@ -55,6 +64,7 @@ class CourierDeliveryOut(BaseModel):
     picked_up_at: datetime | None
     cash_to_collect: Decimal | None = None
     currency: str = "EUR"
+    pickup: PickupOut
 
 
 class CourierDeliveriesOut(BaseModel):

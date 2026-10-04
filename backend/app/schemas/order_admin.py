@@ -25,6 +25,10 @@ class OrderAdminListItem(BaseModel):
     stock_shortfall: bool
     refund_status: RefundStatus | None
     payment_method: PaymentMethod = PaymentMethod.stripe
+    # Spec 10: whose order it is, and whether the seller has it ready (null: still preparing).
+    seller_id: int
+    seller_name: str
+    ready_at: datetime | None = None
 
 
 class OrderAdminPage(BaseModel):
@@ -67,6 +71,14 @@ class OrderAdminShipmentOut(BaseModel):
     assigned_at: datetime | None
     picked_up_at: datetime | None
     delivered_at: datetime | None
+    ready_at: datetime | None = None
+
+
+class OrderAdminSellerOut(BaseModel):
+    id: int
+    name: str
+    phone: str | None
+    pickup_address: str | None
 
 
 class OrderAdminDetailOut(BaseModel):
@@ -89,6 +101,9 @@ class OrderAdminDetailOut(BaseModel):
     cancel_reason: str | None
     # Server-side answer to "may this order be cancelled now?", so the UI never re-derives it.
     can_cancel: bool
+    seller: OrderAdminSellerOut
+    # Paid and waiting for its seller (Spec 10): the platform may mark it ready.
+    can_mark_ready: bool
 
 
 class OrderReadyOut(BaseModel):

@@ -21,6 +21,8 @@ POOL_KEYS = {
     # Cash on delivery only (Spec 6): what to collect. Null for orders paid online.
     "cash_to_collect",
     "currency",
+    # Where to collect it: the seller's shop, never the customer (Spec 10).
+    "pickup",
 }
 MONEY_KEYS = {"total", "subtotal", "shipping_cost", "unit_price_snapshot", "price", "amount"}
 
