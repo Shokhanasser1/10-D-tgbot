@@ -24,8 +24,8 @@ ROLE_PERMISSIONS: dict[AdminRole, frozenset[Permission]] = {
         {P.summary_view, P.orders_view, P.orders_cancel_paid, P.refunds_manage}
     ),
     AdminRole.viewer: _VIEW_ALL,
-    # Gains its own catalog only together with the scope that confines it there (Spec 9 §4).
-    AdminRole.seller: frozenset(),
+    # Only its own products: app/services/seller_scope.py confines it there (Spec 9 §4).
+    AdminRole.seller: frozenset({P.catalog_view, P.catalog_edit}),
 }
 
 CONFIRMATION_REQUIRED = frozenset({P.orders_cancel_paid, P.refunds_manage, P.admins_manage})

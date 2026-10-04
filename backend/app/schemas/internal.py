@@ -57,6 +57,7 @@ class ProductCreate(BaseModel):
 
 class ProductUpdate(BaseModel):
     category_id: int | None = None
+    seller_id: int | None = None  # platform staff only (Spec 9)
     base_sku: str | None = None
     base_price: Decimal | None = None
     status: ProductStatus | None = None
@@ -67,6 +68,7 @@ class ProductAdminOut(BaseModel):
 
     id: int
     category_id: int
+    seller_id: int
     base_sku: str
     base_price: Decimal
     status: ProductStatus
@@ -162,6 +164,8 @@ class AttributeAdminListItem(AttributeAdminOut):
 class ProductAdminListItem(BaseModel):
     id: int
     category_id: int
+    seller_id: int
+    seller_name: str
     base_sku: str
     base_price: Decimal
     status: ProductStatus
@@ -178,6 +182,7 @@ class ProductAdminPage(BaseModel):
 
 
 class ProductAdminDetailOut(ProductAdminOut):
+    seller_name: str
     name: str
     translations: Translations
     variants: list[VariantAdminOut]

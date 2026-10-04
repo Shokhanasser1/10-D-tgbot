@@ -4,7 +4,12 @@ from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.datastructures import UploadFile as StarletteUploadFile
 
-from app.api.deps import require_permission, require_view_or_edit
+from app.api.deps import (
+    AdminPrincipal,
+    get_admin_principal,
+    require_permission,
+    require_view_or_edit,
+)
 from app.config import get_settings
 from app.core.exceptions import BadRequestError
 from app.core.images import MAX_UPLOAD_BYTES
@@ -33,7 +38,12 @@ from app.schemas.internal import (
     VariantCreate,
     VariantUpdate,
 )
-from app.services import catalog_admin_query_service, catalog_admin_service, image_service
+from app.services import (
+    catalog_admin_query_service,
+    catalog_admin_service,
+    image_service,
+    seller_scope,
+)
 
 settings = get_settings()
 
@@ -61,6 +71,12 @@ def _locale(locale: str | None = Query(default=None)) -> str:
     return locale if locale in settings.supported_locales else settings.default_locale
 
 
+async def _scope(principal: AdminPrincipal = Depends(get_admin_principal)) -> int | None:
+    """The caller's seller (Spec 9 section 4); None for platform staff. Every route below that
+    names a product, variant, image or product text checks it through `seller_scope`."""
+    return principal.seller_id
+
+
 @router.get("/categories", response_model=list[CategoryAdminListItem])
 async def list_categories(locale: str = Depends(_locale), db: AsyncSession = Depends(get_db)):
     return await catalog_admin_query_service.list_categories(db, locale, settings.default_locale)
@@ -78,7 +94,9 @@ async def list_products(
     q: str | None = Query(default=None, max_length=100),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
+    seller_id: int | None = Query(default=None),
     locale: str = Depends(_locale),
+    scope: int | None = Depends(_scope),
     db: AsyncSession = Depends(get_db),
 ):
     return await catalog_admin_query_service.list_products(
@@ -87,6 +105,7 @@ async def list_products(
         settings.default_locale,
         status=product_status,
         category_id=category_id,
+        seller_id=seller_scope.seller_filter(scope, seller_id),
         q=q,
         limit=limit,
         offset=offset,
@@ -95,8 +114,12 @@ async def list_products(
 
 @router.get("/products/{product_id}", response_model=ProductAdminDetailOut)
 async def get_product(
-    product_id: int, locale: str = Depends(_locale), db: AsyncSession = Depends(get_db)
+    product_id: int,
+    locale: str = Depends(_locale),
+    scope: int | None = Depends(_scope),
+    db: AsyncSession = Depends(get_db),
 ):
+    await seller_scope.product_in_scope(db, scope, product_id)
     product = await catalog_admin_query_service.get_product(
         db, product_id, locale, settings.default_locale
     )
@@ -148,12 +171,24 @@ async def update_attribute(
 
 
 @router.post("/products", response_model=ProductAdminOut, status_code=status.HTTP_201_CREATED)
-async def create_product(data: ProductCreate, db: AsyncSession = Depends(get_db)):
-    return await catalog_admin_service.create_product(db, data)
+async def create_product(
+    data: ProductCreate, scope: int | None = Depends(_scope), db: AsyncSession = Depends(get_db)
+):
+    seller_id = await seller_scope.seller_for_new_product(db, scope, data.seller_id)
+    return await catalog_admin_service.create_product(
+        db, data.model_copy(update={"seller_id": seller_id})
+    )
 
 
 @router.patch("/products/{product_id}", response_model=ProductAdminOut)
-async def update_product(product_id: int, data: ProductUpdate, db: AsyncSession = Depends(get_db)):
+async def update_product(
+    product_id: int,
+    data: ProductUpdate,
+    scope: int | None = Depends(_scope),
+    db: AsyncSession = Depends(get_db),
+):
+    await seller_scope.product_in_scope(db, scope, product_id)
+    await seller_scope.check_product_update(db, scope, data)
     product = await catalog_admin_service.update_product(db, product_id, data)
     if product is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
@@ -161,12 +196,21 @@ async def update_product(product_id: int, data: ProductUpdate, db: AsyncSession 
 
 
 @router.post("/variants", response_model=VariantAdminOut, status_code=status.HTTP_201_CREATED)
-async def create_variant(data: VariantCreate, db: AsyncSession = Depends(get_db)):
+async def create_variant(
+    data: VariantCreate, scope: int | None = Depends(_scope), db: AsyncSession = Depends(get_db)
+):
+    await seller_scope.product_in_scope(db, scope, data.product_id)
     return await catalog_admin_service.create_variant(db, data)
 
 
 @router.patch("/variants/{variant_id}", response_model=VariantAdminOut)
-async def update_variant(variant_id: int, data: VariantUpdate, db: AsyncSession = Depends(get_db)):
+async def update_variant(
+    variant_id: int,
+    data: VariantUpdate,
+    scope: int | None = Depends(_scope),
+    db: AsyncSession = Depends(get_db),
+):
+    await seller_scope.variant_in_scope(db, scope, variant_id)
     variant = await catalog_admin_service.update_variant(db, variant_id, data)
     if variant is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Variant not found")
@@ -179,10 +223,15 @@ async def update_variant(variant_id: int, data: VariantUpdate, db: AsyncSession 
     status_code=status.HTTP_201_CREATED,
 )
 async def create_product_image(
-    product_id: int, request: Request, db: AsyncSession = Depends(get_db)
+    product_id: int,
+    request: Request,
+    scope: int | None = Depends(_scope),
+    db: AsyncSession = Depends(get_db),
 ):
     """JSON `{url, variant_id?, position?}` links an image hosted elsewhere; multipart form data
     with a `file` (plus optional `variant_id`, `position`) uploads one."""
+    # Before reading the body: another seller's product is refused without storing anything.
+    await seller_scope.product_in_scope(db, scope, product_id)
     content_type = request.headers.get("content-type", "")
     if not content_type.startswith("multipart/form-data"):
         try:
@@ -215,16 +264,28 @@ async def create_product_image(
 
 
 @router.patch("/images/{image_id}", response_model=ProductImageOut)
-async def update_image(image_id: int, data: ProductImageUpdate, db: AsyncSession = Depends(get_db)):
+async def update_image(
+    image_id: int,
+    data: ProductImageUpdate,
+    scope: int | None = Depends(_scope),
+    db: AsyncSession = Depends(get_db),
+):
+    await seller_scope.image_in_scope(db, scope, image_id)
     return await image_service.update_image(db, image_id, data)
 
 
 @router.delete("/images/{image_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_image(image_id: int, db: AsyncSession = Depends(get_db)) -> Response:
+async def delete_image(
+    image_id: int, scope: int | None = Depends(_scope), db: AsyncSession = Depends(get_db)
+) -> Response:
+    await seller_scope.image_in_scope(db, scope, image_id)
     await image_service.delete_image(db, image_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/translations", response_model=TranslationOut, status_code=status.HTTP_201_CREATED)
-async def upsert_translation(data: TranslationUpsert, db: AsyncSession = Depends(get_db)):
+async def upsert_translation(
+    data: TranslationUpsert, scope: int | None = Depends(_scope), db: AsyncSession = Depends(get_db)
+):
+    await seller_scope.translation_in_scope(db, scope, data.entity_type, data.entity_id)
     return await catalog_admin_service.upsert_translation(db, data)

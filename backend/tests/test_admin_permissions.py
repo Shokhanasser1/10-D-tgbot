@@ -123,6 +123,7 @@ def test_the_matrix_matches_the_spec() -> None:
     }
     assert {P.taxonomy_edit, P.sellers_manage} <= ROLE_PERMISSIONS[AdminRole.manager]
     assert P.sellers_manage not in ROLE_PERMISSIONS[AdminRole.catalog_manager]
+    assert ROLE_PERMISSIONS[AdminRole.seller] == {P.catalog_view, P.catalog_edit}
 
 
 # --- cancelling: paid vs unpaid --------------------------------------------------------------

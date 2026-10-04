@@ -152,6 +152,8 @@ async def test_list_products_includes_every_status_with_stats(
     assert by_id[ids["lipstick"]] == {
         "id": ids["lipstick"],
         "category_id": ids["category"],
+        "seller_id": by_id[ids["lipstick"]]["seller_id"],
+        "seller_name": "Test shop",
         "base_sku": "rp1-LIP",
         "base_price": "20.00",
         "status": "active",

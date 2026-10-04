@@ -13,6 +13,7 @@ from app.models.category import Category
 from app.models.enums import ProductStatus
 from app.models.product import Product
 from app.models.product_image import ProductImage
+from app.models.seller import Seller
 from app.models.translation import Translation
 from app.models.variant import Variant
 from app.schemas.internal import (
@@ -91,6 +92,13 @@ async def list_attributes(db: AsyncSession) -> list[AttributeAdminListItem]:
     ]
 
 
+async def _seller_names(db: AsyncSession, seller_ids: set[int]) -> dict[int, str]:
+    if not seller_ids:
+        return {}
+    rows = await db.execute(select(Seller.id, Seller.name).where(Seller.id.in_(seller_ids)))
+    return dict(rows.tuples().all())
+
+
 def _escape_like(value: str) -> str:
     return (
         value.replace(_LIKE_ESCAPE, _LIKE_ESCAPE * 2)
@@ -100,12 +108,18 @@ def _escape_like(value: str) -> str:
 
 
 def _filtered(
-    stmt: Select, status: ProductStatus | None, category_id: int | None, q: str | None
+    stmt: Select,
+    status: ProductStatus | None,
+    category_id: int | None,
+    seller_id: int | None,
+    q: str | None,
 ) -> Select:
     if status is not None:
         stmt = stmt.where(Product.status == status)
     if category_id is not None:
         stmt = stmt.where(Product.category_id == category_id)
+    if seller_id is not None:
+        stmt = stmt.where(Product.seller_id == seller_id)
     if q and q.strip():
         pattern = f"%{_escape_like(q.strip())}%"
         name_match = select(Translation.entity_id).where(
@@ -133,17 +147,18 @@ async def list_products(
     *,
     status: ProductStatus | None = None,
     category_id: int | None = None,
+    seller_id: int | None = None,
     q: str | None = None,
     limit: int = 50,
     offset: int = 0,
 ) -> ProductAdminPage:
     total = await db.scalar(
-        _filtered(select(func.count()).select_from(Product), status, category_id, q)
+        _filtered(select(func.count()).select_from(Product), status, category_id, seller_id, q)
     )
     products = (
         (
             await db.execute(
-                _filtered(select(Product), status, category_id, q)
+                _filtered(select(Product), status, category_id, seller_id, q)
                 .order_by(Product.id.desc())
                 .limit(limit)
                 .offset(offset)
@@ -154,6 +169,7 @@ async def list_products(
     )
     ids = [p.id for p in products]
     names = await translations_for(db, "product", ids, ["name"], locale, fallback_locale)
+    seller_names = await _seller_names(db, {p.seller_id for p in products})
 
     stats: dict[int, tuple[int, Decimal | None, int]] = {}
     thumbnails: dict[int, str] = {}
@@ -191,6 +207,8 @@ async def list_products(
             ProductAdminListItem(
                 id=p.id,
                 category_id=p.category_id,
+                seller_id=p.seller_id,
+                seller_name=seller_names[p.seller_id],
                 base_sku=p.base_sku,
                 base_price=p.base_price,
                 status=p.status,
@@ -235,9 +253,12 @@ async def get_product(
         .all()
     )
     texts = (await _all_translations(db, "product", [product_id]))[product_id]
+    seller_names = await _seller_names(db, {product.seller_id})
     return ProductAdminDetailOut(
         id=product.id,
         category_id=product.category_id,
+        seller_id=product.seller_id,
+        seller_name=seller_names[product.seller_id],
         base_sku=product.base_sku,
         base_price=product.base_price,
         status=product.status,
