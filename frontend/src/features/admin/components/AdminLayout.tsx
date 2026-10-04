@@ -4,16 +4,19 @@ import {
   LogOut,
   type LucideIcon,
   Package,
+  Store,
   Truck,
   UserCog,
   Users,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 
 import { SUPPORTED_LOCALES, type SupportedLocale, setLocale } from '../../../shared/i18n'
 import { isTelegramEnv } from '../../../shared/telegram/webApp'
+import { IconButton } from '../../../shared/ui/IconButton'
+import { useCourierProfile } from '../../courier/hooks'
 import { useLogout } from '../hooks'
 import { type AdminSection, sectionsFor } from '../permissions'
 import type { AdminMe } from '../types'
@@ -36,6 +39,8 @@ interface AdminLayoutProps {
 export function AdminLayout({ me, children }: AdminLayoutProps) {
   const { t, i18n } = useTranslation()
   const logout = useLogout()
+  const navigate = useNavigate()
+  const courierQuery = useCourierProfile()
 
   return (
     <div className={styles.layout}>
@@ -66,6 +71,15 @@ export function AdminLayout({ me, children }: AdminLayoutProps) {
             <span className={styles.name}>{me.display_name}</span>
             <span className={styles.role}>{t(`admin.roles.${me.role}`)}</span>
           </div>
+          {/* Spec 8 §5: the way back to the shop; not in the nav, which is full on phones. */}
+          <IconButton aria-label={t('nav.shop')} onClick={() => navigate('/')}>
+            <Store size={18} aria-hidden />
+          </IconButton>
+          {courierQuery.data && (
+            <IconButton aria-label={t('courier.nav')} onClick={() => navigate('/courier')}>
+              <Truck size={18} aria-hidden />
+            </IconButton>
+          )}
           <select
             aria-label={t('admin.language')}
             className={styles.language}

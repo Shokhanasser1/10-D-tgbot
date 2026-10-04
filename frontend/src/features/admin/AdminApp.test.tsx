@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 
+import { courierProfile } from '../../test/fixtures'
 import { API } from '../../test/mocks/handlers'
 import { stubAdminBackend } from '../../test/mocks/adminBackend'
 import { server } from '../../test/mocks/server'
@@ -100,5 +101,46 @@ describe('AdminApp', () => {
 
     await waitFor(async () => expect(await navLinks()).toContain('Сводка'))
     await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Язык' }), 'en')
+  })
+})
+
+describe('AdminApp: switching to other screens', () => {
+  const withOtherScreens = {
+    route: '/admin',
+    path: '/admin/*',
+    extraRoutes: [
+      { path: '/', element: <div>shop home</div> },
+      { path: '/courier', element: <div>courier page</div> },
+    ],
+  }
+
+  it('takes an admin to the shop', async () => {
+    const user = userEvent.setup()
+    stubAdminBackend('owner')
+    renderScreen(<AdminApp />, withOtherScreens)
+
+    await user.click(await screen.findByRole('button', { name: 'Shop' }))
+
+    expect(await screen.findByText('shop home')).toBeInTheDocument()
+  })
+
+  it('hides the courier button from an admin who is not a courier', async () => {
+    stubAdminBackend('owner')
+    renderScreen(<AdminApp />, withOtherScreens)
+
+    await screen.findByRole('button', { name: 'Shop' })
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(screen.queryByRole('button', { name: 'Courier' })).not.toBeInTheDocument()
+  })
+
+  it('takes an admin who is also a courier to the courier screen', async () => {
+    const user = userEvent.setup()
+    stubAdminBackend('owner')
+    server.use(http.get(`${API}/courier/me`, () => HttpResponse.json(courierProfile)))
+    renderScreen(<AdminApp />, withOtherScreens)
+
+    await user.click(await screen.findByRole('button', { name: 'Courier' }))
+
+    expect(await screen.findByText('courier page')).toBeInTheDocument()
   })
 })
