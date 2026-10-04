@@ -1,5 +1,6 @@
-// Opens a free Cloudflare quick tunnel to the local backend (docker compose `web`, port 8080 by
-// default), points the Pages project at it (BACKEND_URL) and redeploys so the change takes effect.
+// Opens a free Cloudflare quick tunnel to the local backend (the FastAPI app on port 8000 by
+// default: docker compose `api` or uvicorn; the Pages Function strips /api itself), points the
+// Pages project at it (BACKEND_URL) and redeploys so the change takes effect.
 // A quick tunnel gets a new *.trycloudflare.com address on every start, which is why this runs
 // both steps together; the Mini App keeps its stable *.pages.dev address.
 //
@@ -8,7 +9,7 @@
 
 import { spawn, spawnSync } from 'node:child_process'
 
-const LOCAL_URL = process.env.BACKEND_LOCAL_URL ?? 'http://localhost:8080'
+const LOCAL_URL = process.env.BACKEND_LOCAL_URL ?? 'http://localhost:8000'
 const TUNNEL_URL = /https:\/\/[a-z0-9-]+\.trycloudflare\.com/
 
 function wrangler(args, input) {
