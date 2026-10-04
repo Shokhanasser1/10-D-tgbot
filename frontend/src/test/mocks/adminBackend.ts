@@ -12,6 +12,8 @@ import {
   adminProductList,
   admins,
   adminSellers,
+  sellerOrder,
+  sellerOrderList,
   adminShipments,
   courierLocations,
   summary,
@@ -87,6 +89,16 @@ export function stubAdminBackend(role: AdminRole | 401 | 403 = 'owner') {
     http.get(`${I}/shipments`, () => HttpResponse.json(adminShipments)),
     http.get(`${I}/admins`, () => HttpResponse.json(admins)),
     http.get(`${I}/sellers`, () => HttpResponse.json(adminSellers)),
+    http.get(`${I}/seller/orders`, () =>
+      HttpResponse.json({ items: sellerOrderList, total: sellerOrderList.length }),
+    ),
+    http.get(`${I}/seller/orders/:id`, ({ params }) =>
+      HttpResponse.json(sellerOrder({ id: Number(params.id) })),
+    ),
+    http.post(`${I}/orders/:id/ready`, async ({ request, params }) => {
+      await record(request)
+      return HttpResponse.json({ order_id: Number(params.id), ready_at: '2026-09-24T11:00:00Z' })
+    }),
 
     http.post(`${I}/products`, async ({ request }) => {
       const body = (await record(request)) as object

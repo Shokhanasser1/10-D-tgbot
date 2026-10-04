@@ -178,3 +178,37 @@ describe('OrderDetailScreen', () => {
     )
   })
 })
+
+describe('OrderDetailScreen: sellers (Spec 10)', () => {
+  it('shows the seller and where couriers collect the order', async () => {
+    stubAdminBackend()
+    renderOrder()
+
+    const card = (await screen.findByRole('heading', { name: 'Seller' })).closest('section, div')!
+    expect(card).toHaveTextContent('Lola Beauty')
+    expect(card).toHaveTextContent('Tashkent, Chilonzor 5')
+    expect(
+      within(card as HTMLElement).getByRole('link', { name: '+998 90 555 66 77' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Mark ready' })).not.toBeInTheDocument()
+  })
+
+  it('marks an order ready when its seller has not', async () => {
+    const backend = stubAdminBackend()
+    const base = adminOrder()
+    serve(
+      adminOrder({
+        can_mark_ready: true,
+        shipment: base.shipment && { ...base.shipment, ready_at: null },
+      }),
+    )
+    renderOrder()
+
+    expect(await screen.findByText('Waiting for the seller to have it ready')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Mark ready' }))
+
+    await waitFor(() =>
+      expect(backend.writes()[0]).toMatchObject({ method: 'POST', path: '/orders/42/ready' }),
+    )
+  })
+})

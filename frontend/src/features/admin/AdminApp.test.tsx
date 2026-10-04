@@ -151,7 +151,7 @@ describe('AdminApp: a seller (Spec 9)', () => {
     stubAdminBackend('seller')
     renderAdmin()
 
-    expect(await navLinks()).toEqual(['Catalog', 'Profile'])
+    expect(await navLinks()).toEqual(['Catalog', 'Orders', 'Profile'])
     expect(await screen.findByRole('heading', { name: 'Catalog' })).toBeInTheDocument()
     expect(screen.getByText('Lola Beauty')).toBeInTheDocument()
   })
@@ -161,5 +161,15 @@ describe('AdminApp: a seller (Spec 9)', () => {
     renderAdmin('/admin/sellers')
 
     expect(await screen.findByRole('heading', { name: 'Sellers' })).toBeInTheDocument()
+  })
+})
+
+describe("AdminApp: a seller's orders (Spec 10)", () => {
+  it("opens the seller's own orders, not the platform's", async () => {
+    stubAdminBackend('seller')
+    renderAdmin('/admin/orders/42')
+
+    expect(await screen.findByRole('button', { name: 'Ready for pickup' })).toBeInTheDocument()
+    expect(screen.queryByText('Aziza K')).not.toBeInTheDocument()
   })
 })

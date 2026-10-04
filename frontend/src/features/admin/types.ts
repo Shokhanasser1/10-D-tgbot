@@ -17,6 +17,7 @@ export type Permission =
   | 'admins.manage'
   | 'taxonomy.edit'
   | 'sellers.manage'
+  | 'orders.prepare'
 
 export interface AdminMe {
   /** Null only for the internal token, which the UI never uses. */
@@ -216,6 +217,10 @@ export interface AdminOrderListItem {
   stock_shortfall: boolean
   refund_status: RefundStatus | null
   payment_method?: PaymentMethod
+  /** Spec 10: whose order it is; null `ready_at` means the seller is still preparing it. */
+  seller_id: number
+  seller_name: string
+  ready_at?: string | null
 }
 
 export interface AdminOrderItem {
@@ -261,12 +266,43 @@ export interface AdminOrder {
     assigned_at: string | null
     picked_up_at: string | null
     delivered_at: string | null
+    ready_at?: string | null
   } | null
   stock_shortfall: boolean
   cancelled_at: string | null
   cancelled_by: number | null
   cancel_reason: string | null
   can_cancel: boolean
+  seller: { id: number; name: string; phone: string | null; pickup_address: string | null }
+  /** Paid and waiting for its seller: the platform may mark it ready (Spec 10). */
+  can_mark_ready: boolean
+}
+
+// --- a seller's own orders (Spec 10): no customer data at all --------------------------------
+
+export interface SellerOrderListItem {
+  id: number
+  status: OrderStatus
+  placed_at: string
+  /** The goods; shipping belongs to the platform. */
+  subtotal: string
+  currency: string
+  payment_method: PaymentMethod
+  item_count: number
+  shipment_status: AdminShipmentStatus
+  ready_at: string | null
+}
+
+export interface SellerOrderItem {
+  product_name: string
+  sku: string
+  qty: number
+  unit_price: string
+  line_total: string
+}
+
+export interface SellerOrder extends SellerOrderListItem {
+  items: SellerOrderItem[]
 }
 
 export interface OrderFilters {
@@ -275,6 +311,7 @@ export interface OrderFilters {
   from?: string
   to?: string
   shortfall?: boolean
+  seller_id?: number
   offset?: number
 }
 

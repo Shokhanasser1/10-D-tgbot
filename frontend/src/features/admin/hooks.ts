@@ -15,6 +15,8 @@ export const adminKeys = {
   order: (id: number) => ['admin', 'order', id] as const,
   couriers: ['admin', 'couriers'] as const,
   sellers: ['admin', 'sellers'] as const,
+  sellerOrders: ['admin', 'seller-orders'] as const,
+  sellerOrder: (id: number) => ['admin', 'seller-order', id] as const,
   shipments: ['admin', 'shipments'] as const,
   locations: ['admin', 'locations'] as const,
   summary: ['admin', 'summary'] as const,
@@ -165,6 +167,38 @@ export function useOrderAction<TArgs>(fn: (args: TArgs) => ReturnType<typeof api
         queryClient.invalidateQueries({ queryKey: adminKeys.summary }),
         queryClient.invalidateQueries({ queryKey: adminKeys.shipments }),
       ]),
+  })
+}
+
+// --- readiness and a seller's own orders (Spec 10) ------------------------------------------
+
+export function useSellerOrders(offset: number) {
+  return useQuery({
+    queryKey: [...adminKeys.sellerOrders, offset],
+    queryFn: () => api.fetchSellerOrders(offset),
+    placeholderData: keepPreviousData,
+    refetchInterval: LIST_POLL_MS,
+  })
+}
+
+export function useSellerOrder(id: number) {
+  return useQuery({ queryKey: adminKeys.sellerOrder(id), queryFn: () => api.fetchSellerOrder(id) })
+}
+
+/** Marks an order ready and refreshes every view that shows its readiness. */
+export function useMarkReady(orderId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.markOrderReady(orderId),
+    onSettled: () =>
+      Promise.all(
+        [
+          adminKeys.order(orderId),
+          adminKeys.orders,
+          adminKeys.sellerOrder(orderId),
+          adminKeys.sellerOrders,
+        ].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+      ),
   })
 }
 

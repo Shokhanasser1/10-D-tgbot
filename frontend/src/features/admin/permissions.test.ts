@@ -25,7 +25,7 @@ describe('permissions', () => {
     expect(sectionsFor(adminMe('accountant'))).toEqual(['summary', 'orders'])
     expect(sectionsFor(adminMe('viewer'))).toEqual(['summary', 'catalog', 'orders', 'couriers'])
     // Spec 9: a seller works in the catalog only, and lands there.
-    expect(sectionsFor(adminMe('seller'))).toEqual(['catalog'])
+    expect(sectionsFor(adminMe('seller'))).toEqual(['catalog', 'orders'])
     expect(homeFor(adminMe('seller'))).toBe('catalog')
   })
 

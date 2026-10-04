@@ -387,7 +387,10 @@
       "manualRefund": "Refund {{total}} by hand in the Click/Payme cabinet. Payment ID: {{charge}}. Telegram charge: {{telegram}}.",
       "confirmRefund": "Refund done",
       "cancelOnly": "Cancel order",
-      "cancelMessageUnpaid": "No money was taken for this order, so there is nothing to refund. The items return to stock. This can't be undone."
+      "cancelMessageUnpaid": "No money was taken for this order, so there is nothing to refund. The items return to stock. This can't be undone.",
+      "preparing": "Preparing",
+      "waitingSeller": "Waiting for the seller to have it ready",
+      "markReady": "Mark ready"
     },
     "couriers": {
       "tabs": {
@@ -494,6 +497,17 @@
       "cancel": "Cancel",
       "deactivateTitle": "Deactivate {{name}}?",
       "deactivateMessage": "Their products leave the shop and their account stops working until you turn them back on."
+    },
+    "sellerOrders": {
+      "waiting": "Waiting for you",
+      "ready": "Ready for pickup",
+      "markReady": "Ready for pickup",
+      "readyHint": "Collect the items, then press the button: couriers only see the order after that.",
+      "readyDone": "Couriers can see the order now.",
+      "items_one": "{{count}} item",
+      "items_other": "{{count}} items",
+      "goodsTotal": "Goods total",
+      "empty": "No orders yet"
     }
   }
 }

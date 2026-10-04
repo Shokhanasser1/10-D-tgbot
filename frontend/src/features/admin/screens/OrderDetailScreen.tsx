@@ -13,7 +13,7 @@ import { Badge, ConfirmDialog, ErrorNote, PageHeader } from '../components/ui'
 import { adminErrorKey } from '../errors'
 import { useCan } from '../meContext'
 import { formatDateTime, formatMoney } from '../format'
-import { useAdminOrder, useOrderAction } from '../hooks'
+import { useAdminOrder, useMarkReady, useOrderAction } from '../hooks'
 import type { AdminOrder, RefundStatus } from '../types'
 import styles from './OrderDetailScreen.module.css'
 
@@ -60,6 +60,8 @@ export function OrderDetailScreen() {
   const canCancelPaid = useCan('orders.cancel_paid')
   const canCancelUnpaid = useCan('orders.cancel_unpaid')
   const canRefund = useCan('refunds.manage')
+  const canPrepare = useCan('orders.prepare')
+  const ready = useMarkReady(orderId)
 
   const order = query.data
   if (query.isError && !order) return <QueryError onRetry={() => query.refetch()} />
@@ -166,7 +168,23 @@ export function OrderDetailScreen() {
         </Card>
 
         <Card className={styles.card}>
+          <h2 className={styles.cardTitle}>{t('admin.catalog.seller')}</h2>
+          <p className={styles.line}>{order.seller.name}</p>
+          {order.seller.pickup_address && (
+            <p className={styles.line}>{order.seller.pickup_address}</p>
+          )}
+          {order.seller.phone && (
+            <p className={styles.line}>
+              <a href={`tel:${order.seller.phone.replace(/[^\d+]/g, '')}`}>{order.seller.phone}</a>
+            </p>
+          )}
+        </Card>
+
+        <Card className={styles.card}>
           <h2 className={styles.cardTitle}>{t('admin.orders.delivery')}</h2>
+          {order.can_mark_ready && (
+            <p className={styles.muted}>{t('admin.orders.waitingSeller')}</p>
+          )}
           <p className={styles.line}>
             {order.shipment?.courier_name
               ? t('admin.orders.courier', { name: order.shipment.courier_name })
@@ -196,6 +214,11 @@ export function OrderDetailScreen() {
         </p>
       )}
       <div className={styles.actions}>
+        {order.can_mark_ready && canPrepare && (
+          <PillButton disabled={ready.isPending} onClick={() => ready.mutate()}>
+            {t('admin.orders.markReady')}
+          </PillButton>
+        )}
         {refundStatus === 'manual_required' && canRefund && (
           <PillButton
             disabled={confirmRefund.isPending}
@@ -223,6 +246,7 @@ export function OrderDetailScreen() {
       {order.status === 'shipped' && (
         <p className={styles.muted}>{t('admin.orders.cannotCancel')}</p>
       )}
+      <ErrorNote message={ready.error ? t(adminErrorKey(ready.error)) : null} />
       <ErrorNote message={refund.error ? t(adminErrorKey(refund.error)) : null} />
       <ErrorNote message={confirmRefund.error ? t(adminErrorKey(confirmRefund.error)) : null} />
 

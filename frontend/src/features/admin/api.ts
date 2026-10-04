@@ -23,6 +23,8 @@ import type {
   ProductInput,
   ProductStatus,
   SellerInput,
+  SellerOrder,
+  SellerOrderListItem,
   SellerUpdate,
   StatsPeriod,
   Summary,
@@ -144,6 +146,17 @@ export const fetchOrders = (filters: OrderFilters) =>
     params: { ...filters, q: filters.q || undefined, limit: ORDERS_PAGE_SIZE },
   })
 export const fetchOrder = (id: number) => admin<AdminOrder>(`/orders/${id}`)
+/** The seller (or the platform) has it ready: couriers see it from now on (Spec 10). */
+export const markOrderReady = (id: number) =>
+  admin<{ order_id: number; ready_at: string }>(`/orders/${id}/ready`, { method: 'POST' })
+
+export const SELLER_ORDERS_PAGE_SIZE = 50
+
+export const fetchSellerOrders = (offset: number) =>
+  admin<Page<SellerOrderListItem>>('/seller/orders', {
+    params: { limit: SELLER_ORDERS_PAGE_SIZE, offset },
+  })
+export const fetchSellerOrder = (id: number) => admin<SellerOrder>(`/seller/orders/${id}`)
 export const cancelOrder = (id: number, reason: string) =>
   admin<AdminOrder>(`/orders/${id}/cancel`, { method: 'POST', body: { reason } })
 export const retryRefund = (id: number) =>

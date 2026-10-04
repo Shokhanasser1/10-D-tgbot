@@ -12,6 +12,8 @@ import type {
   AdminSeller,
   AdminShipment,
   Permission,
+  SellerOrder,
+  SellerOrderListItem,
   CourierLocation,
   Summary,
 } from '../features/admin/types'
@@ -31,6 +33,7 @@ export const PERMISSIONS_BY_ROLE: Record<AdminRole, Permission[]> = {
     'admins.manage',
     'taxonomy.edit',
     'sellers.manage',
+    'orders.prepare',
   ],
   manager: [
     'summary.view',
@@ -43,12 +46,19 @@ export const PERMISSIONS_BY_ROLE: Record<AdminRole, Permission[]> = {
     'couriers.manage',
     'taxonomy.edit',
     'sellers.manage',
+    'orders.prepare',
   ],
   catalog_manager: ['catalog.view', 'catalog.edit', 'taxonomy.edit'],
-  dispatcher: ['orders.view', 'orders.cancel_unpaid', 'couriers.view', 'couriers.manage'],
+  dispatcher: [
+    'orders.view',
+    'orders.cancel_unpaid',
+    'orders.prepare',
+    'couriers.view',
+    'couriers.manage',
+  ],
   accountant: ['summary.view', 'orders.view', 'orders.cancel_paid', 'refunds.manage'],
   viewer: ['summary.view', 'catalog.view', 'orders.view', 'couriers.view'],
-  seller: ['catalog.view', 'catalog.edit'],
+  seller: ['catalog.view', 'catalog.edit', 'orders.prepare'],
 }
 
 export function adminMe(role: AdminRole = 'owner', overrides: Partial<AdminMe> = {}): AdminMe {
@@ -167,6 +177,9 @@ export const adminOrderList: AdminOrderListItem[] = [
     shipment_status: 'processing',
     stock_shortfall: true,
     refund_status: null,
+    seller_id: 7,
+    seller_name: 'Lola Beauty',
+    ready_at: null,
   },
   {
     id: 41,
@@ -179,6 +192,9 @@ export const adminOrderList: AdminOrderListItem[] = [
     shipment_status: 'cancelled',
     stock_shortfall: false,
     refund_status: 'failed',
+    seller_id: 8,
+    seller_name: 'Anor',
+    ready_at: '2026-09-23T10:05:00Z',
   },
 ]
 
@@ -222,12 +238,20 @@ export function adminOrder(overrides: Partial<AdminOrder> = {}): AdminOrder {
       assigned_at: null,
       picked_up_at: null,
       delivered_at: null,
+      ready_at: '2026-09-24T10:05:00Z',
     },
     stock_shortfall: false,
     cancelled_at: null,
     cancelled_by: null,
     cancel_reason: null,
     can_cancel: true,
+    seller: {
+      id: 7,
+      name: 'Lola Beauty',
+      phone: '+998 90 555 66 77',
+      pickup_address: 'Tashkent, Chilonzor 5',
+    },
+    can_mark_ready: false,
     ...overrides,
   }
 }
@@ -344,3 +368,44 @@ export const adminSellers: AdminSeller[] = [
     product_count: 0,
   },
 ]
+
+export const sellerOrderList: SellerOrderListItem[] = [
+  {
+    id: 42,
+    status: 'paid',
+    placed_at: '2026-09-24T10:00:00Z',
+    subtotal: '29.98',
+    currency: 'EUR',
+    payment_method: 'cash',
+    item_count: 2,
+    shipment_status: 'processing',
+    ready_at: null,
+  },
+  {
+    id: 40,
+    status: 'paid',
+    placed_at: '2026-09-23T10:00:00Z',
+    subtotal: '14.99',
+    currency: 'EUR',
+    payment_method: 'telegram',
+    item_count: 1,
+    shipment_status: 'processing',
+    ready_at: '2026-09-23T10:30:00Z',
+  },
+]
+
+export function sellerOrder(overrides: Partial<SellerOrder> = {}): SellerOrder {
+  return {
+    ...sellerOrderList[0],
+    items: [
+      {
+        product_name: 'Velvet Matte Lipstick',
+        sku: 'LIP-VELVET-RED',
+        qty: 2,
+        unit_price: '14.99',
+        line_total: '29.98',
+      },
+    ],
+    ...overrides,
+  }
+}

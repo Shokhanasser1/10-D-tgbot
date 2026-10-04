@@ -11,7 +11,8 @@ import { Skeleton } from '../../../shared/ui/Skeleton'
 import { ORDERS_PAGE_SIZE } from '../api'
 import { Badge, PageHeader } from '../components/ui'
 import { formatDateTime, formatMoney } from '../format'
-import { useAdminOrders } from '../hooks'
+import { useAdminOrders, useAdminSellers } from '../hooks'
+import { useCan } from '../meContext'
 import { inputClass } from '../components/inputClass'
 import styles from './OrdersScreen.module.css'
 
@@ -34,6 +35,12 @@ export function OrdersScreen() {
   const to = params.get('to') ?? ''
   const shortfall = params.get('shortfall') === 'true'
   const offset = Number(params.get('offset')) || 0
+  const sellerId = Number(params.get('seller_id')) || undefined
+  // The seller list is open to catalog readers and seller managers (a dispatcher has neither).
+  const canReadCatalog = useCan('catalog.view')
+  const canManageSellers = useCan('sellers.manage')
+  const canListSellers = canReadCatalog || canManageSellers
+  const sellers = useAdminSellers(canListSellers)
   const deferredQ = useDeferredValue(q)
 
   const query = useAdminOrders({
@@ -42,6 +49,7 @@ export function OrdersScreen() {
     from: from || undefined,
     to: to || undefined,
     shortfall: shortfall || undefined,
+    seller_id: sellerId,
     offset,
   })
   const page = query.data
@@ -82,6 +90,21 @@ export function OrdersScreen() {
             </option>
           ))}
         </select>
+        {canListSellers && (
+          <select
+            className={inputClass}
+            aria-label={t('admin.catalog.seller')}
+            value={sellerId ?? ''}
+            onChange={(event) => update({ seller_id: event.target.value })}
+          >
+            <option value="">{t('admin.catalog.allSellers')}</option>
+            {sellers.data?.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        )}
         <input
           type="date"
           className={inputClass}
@@ -121,9 +144,15 @@ export function OrdersScreen() {
                     <span className={styles.muted}>{order.customer_name ?? order.telegram_id}</span>
                   </span>
                   <span className={styles.muted}>
-                    {formatDateTime(order.placed_at, i18n.language)}
+                    {formatDateTime(order.placed_at, i18n.language)} · {order.seller_name}
                   </span>
                   <span className={styles.badges}>
+                    {/* Paid, but its seller has not pressed Ready yet (Spec 10). */}
+                    {order.status === 'paid' &&
+                      order.shipment_status === 'processing' &&
+                      !order.ready_at && (
+                        <Badge tone="warning">{t('admin.orders.preparing')}</Badge>
+                      )}
                     {order.stock_shortfall && (
                       <Badge tone="warning">{t('admin.orders.shortfall')}</Badge>
                     )}

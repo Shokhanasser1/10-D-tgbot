@@ -19,6 +19,7 @@ import { OrderDetailScreen } from './screens/OrderDetailScreen'
 import { OrdersScreen } from './screens/OrdersScreen'
 import { ProductEditorScreen } from './screens/ProductEditorScreen'
 import { ProductsScreen } from './screens/ProductsScreen'
+import { SellerOrderScreen, SellerOrdersScreen } from './screens/SellerOrdersScreen'
 import { SellersScreen } from './screens/SellersScreen'
 import { SummaryScreen } from './screens/SummaryScreen'
 
@@ -91,12 +92,19 @@ export function AdminApp() {
               <Route path="catalog/categories" element={<CategoriesScreen />} />
             </>
           )}
-          {canOpen(me, 'orders') && (
-            <>
-              <Route path="orders" element={<OrdersScreen />} />
-              <Route path="orders/:orderId" element={<OrderDetailScreen />} />
-            </>
-          )}
+          {/* A seller's Orders are their own, without customers (Spec 10). */}
+          {canOpen(me, 'orders') &&
+            (me.seller_id != null ? (
+              <>
+                <Route path="orders" element={<SellerOrdersScreen />} />
+                <Route path="orders/:orderId" element={<SellerOrderScreen />} />
+              </>
+            ) : (
+              <>
+                <Route path="orders" element={<OrdersScreen />} />
+                <Route path="orders/:orderId" element={<OrderDetailScreen />} />
+              </>
+            ))}
           {canOpen(me, 'couriers') && <Route path="couriers" element={<CouriersScreen />} />}
           {canOpen(me, 'sellers') && <Route path="sellers" element={<SellersScreen />} />}
           {canOpen(me, 'admins') && (

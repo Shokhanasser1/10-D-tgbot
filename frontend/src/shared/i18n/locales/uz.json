@@ -387,7 +387,10 @@
       "manualRefund": "{{total}} ni Click/Payme kabinetida qo'lda qaytaring. To'lov ID: {{charge}}. Telegram to'lovi: {{telegram}}.",
       "confirmRefund": "Qaytarildi",
       "cancelOnly": "Buyurtmani bekor qilish",
-      "cancelMessageUnpaid": "Bu buyurtma uchun hali pul olinmagan, qaytaradigan narsa yo'q. Mahsulotlar omborga qaytadi. Bu amalni qaytarib bo'lmaydi."
+      "cancelMessageUnpaid": "Bu buyurtma uchun hali pul olinmagan, qaytaradigan narsa yo'q. Mahsulotlar omborga qaytadi. Bu amalni qaytarib bo'lmaydi.",
+      "preparing": "Yig'ilmoqda",
+      "waitingSeller": "Sotuvchi buyurtmani yig'ishini kutmoqda",
+      "markReady": "Tayyor deb belgilash"
     },
     "couriers": {
       "tabs": {
@@ -494,6 +497,17 @@
       "cancel": "Bekor qilish",
       "deactivateTitle": "«{{name}}» o'chirilsinmi?",
       "deactivateMessage": "Uning mahsulotlari do'kondan yo'qoladi va akkaunti qayta yoqmaguningizcha ishlamaydi."
+    },
+    "sellerOrders": {
+      "waiting": "Sizni kutmoqda",
+      "ready": "Olib ketishga tayyor",
+      "markReady": "Olib ketishga tayyor",
+      "readyHint": "Mahsulotlarni yig'ing va tugmani bosing: kuryerlar buyurtmani faqat shundan keyin ko'radi.",
+      "readyDone": "Kuryerlar buyurtmani ko'rmoqda.",
+      "items_one": "{{count}} ta mahsulot",
+      "items_other": "{{count}} ta mahsulot",
+      "goodsTotal": "Mahsulotlar summasi",
+      "empty": "Hozircha buyurtmalar yo'q"
     }
   }
 }

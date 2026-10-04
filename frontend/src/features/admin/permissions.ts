@@ -22,22 +22,28 @@ const ORDER: readonly AdminSection[] = [
   'admins',
 ]
 
+type Who = Pick<AdminMe, 'permissions'> & Partial<Pick<AdminMe, 'seller_id'>>
+
 /** Only decides what to show; the API enforces the same permissions on every call. */
 export function can(me: Pick<AdminMe, 'permissions'>, permission: Permission): boolean {
   return me.permissions.includes(permission)
 }
 
-export function sectionsFor(me: Pick<AdminMe, 'permissions'>): readonly AdminSection[] {
-  return ORDER.filter((section) =>
-    can(me, SECTION_PERMISSION[section as keyof typeof SECTION_PERMISSION]),
-  )
+function opens(me: Who, section: Exclude<AdminSection, 'profile'>): boolean {
+  // A seller's Orders are their own (Spec 10): opened by preparing orders, not the platform view.
+  if (section === 'orders' && me.seller_id != null) return can(me, 'orders.prepare')
+  return can(me, SECTION_PERMISSION[section])
 }
 
-export function canOpen(me: Pick<AdminMe, 'permissions'>, section: AdminSection): boolean {
+export function sectionsFor(me: Who): readonly AdminSection[] {
+  return ORDER.filter((section) => opens(me, section as Exclude<AdminSection, 'profile'>))
+}
+
+export function canOpen(me: Who, section: AdminSection): boolean {
   return section === 'profile' || sectionsFor(me).includes(section)
 }
 
 /** Where an admin lands when they open /admin. */
-export function homeFor(me: Pick<AdminMe, 'permissions'>): AdminSection {
+export function homeFor(me: Who): AdminSection {
   return sectionsFor(me)[0] ?? 'profile'
 }

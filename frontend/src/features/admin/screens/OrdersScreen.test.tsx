@@ -54,3 +54,25 @@ describe('OrdersScreen', () => {
     })
   })
 })
+
+describe('OrdersScreen: sellers (Spec 10)', () => {
+  it("shows each order's seller and marks the ones still being prepared", async () => {
+    stubAdminBackend()
+    renderScreen(<OrdersScreen />, { route: '/admin/orders', path: '/admin/orders' })
+
+    const waiting = await screen.findByRole('link', { name: /Order #42/ })
+    expect(waiting).toHaveTextContent('Lola Beauty')
+    expect(waiting).toHaveTextContent('Preparing')
+    expect(screen.getByRole('link', { name: /Order #41/ })).not.toHaveTextContent('Preparing')
+  })
+
+  it('filters by seller', async () => {
+    const backend = stubAdminBackend()
+    renderScreen(<OrdersScreen />, { route: '/admin/orders', path: '/admin/orders' })
+    await screen.findByRole('link', { name: /Order #42/ })
+
+    await userEvent.selectOptions(await screen.findByRole('combobox', { name: 'Seller' }), '8')
+
+    await waitFor(() => expect(backend.requests.at(-1)!.search.get('seller_id')).toBe('8'))
+  })
+})
