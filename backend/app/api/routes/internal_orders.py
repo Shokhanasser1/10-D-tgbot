@@ -11,14 +11,20 @@ from app.api.deps import (
 )
 from app.db.session import get_db
 from app.models.enums import OrderStatus, Permission
-from app.schemas.order_admin import OrderAdminDetailOut, OrderAdminPage, OrderCancelIn
-from app.services import order_admin_service
+from app.schemas.order_admin import (
+    OrderAdminDetailOut,
+    OrderAdminPage,
+    OrderCancelIn,
+    OrderReadyOut,
+)
+from app.services import order_admin_service, order_ready_service
 
 router = APIRouter(prefix="/internal", tags=["internal"])
 
 _view = require_permission(Permission.orders_view)
 # Money leaves the shop only after the password was re-entered (Spec 7).
 _refunds = require_permission(Permission.refunds_manage)
+_prepare = require_permission(Permission.orders_prepare)
 
 
 @router.get("/orders", response_model=OrderAdminPage)
@@ -51,6 +57,16 @@ async def get_order(
     order_id: int, _: AdminPrincipal = Depends(_view), db: AsyncSession = Depends(get_db)
 ):
     return await order_admin_service.get_order(db, order_id)
+
+
+@router.post("/orders/{order_id}/ready", response_model=OrderReadyOut)
+async def mark_ready(
+    order_id: int,
+    principal: AdminPrincipal = Depends(_prepare),
+    db: AsyncSession = Depends(get_db),
+):
+    """The seller (or the platform) has the order ready: it enters the courier pool (Spec 10)."""
+    return await order_ready_service.mark_ready(db, order_id, principal.seller_id)
 
 
 @router.post("/orders/{order_id}/cancel", response_model=OrderAdminDetailOut)

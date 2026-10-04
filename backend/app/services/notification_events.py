@@ -18,6 +18,7 @@ from app.models.courier import Courier
 from app.models.enums import PaymentMethod, Permission
 from app.models.order import Order, OrderItem
 from app.models.payment import Payment
+from app.models.seller import Seller
 from app.models.telegram_user import TelegramUser
 from app.services import notification_service
 from app.services.notification_templates import items, money, render
@@ -104,6 +105,7 @@ async def _pool_message(
     ).one()
     # A courier collecting cash needs to know how much (and to bring change).
     cash = order.payment_method == PaymentMethod.cash
+    pickup = await _pickup(db, order_id)
     stmt = select(Courier.id, Courier.telegram_id).where(Courier.is_active)
     if exclude_courier_id is not None:
         stmt = stmt.where(Courier.id != exclude_courier_id)
@@ -121,7 +123,8 @@ async def _pool_message(
                 render("pool_cash", locale, total=money(order.total, order.currency, locale))
                 if cash
                 else ""
-            ),
+            )
+            + render("pool_pickup", locale, pickup=pickup),
             reply_markup=notification_service.web_app_button(
                 render("button_courier", locale), "courier"
             ),
@@ -141,7 +144,8 @@ async def order_paid(db: AsyncSession, order_id: int) -> None:
         template="order_confirmed_cash" if cash else None,
         with_total=cash,
     )
-    await _pool_message(db, order_id, "pool_new", f"pool_new:{order_id}")
+    # Couriers hear about it once the seller has it ready (order_ready, Spec 10).
+    await _to_seller(db, order_id)
 
     order = (
         await db.execute(
@@ -176,6 +180,49 @@ async def order_paid(db: AsyncSession, order_id: int) -> None:
                 render("button_admin", locale), f"admin/orders/{order_id}"
             ),
         )
+
+
+async def _pickup(db: AsyncSession, order_id: int) -> str:
+    """Where the courier collects the order: the seller's name and pickup address."""
+    seller = (
+        await db.execute(
+            select(Seller.name, Seller.pickup_address)
+            .join(Order, Order.seller_id == Seller.id)
+            .where(Order.id == order_id)
+        )
+    ).one()
+    return ", ".join(part for part in (seller.name, seller.pickup_address) if part)
+
+
+async def _to_seller(db: AsyncSession, order_id: int) -> None:
+    """A paid order is the seller's to prepare: tell each of their active accounts."""
+    seller_id = await db.scalar(select(Order.seller_id).where(Order.id == order_id))
+    accounts = list(
+        await db.scalars(
+            select(Admin.telegram_id).where(Admin.is_active, Admin.seller_id == seller_id)
+        )
+    )
+    count = int(
+        await db.scalar(select(func.sum(OrderItem.qty)).where(OrderItem.order_id == order_id)) or 0
+    )
+    locales = await _locales(db, accounts)
+    for telegram_id in accounts:
+        locale = locales.get(telegram_id)
+        await notification_service.enqueue(
+            db,
+            chat_id=telegram_id,
+            kind="seller_new_order",
+            dedupe_key=f"seller_new_order:{order_id}:{telegram_id}",
+            text=render("seller_new_order", locale, order_id=order_id, items=items(count, locale)),
+            reply_markup=notification_service.web_app_button(
+                render("button_seller_order", locale), f"admin/orders/{order_id}"
+            ),
+        )
+
+
+async def order_ready(db: AsyncSession, order_id: int) -> None:
+    """The seller has the order ready: now it is the couriers' to take."""
+    await _pool_message(db, order_id, "pool_new", f"pool_new:{order_id}")
 
 
 # --- courier actions -------------------------------------------------------------------------

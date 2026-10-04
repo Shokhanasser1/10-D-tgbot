@@ -30,6 +30,11 @@ TEMPLATES: dict[str, dict[str, str]] = {
             "Order #{order_id} is confirmed. Pay in cash on delivery: {total}."
         ),
         "pool_cash": " Cash: {total}.",
+        "pool_pickup": " Pickup: {pickup}.",
+        "seller_new_order": (
+            "New order #{order_id}: {items}. Collect it and press Ready, then a courier comes."
+        ),
+        "button_seller_order": "Open order",
         "order_cancelled_unpaid": "Order #{order_id} was cancelled by the shop: {reason}.",
         "refund_manual": (
             "Refund {total} for order #{order_id} by hand in the Click/Payme cabinet "
@@ -57,6 +62,12 @@ TEMPLATES: dict[str, dict[str, str]] = {
             "Заказ №{order_id} принят. Оплата наличными при получении: {total}."
         ),
         "pool_cash": " Наличные: {total}.",
+        "pool_pickup": " Забрать: {pickup}.",
+        "seller_new_order": (
+            "Новый заказ №{order_id}: {items}. Соберите его и нажмите «Готов», "
+            "после этого приедет курьер."
+        ),
+        "button_seller_order": "Открыть заказ",
         "order_cancelled_unpaid": "Магазин отменил заказ №{order_id}: {reason}.",
         "refund_manual": (
             "Верните {total} за заказ №{order_id} вручную в кабинете Click/Payme "
@@ -90,6 +101,12 @@ TEMPLATES: dict[str, dict[str, str]] = {
             "№{order_id} buyurtma qabul qilindi. Yetkazilganda naqd to'lov: {total}."
         ),
         "pool_cash": " Naqd: {total}.",
+        "pool_pickup": " Olib ketish: {pickup}.",
+        "seller_new_order": (
+            "Yangi buyurtma №{order_id}: {items}. Uni yig'ing va «Tayyor» tugmasini bosing, "
+            "shundan keyin kuryer keladi."
+        ),
+        "button_seller_order": "Buyurtmani ochish",
         "order_cancelled_unpaid": "Do'kon №{order_id} buyurtmani bekor qildi: {reason}.",
         "refund_manual": (
             "№{order_id} buyurtma uchun {total} ni Click/Payme kabinetida qo'lda qaytaring "

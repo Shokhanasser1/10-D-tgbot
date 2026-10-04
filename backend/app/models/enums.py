@@ -68,6 +68,7 @@ class Permission(enum.StrEnum):
     admins_manage = "admins.manage"
     taxonomy_edit = "taxonomy.edit"  # categories and attributes, shared by all sellers
     sellers_manage = "sellers.manage"
+    orders_prepare = "orders.prepare"  # mark an order ready for pickup (Spec 10)
 
 
 class RefundStatus(enum.StrEnum):

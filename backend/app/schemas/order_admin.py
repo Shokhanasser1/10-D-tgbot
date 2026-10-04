@@ -91,5 +91,10 @@ class OrderAdminDetailOut(BaseModel):
     can_cancel: bool
 
 
+class OrderReadyOut(BaseModel):
+    order_id: int
+    ready_at: datetime
+
+
 class OrderCancelIn(BaseModel):
     reason: str = Field(min_length=1, max_length=500)

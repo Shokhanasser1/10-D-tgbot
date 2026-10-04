@@ -18,14 +18,20 @@ ROLE_PERMISSIONS: dict[AdminRole, frozenset[Permission]] = {
     AdminRole.manager: frozenset(Permission) - {P.refunds_manage, P.admins_manage},
     AdminRole.catalog_manager: frozenset({P.catalog_view, P.catalog_edit, P.taxonomy_edit}),
     AdminRole.dispatcher: frozenset(
-        {P.orders_view, P.orders_cancel_unpaid, P.couriers_view, P.couriers_manage}
+        {
+            P.orders_view,
+            P.orders_cancel_unpaid,
+            P.orders_prepare,
+            P.couriers_view,
+            P.couriers_manage,
+        }
     ),
     AdminRole.accountant: frozenset(
         {P.summary_view, P.orders_view, P.orders_cancel_paid, P.refunds_manage}
     ),
     AdminRole.viewer: _VIEW_ALL,
     # Only its own products: app/services/seller_scope.py confines it there (Spec 9 §4).
-    AdminRole.seller: frozenset({P.catalog_view, P.catalog_edit}),
+    AdminRole.seller: frozenset({P.catalog_view, P.catalog_edit, P.orders_prepare}),
 }
 
 CONFIRMATION_REQUIRED = frozenset({P.orders_cancel_paid, P.refunds_manage, P.admins_manage})

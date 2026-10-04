@@ -29,6 +29,7 @@ from app.models.shipment import Shipment
 from app.models.variant import Variant
 from app.services import (
     dispatch_service,
+    order_ready_service,
     reservation_service,
     stripe_service,
     telegram_payments,
@@ -391,7 +392,7 @@ async def test_late_telegram_payment_needs_a_manual_refund(
 # --- cash on delivery ------------------------------------------------------------------------
 
 
-async def test_cash_checkout_goes_straight_to_the_couriers(
+async def test_cash_checkout_reaches_the_couriers_once_ready(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     await add_customer(db_session, 5301)
@@ -415,8 +416,11 @@ async def test_cash_checkout_goes_straight_to_the_couriers(
     assert customer_text == (
         f"Order #{order.id} is confirmed. Pay in cash on delivery: UZS 198,000."
     )
+    # Spec 10: couriers hear about it once the seller has it ready.
+    assert await _texts(db_session, 5301) == []
+    await order_ready_service.mark_ready(db_session, order.id, None)
     (courier_text,) = await _texts(db_session, 5301)
-    assert courier_text.endswith("Cash: UZS 198,000.")
+    assert "Cash: UZS 198,000." in courier_text
 
     pool = (await client.get("/courier/pool", headers=_headers(5301))).json()
     mine = next(item for item in pool if item["order_id"] == order.id)
@@ -431,6 +435,7 @@ async def test_delivering_a_cash_order_records_the_money(
     variant = await _variant(db_session)
     order_id = (await _checkout(client, 5312, variant.id, "cash")).json()["order_id"]
     shipment_id = await db_session.scalar(select(Shipment.id).where(Shipment.order_id == order_id))
+    await order_ready_service.mark_ready(db_session, order_id, None)
 
     await dispatch_service.claim(db_session, courier, shipment_id)
     await dispatch_service.pickup(db_session, courier, shipment_id)

@@ -44,6 +44,8 @@ async def get_pool(db: AsyncSession) -> list[PoolItemOut]:
             .where(
                 Shipment.status == ShipmentStatus.processing,
                 Shipment.courier_id.is_(None),
+                # Only once the seller has it ready (Spec 10).
+                Shipment.ready_at.is_not(None),
                 Order.status == OrderStatus.paid,
             )
             .order_by(Shipment.created_at, Shipment.id)

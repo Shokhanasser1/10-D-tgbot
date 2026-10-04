@@ -108,13 +108,17 @@ async def claim(db: AsyncSession, courier: Courier, shipment_id: int) -> Shipmen
             Shipment.id == shipment_id,
             Shipment.status == ShipmentStatus.processing,
             Shipment.courier_id.is_(None),
+            Shipment.ready_at.is_not(None),
         )
         .values(status=ShipmentStatus.assigned, courier_id=courier.id, assigned_at=func.now())
         .returning(Shipment.order_id)
         .execution_options(synchronize_session=False)
     )
     if order_id is None:
-        if await db.scalar(select(Shipment.id).where(Shipment.id == shipment_id)) is None:
+        # A shipment still waiting for its seller is invisible to couriers (Spec 10).
+        ready_at = await db.execute(select(Shipment.ready_at).where(Shipment.id == shipment_id))
+        row = ready_at.first()
+        if row is None or row.ready_at is None:
             raise NotFoundError("Shipment not found")
         raise ConflictError("This delivery was already taken", code="shipment_taken")
 

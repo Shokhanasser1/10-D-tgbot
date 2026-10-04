@@ -21,6 +21,7 @@ from app.services import (
     notification_sender,
     notification_service,
     order_admin_service,
+    order_ready_service,
     order_service,
     reservation_service,
     stripe_service,
@@ -29,6 +30,7 @@ from app.services.notification_sender import Outcome
 from app.services.notification_templates import items, money
 from tests.admin_factories import add_admin
 from tests.courier_factories import add_courier, add_customer, add_paid_order
+from tests.factories import default_seller_id
 
 CUSTOMER = 880_001
 WEBAPP = "https://shop.example.com/"
@@ -119,29 +121,52 @@ def test_no_button_without_an_https_webapp_url(monkeypatch: pytest.MonkeyPatch) 
 # --- payment ---------------------------------------------------------------------------------
 
 
-async def test_payment_tells_the_customer_couriers_and_admins(db_session: AsyncSession) -> None:
+async def test_payment_tells_the_customer_the_seller_and_admins(db_session: AsyncSession) -> None:
     await _set_locale(db_session, CUSTOMER, "ru")
     order = await _unpaid_order(db_session, city="Tashkent", street="Amir Temur 1", qty=2)
     await add_customer(db_session, 881_001)
     await add_courier(db_session, 881_001, name="Bekzod")
-    await add_courier(db_session, 881_002, name="Off", is_active=False)
     await add_admin(db_session, 881_010, AdminRole.owner)
     await add_admin(db_session, 881_011, AdminRole.dispatcher)
     await add_admin(db_session, 881_012, AdminRole.catalog_manager)
+    await add_admin(
+        db_session, 881_013, AdminRole.seller, seller_id=await default_seller_id(db_session)
+    )
 
     await order_service.mark_order_paid(db_session, order.id)
 
     by_chat = await _by_chat(db_session)
     assert by_chat[CUSTOMER] == [f"Заказ №{order.id} оплачен. Ищем курьера."]
-    assert by_chat[881_001] == ["New order in the pool: Tashkent, Amir Temur 1, 2 items."]
+    assert by_chat[881_013] == [
+        f"New order #{order.id}: 2 items. Collect it and press Ready, then a courier comes."
+    ]
     assert by_chat[881_010] == [f"New order #{order.id}, €24.99."]
     assert 881_011 in by_chat
-    assert 881_002 not in by_chat  # inactive courier
+    assert 881_001 not in by_chat  # couriers hear about it once the seller has it ready
     assert 881_012 not in by_chat  # catalog managers do not handle orders
     urls = {m.chat_id: _button_url(m) for m in await _messages(db_session)}
     assert urls[CUSTOMER] == f"{WEBAPP}orders/{order.id}"
-    assert urls[881_001] == f"{WEBAPP}courier"
+    assert urls[881_013] == f"{WEBAPP}admin/orders/{order.id}"
     assert urls[881_010] == f"{WEBAPP}admin/orders/{order.id}"
+
+
+async def test_ready_tells_the_active_couriers_where_to_collect(db_session: AsyncSession) -> None:
+    order = await _unpaid_order(db_session, city="Tashkent", street="Amir Temur 1", qty=2)
+    await add_customer(db_session, 881_001)
+    await add_courier(db_session, 881_001, name="Bekzod")
+    await add_courier(db_session, 881_002, name="Off", is_active=False)
+    await order_service.mark_order_paid(db_session, order.id)
+
+    await order_ready_service.mark_ready(db_session, order.id, None)
+
+    by_chat = await _by_chat(db_session)
+    assert by_chat[881_001] == [
+        "New order in the pool: Tashkent, Amir Temur 1, 2 items."
+        " Pickup: Test shop, Tashkent, Amir Temur 1."
+    ]
+    assert 881_002 not in by_chat  # inactive courier
+    urls = {m.chat_id: _button_url(m) for m in await _messages(db_session)}
+    assert urls[881_001] == f"{WEBAPP}courier"
 
 
 async def test_pool_messages_never_carry_the_phone_or_notes(db_session: AsyncSession) -> None:
@@ -150,6 +175,7 @@ async def test_pool_messages_never_carry_the_phone_or_notes(db_session: AsyncSes
     await add_courier(db_session, 881_020)
 
     await order_service.mark_order_paid(db_session, order.id)
+    await order_ready_service.mark_ready(db_session, order.id, None)
 
     (text,) = (await _by_chat(db_session))[881_020]
     assert "1234" not in text and "+49" not in text
@@ -207,7 +233,10 @@ async def test_a_released_order_goes_to_the_other_couriers_only(db_session: Asyn
     await dispatch_service.release(db_session, courier, shipment.id)
 
     by_chat = await _by_chat(db_session)
-    assert by_chat[882_002] == ["Order back in the pool: Berlin, Alexanderplatz 1, 1 item."]
+    assert by_chat[882_002] == [
+        "Order back in the pool: Berlin, Alexanderplatz 1, 1 item."
+        " Pickup: Test shop, Tashkent, Amir Temur 1."
+    ]
     assert courier.telegram_id not in by_chat
     assert len(by_chat[CUSTOMER]) == 1  # only "taken"; release is not the customer's concern
 
